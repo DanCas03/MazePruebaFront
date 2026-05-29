@@ -1,10 +1,10 @@
 // lib/application/use_cases/player/move_player_use_case.dart
 
-import '../../domain/board/entities/board.dart';
-import '../../domain/player/entities/player.dart';
-import '../../domain/game_core/value_objects/position.dart';
-import '../../domain/game_core/value_objects/direction.dart';
-import '../../commands/command_invoker.dart'; // Importamos el Invocador
+import '../../../domain/board/entities/board.dart';
+import '../../../domain/player/entities/player.dart';
+import '../../../domain/game_core/value_objects/position.dart';
+import '../../../domain/game_core/value_objects/direction.dart';
+import '../../commands/command_invoker.dart';
 import '../../commands/move_command.dart';
 
 class MovePlayerUseCase {

@@ -1,0 +1,45 @@
+name: flutter_arrow_maze
+description: Arrow Maze - Casual puzzle game clone.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management & DI
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Local persistence
+  hive_ce: ^2.9.0
+  hive_ce_flutter: ^2.2.0
+  sqflite: ^2.3.3+1
+  path_provider: ^2.1.4
+
+  # Networking
+  dio: ^5.7.0
+
+  # Utilities
+  equatable: ^2.0.7
+  dartz: ^0.10.1
+  get_it: ^8.0.2
+  logger: ^2.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.1
+  hive_ce_generator: ^1.8.0
+  json_serializable: ^6.8.0
+  mockito: ^5.4.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/levels/

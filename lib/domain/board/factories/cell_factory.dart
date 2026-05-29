@@ -1,7 +1,7 @@
 // lib/domain/factories/cell_factory.dart
 import '../entities/cell.dart';
-import '../entities/position.dart';
-import '../entities/direction.dart';
+import '../../game_core/value_objects/position.dart';
+import '../../game_core/value_objects/direction.dart';
 import '../entities/empty_cell.dart';
 import '../entities/wall_cell.dart';
 import '../entities/arrow_cell.dart';

@@ -1,5 +1,5 @@
 import 'cell.dart';
-import 'position.dart';
+import '../../game_core/value_objects/position.dart';
 
 class ExitCell implements ICell {
   @override

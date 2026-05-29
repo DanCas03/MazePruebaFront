@@ -1,6 +1,6 @@
-import '../../domain/board/entities/board.dart';
-import '../../domain/board/entities/exit_cell.dart';
-import '../../domain/player/entities/player.dart';
+import '../../../domain/board/entities/board.dart';
+import '../../../domain/board/entities/exit_cell.dart';
+import '../../../domain/player/entities/player.dart';
 
 class CheckWinConditionUseCase {
   final Player player;

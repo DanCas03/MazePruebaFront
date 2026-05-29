@@ -70,10 +70,10 @@ class CellWidget extends StatelessWidget {
   final bool isPlayerHere;
 
   const CellWidget({
-    Key? key,
+    super.key,
     required this.cell,
     this.isPlayerHere = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,12 +1,10 @@
 // lib/domain/decorators/locked_cell_decorator.dart
 import 'cell_decorator.dart';
-import '../entities/cell.dart';
 
 class LockedCellDecorator extends CellDecorator {
   bool isLocked;
 
-  LockedCellDecorator(ICell wrappedCell, {this.isLocked = true}) 
-      : super(wrappedCell);
+  LockedCellDecorator(super.wrappedCell, {this.isLocked = true});
 
   /// Podemos agregar un método para desbloquear la celda
   void unlock() {

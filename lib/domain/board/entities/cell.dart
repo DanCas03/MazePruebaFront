@@ -1,5 +1,5 @@
 // lib/domain/entities/cell.dart
-import 'position.dart';
+import '../../game_core/value_objects/position.dart';
 
 abstract class ICell {
   Position get position;

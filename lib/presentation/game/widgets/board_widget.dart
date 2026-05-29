@@ -6,7 +6,7 @@ import 'cell_widget.dart';
 class BoardWidget extends StatelessWidget {
   final GameController controller;
 
-  const BoardWidget({Key? key, required this.controller}) : super(key: key);
+  const BoardWidget({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -28,12 +28,11 @@ class BoardWidget extends StatelessWidget {
             final x = index % board.width;
             final pos = Position(x: x, y: y);
 
-            // Obtenemos la celda real de nuestra capa de dominio
             final cell = board.getCellAt(pos);
-            
-            // Verificamos si el jugador está en esta coordenada
+            if (cell == null) return const SizedBox.shrink();
+
             final isPlayerHere = controller.player.currentPosition.x == x &&
-                                 controller.player.currentPosition.y == y;
+                controller.player.currentPosition.y == y;
 
             return GestureDetector(
               onTap: () => controller.onCellTapped(pos),

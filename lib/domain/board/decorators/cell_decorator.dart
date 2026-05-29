@@ -1,6 +1,6 @@
 // lib/domain/decorators/cell_decorator.dart
 import '../entities/cell.dart';
-import '../entities/position.dart';
+import '../../game_core/value_objects/position.dart';
 
 /// Clase base para los decoradores. 
 /// Implementa ICell y recibe otra ICell (la que va a decorar).

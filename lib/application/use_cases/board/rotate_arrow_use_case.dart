@@ -1,7 +1,7 @@
 // lib/application/use_cases/board/rotate_arrow_use_case.dart
 
-import '../../domain/board/entities/board.dart';
-import '../../domain/game_core/value_objects/position.dart';
+import '../../../domain/board/entities/board.dart';
+import '../../../domain/game_core/value_objects/position.dart';
 import '../../commands/command_invoker.dart';
 import '../../commands/rotate_command.dart';
 

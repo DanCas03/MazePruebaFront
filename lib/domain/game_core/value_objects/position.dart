@@ -1,7 +1,6 @@
-// lib/domain/entities/position.dart
+// Stub — reemplazado en Phase 2B.2 con Equatable VO completo
 class Position {
-  final int x;
-  final int y;
-
-  const Position({required this.x, required this.y});
+  final int row;
+  final int col;
+  const Position(this.row, this.col);
 }

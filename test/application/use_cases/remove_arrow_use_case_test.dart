@@ -1,0 +1,45 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
+import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
+import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
+import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
+import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
+import 'package:flutter_arrow_maze/domain/core/exceptions/domain_exception.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+
+Arrow _makeArrow({required String id, required int row, required int col,
+    Direction dir = Direction.right, int len = 2}) =>
+    Arrow(id: ArrowId(id), tail: Position(row: row, col: col),
+        direction: dir, length: ArrowLength(len));
+
+void main() {
+  late RemoveArrowUseCase sut;
+
+  setUp(() => sut = RemoveArrowUseCase());
+
+  group('RemoveArrowUseCase', () {
+    test('returns Right(newBoard) when arrow can exit', () {
+      // Arrange
+      final arrow = _makeArrow(id: 'a1', row: 0, col: 0);
+      final board = ArrowBoard(arrows: [arrow], cols: 4, rows: 4);
+      // Act
+      final result = sut.execute(board, const ArrowId('a1'));
+      // Assert
+      expect(result.isRight(), isTrue);
+      result.fold((_) {}, (b) => expect(b.isCleared, isTrue));
+    });
+
+    test('returns Left(DomainException) when arrow is blocked', () {
+      // Arrange
+      final arrow = _makeArrow(id: 'a1', row: 0, col: 0, len: 2);
+      final blocker = _makeArrow(id: 'b1', row: 0, col: 2, dir: Direction.down, len: 1);
+      final board = ArrowBoard(arrows: [arrow, blocker], cols: 4, rows: 4);
+      // Act
+      final result = sut.execute(board, const ArrowId('a1'));
+      // Assert
+      expect(result.isLeft(), isTrue);
+      result.fold((e) => expect(e, isA<DomainException>()), (_) {});
+    });
+  });
+}

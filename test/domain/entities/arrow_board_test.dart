@@ -45,5 +45,13 @@ void main() {
       final empty = ArrowBoard(arrows: const [], cols: 4, rows: 4);
       expect(empty.isCleared, isTrue);
     });
+
+    test('contains returns true when the arrow id is on the board', () {
+      expect(sut.contains(const ArrowId('a1')), isTrue);
+    });
+
+    test('contains returns false when the arrow id is absent', () {
+      expect(sut.contains(const ArrowId('ghost')), isFalse);
+    });
   });
 }

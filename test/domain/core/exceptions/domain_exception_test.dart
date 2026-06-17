@@ -3,6 +3,7 @@ import 'package:flutter_arrow_maze/domain/core/exceptions/domain_exception.dart'
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_arrow_exception.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_level_id_exception.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_count_exception.dart';
+import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_position_exception.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/level_not_found_exception.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,7 @@ void main() {
         const InvalidArrowException('msg'),
         const InvalidLevelIdException('msg'),
         const InvalidMoveCountException('msg'),
+        const InvalidMoveException('msg'),
         const ArrowNotFoundException('msg'),
         const LevelNotFoundException('msg'),
       ];
@@ -95,6 +97,18 @@ void main() {
       expect(exception, isA<DomainException>());
       expect(exception.message, 'negative moves');
       expect(exception.toString(), 'InvalidMoveCountException: negative moves');
+    });
+  });
+
+  group('InvalidMoveException', () {
+    test('is a DomainException carrying its message', () {
+      // Arrange & Act
+      const exception = InvalidMoveException('path is blocked');
+
+      // Assert
+      expect(exception, isA<DomainException>());
+      expect(exception.message, 'path is blocked');
+      expect(exception.toString(), 'InvalidMoveException: path is blocked');
     });
   });
 

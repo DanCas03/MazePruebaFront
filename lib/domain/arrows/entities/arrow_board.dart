@@ -17,6 +17,10 @@ class ArrowBoard extends Equatable {
 
   bool get isCleared => arrows.isEmpty;
 
+  // Permite a los consumidores distinguir "id ausente" de "salida bloqueada"
+  // sin exponer la búsqueda interna ni iterar la lista de arrows fuera del AR.
+  bool contains(ArrowId id) => _findById(id) != null;
+
   Arrow? _findById(ArrowId id) {
     for (final a in arrows) {
       if (a.id == id) return a;

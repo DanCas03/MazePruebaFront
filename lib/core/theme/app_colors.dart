@@ -23,6 +23,10 @@ class AppColors {
   static const Color arrowLeft = Color(0xFF34D399);
   static const Color arrowRight = Color(0xFFFBBF24);
 
+  // Cuerpo de flecha resaltada (seleccion): blanco casi puro para que el glow
+  // purpura (secondary) y el bisel destaquen sobre la pieza activa.
+  static const Color arrowHighlight = Color(0xFFF8FAFC);
+
   // Estado (tema oscuro)
   static const Color success = Color(0xFF34D399);
   static const Color warning = Color(0xFFFBBF24);

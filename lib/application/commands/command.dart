@@ -1,5 +1,7 @@
-// Stub — reemplazado en Phase 2B.7
+import '../../domain/arrows/entities/arrow_board.dart';
+
+// Command Pattern: encapsula operaciones reversibles sobre ArrowBoard.
 abstract interface class ICommand {
-  void execute();
-  void undo();
+  ArrowBoard execute(ArrowBoard board);
+  ArrowBoard undo(ArrowBoard board);
 }

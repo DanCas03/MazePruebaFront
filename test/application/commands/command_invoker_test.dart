@@ -39,15 +39,44 @@ void main() {
       expect(sut.canUndo, isTrue);
     });
 
-    test('undo restores previous board state', () {
+    test('undo delegates to the command, restoring onto the current board', () {
+      // Arrange — start from a two-arrow board and remove a1.
+      final a1 = Arrow(
+        id: const ArrowId('a1'),
+        tail: Position(row: 0, col: 0),
+        direction: Direction.right,
+        length: ArrowLength(2),
+      );
+      final a2 = Arrow(
+        id: const ArrowId('a2'),
+        tail: Position(row: 2, col: 0),
+        direction: Direction.right,
+        length: ArrowLength(2),
+      );
+      final board = ArrowBoard(arrows: [a1, a2], cols: 4, rows: 4);
+      final cmd = RemoveArrowCommand(const ArrowId('a1'));
+      final afterRemove = sut.executeCommand(cmd, board);
+      expect(afterRemove.arrows.map((a) => a.id), [const ArrowId('a2')]);
+      // Simulate further mutation of the live board AFTER the command ran: a2 is
+      // also removed. A correct invoker must undo a1 onto THIS current board, not
+      // resurrect a stale pre-execute snapshot that still contains a2.
+      final currentBoard = afterRemove.removeArrow(const ArrowId('a2'));
+      expect(currentBoard.isCleared, isTrue);
+      // Act — undo re-adds only a1 onto the current (empty) board.
+      final restored = sut.undo(currentBoard);
+      // Assert — exactly a1 is restored; a2 stays removed (no stale snapshot).
+      expect(restored.arrows.map((a) => a.id), [const ArrowId('a1')]);
+      expect(sut.canUndo, isFalse);
+    });
+
+    test('undo returns the same board when there is nothing to undo', () {
       // Arrange
       final board = makeBoard();
-      final cmd = RemoveArrowCommand(const ArrowId('a1'));
-      sut.executeCommand(cmd, board);
       // Act
-      final restored = sut.undo(board);
-      // Assert — board is restored (arrows count matches original)
-      expect(restored.arrows.length, 1);
+      final result = sut.undo(board);
+      // Assert
+      expect(identical(result, board), isTrue);
+      expect(sut.canUndo, isFalse);
     });
   });
 }

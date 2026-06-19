@@ -20,6 +20,7 @@ class _EmptyBoardGenerator implements ILevelGenerator {
     required int cols,
     required int rows,
     required int arrowCount,
+    int? seed,
   }) =>
       const ArrowBoard(arrows: [], cols: 4, rows: 4);
 }

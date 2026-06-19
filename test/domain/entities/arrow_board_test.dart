@@ -57,7 +57,7 @@ void main() {
 
   // ── Task 2.1: arrowById y arrowAt ─────────────────────────────────────────
   // Board 4x4 con dos flechas para cubrir búsqueda por id y por celda.
-  ArrowBoard _board2() => ArrowBoard(
+  ArrowBoard board2() => ArrowBoard(
         cols: 4,
         rows: 4,
         arrows: [
@@ -81,7 +81,7 @@ void main() {
   group('ArrowBoard.arrowById', () {
     test('devuelve la flecha presente', () {
       // Arrange
-      final board = _board2();
+      final board = board2();
       // Act
       final result = board.arrowById(const ArrowId('arrow-1'));
       // Assert
@@ -90,7 +90,7 @@ void main() {
 
     test('devuelve null si el id no existe', () {
       // Arrange
-      final board = _board2();
+      final board = board2();
       // Act
       final result = board.arrowById(const ArrowId('nope'));
       // Assert
@@ -101,7 +101,7 @@ void main() {
   group('ArrowBoard.arrowAt', () {
     test('devuelve la flecha que ocupa la celda', () {
       // Arrange
-      final board = _board2();
+      final board = board2();
       // Act
       final a = board.arrowAt(Position(row: 0, col: 1));
       final b = board.arrowAt(Position(row: 3, col: 2));
@@ -112,7 +112,7 @@ void main() {
 
     test('devuelve null en una celda vacía', () {
       // Arrange
-      final board = _board2();
+      final board = board2();
       // Act
       final result = board.arrowAt(Position(row: 1, col: 1));
       // Assert

@@ -3,10 +3,17 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:dartz/dartz.dart' as _i3;
+import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart'
+    as _i5;
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart'
     as _i2;
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart'
-    as _i3;
+    as _i4;
+import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart'
+    as _i7;
+import 'package:flutter_arrow_maze/domain/core/exceptions/domain_exception.dart'
+    as _i6;
 import 'package:mockito/mockito.dart' as _i1;
 
 // ignore_for_file: type=lint
@@ -33,10 +40,20 @@ class _FakeArrowBoard_0 extends _i1.SmartFake implements _i2.ArrowBoard {
         );
 }
 
+class _FakeEither_1<L, R> extends _i1.SmartFake implements _i3.Either<L, R> {
+  _FakeEither_1(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
 /// A class which mocks [ILevelGenerator].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockILevelGenerator extends _i1.Mock implements _i3.ILevelGenerator {
+class MockILevelGenerator extends _i1.Mock implements _i4.ILevelGenerator {
   MockILevelGenerator() {
     _i1.throwOnMissingStub(this);
   }
@@ -46,6 +63,7 @@ class MockILevelGenerator extends _i1.Mock implements _i3.ILevelGenerator {
     required int? cols,
     required int? rows,
     required int? arrowCount,
+    int? seed,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -55,6 +73,7 @@ class MockILevelGenerator extends _i1.Mock implements _i3.ILevelGenerator {
             #cols: cols,
             #rows: rows,
             #arrowCount: arrowCount,
+            #seed: seed,
           },
         ),
         returnValue: _FakeArrowBoard_0(
@@ -66,8 +85,44 @@ class MockILevelGenerator extends _i1.Mock implements _i3.ILevelGenerator {
               #cols: cols,
               #rows: rows,
               #arrowCount: arrowCount,
+              #seed: seed,
             },
           ),
         ),
       ) as _i2.ArrowBoard);
+}
+
+/// A class which mocks [RemoveArrowUseCase].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockRemoveArrowUseCase extends _i1.Mock
+    implements _i5.RemoveArrowUseCase {
+  MockRemoveArrowUseCase() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i3.Either<_i6.DomainException, _i2.ArrowBoard> execute(
+    _i2.ArrowBoard? board,
+    _i7.ArrowId? arrowId,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #execute,
+          [
+            board,
+            arrowId,
+          ],
+        ),
+        returnValue: _FakeEither_1<_i6.DomainException, _i2.ArrowBoard>(
+          this,
+          Invocation.method(
+            #execute,
+            [
+              board,
+              arrowId,
+            ],
+          ),
+        ),
+      ) as _i3.Either<_i6.DomainException, _i2.ArrowBoard>);
 }

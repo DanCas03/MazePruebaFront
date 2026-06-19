@@ -1,5 +1,17 @@
 # AI History — MazePruebaFront
 
+## Entrada 021 — Task 1.2: AppTheme alimentado por la paleta jewel
+
+**Fecha:** 2026-06-19
+**Tarea o problema abordado:** Realimentar los `ColorScheme` claro/oscuro de `AppTheme` desde la nueva paleta jewel, conservando la estructura (dos `ThemeData`, `ThemeMode.system` en `main.dart`).
+**Herramienta de IA utilizada:** Claude Code — subagent-driven por FASE (testing + implementación Sonnet 4.6; orquestación/revisión Opus 4.8).
+**Prompt o instrucción proporcionada:** > "Por cada fase… b) Despacha el subagente de IMPLEMENTACIÓN → escribe el código de producción hasta dejar la fase en VERDE."
+**Resultado obtenido:**
+- `lib/core/theme/app_theme.dart`: `dark()` y `light()` construyen el `ColorScheme` desde la paleta jewel (primary/secondary/surface/onSurface/error), `scaffoldBackgroundColor` desde `background`/`lightBackground`, `useMaterial3: true`, `fontFamily: 'Roboto'`, `onPrimary: AppColors.onBackground`.
+- Test migrado in-place a la ruta anidada existente `test/core/theme/app_theme_test.dart`: aserciones de paleta vieja reemplazadas por verificación del fondo y de `colorScheme.primary/secondary` por tema; conservada la cobertura de comportamiento previo (brightness, useMaterial3).
+- Fase en verde. Revisión `arrowmaze-code-reviewer`: ✅.
+**Modificaciones realizadas por el equipo:**
+
 ## Entrada 020 — Task 1.1: AppColors — paleta jewel dual + arrowColor
 
 **Fecha:** 2026-06-19

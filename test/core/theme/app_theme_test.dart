@@ -4,32 +4,48 @@ import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('AppTheme.dark', () {
-    test('uses the dark neutral near-black scaffold background', () {
+  // Task 1.2 — smoke: AppTheme usa la paleta joya nueva (indigo profundo).
+  test('AppTheme.dark usa el fondo oscuro de la paleta', () {
+    // Arrange + Act
+    final theme = AppTheme.dark();
+
+    // Assert
+    expect(theme.brightness, Brightness.dark);
+    expect(theme.scaffoldBackgroundColor, AppColors.background);
+    expect(theme.useMaterial3, isTrue);
+  });
+
+  test('AppTheme.light usa el fondo claro de la paleta', () {
+    // Arrange + Act
+    final theme = AppTheme.light();
+
+    // Assert
+    expect(theme.brightness, Brightness.light);
+    expect(theme.scaffoldBackgroundColor, AppColors.lightBackground);
+    expect(theme.useMaterial3, isTrue);
+  });
+
+  // Aserciones conservadas: colorScheme sigue exponiendo primary y secondary
+  // (los nombres de campo no cambian, solo los hex de la paleta).
+  group('AppTheme.dark — colorScheme', () {
+    test('expone primary y secondary de la paleta joya oscura', () {
       // Arrange + Act
       final theme = AppTheme.dark();
 
       // Assert
-      expect(theme.brightness, Brightness.dark);
-      expect(theme.scaffoldBackgroundColor, AppColors.background);
       expect(theme.colorScheme.primary, AppColors.primary);
       expect(theme.colorScheme.secondary, AppColors.secondary);
-      expect(theme.useMaterial3, isTrue);
     });
   });
 
-  group('AppTheme.light', () {
-    test('uses the frosted-on-light scaffold background and deepened accents',
-        () {
+  group('AppTheme.light — colorScheme', () {
+    test('expone primary y secondary de la paleta joya clara', () {
       // Arrange + Act
       final theme = AppTheme.light();
 
       // Assert
-      expect(theme.brightness, Brightness.light);
-      expect(theme.scaffoldBackgroundColor, AppColors.lightBackground);
       expect(theme.colorScheme.primary, AppColors.lightPrimary);
       expect(theme.colorScheme.secondary, AppColors.lightSecondary);
-      expect(theme.useMaterial3, isTrue);
     });
   });
 }

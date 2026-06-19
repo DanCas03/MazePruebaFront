@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 /// Define los ThemeData claro y oscuro de Arrow Maze. El oscuro es el "hero"
-/// (neon sobre casi-negro); el claro es la contraparte frosted-on-light.
-/// `MaterialApp(themeMode: ThemeMode.system)` selecciona segun el sistema.
+/// (índigo profundo + tonos joya); el claro es su contraparte. `MaterialApp`
+/// con `ThemeMode.system` selecciona según el sistema.
 class AppTheme {
   AppTheme._();
 
@@ -12,9 +12,9 @@ class AppTheme {
     const scheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.primary,
-      onPrimary: AppColors.background,
+      onPrimary: AppColors.onBackground,
       secondary: AppColors.secondary,
-      onSecondary: AppColors.background,
+      onSecondary: AppColors.onBackground,
       surface: AppColors.surface,
       onSurface: AppColors.onBackground,
       error: AppColors.error,
@@ -25,6 +25,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: scheme,
       useMaterial3: true,
+      fontFamily: 'Roboto',
     );
   }
 
@@ -45,6 +46,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.lightBackground,
       colorScheme: scheme,
       useMaterial3: true,
+      fontFamily: 'Roboto',
     );
   }
 }

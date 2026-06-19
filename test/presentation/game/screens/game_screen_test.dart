@@ -16,6 +16,7 @@ import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
+import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
 /// Genera un tablero con una unica flecha de salida libre, de modo que al
@@ -61,7 +62,9 @@ Widget _host(ProviderContainer container) => UncontrolledProviderScope(
               settings: settings,
               builder: (_) => const VictoryScreen(),
             ),
-          _ => MaterialPageRoute<void>(builder: (_) => const GameScreen()),
+          _ => MaterialPageRoute<void>(
+              builder: (_) => GameScreen(levelId: LevelId('1')),
+            ),
         },
       ),
     );
@@ -106,5 +109,41 @@ void main() {
       expect(find.byType(VictoryScreen), findsOneWidget);
       expect(find.text('1 moves'), findsOneWidget);
     });
+
+    // BUG-2 regression: provider not overridden + loadLevel never called on mount
+    testWidgets(
+      'BUG-2 regression: navigating to /game via router renders board without manual loadLevel call',
+      (tester) async {
+        // Arrange — ProviderScope with override mirrors post-fix main.dart composition root
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              gameControllerProvider.overrideWith(
+                () => GameController(
+                  _SingleArrowGenerator(),
+                  RemoveArrowUseCase(),
+                  CommandInvoker(),
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark(),
+              initialRoute: AppRouter.game,
+              onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => GameScreen(levelId: LevelId('1')),
+              ),
+            ),
+          ),
+        );
+
+        // Act — initState post-frame callback fires; loadLevel completes async
+        await tester.pumpAndSettle();
+
+        // Assert — board renders arrows, not SizedBox.shrink
+        expect(find.byType(GameScreen), findsOneWidget);
+        expect(find.byType(ArrowWidget), findsWidgets);
+      },
+    );
   });
 }

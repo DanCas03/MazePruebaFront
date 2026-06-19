@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../domain/board/value_objects/level_id.dart';
 
 /// Cuadricula de seleccion de nivel (12 niveles). Cada celda es un panel
 /// glassmorphism que navega a la partida. Pantalla de pura presentacion:
@@ -37,7 +38,11 @@ class LevelSelectionScreen extends StatelessWidget {
         ),
         itemCount: _levelCount,
         itemBuilder: (context, i) => InkWell(
-          onTap: () => Navigator.pushNamed(context, AppRouter.game),
+          onTap: () => Navigator.pushNamed(
+                context,
+                AppRouter.game,
+                arguments: LevelId('${i + 1}'),
+              ),
           borderRadius: BorderRadius.circular(12),
           child: Container(
             decoration: BoxDecoration(

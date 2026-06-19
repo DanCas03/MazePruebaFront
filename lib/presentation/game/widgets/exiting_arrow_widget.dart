@@ -3,20 +3,27 @@ import '../../../domain/arrows/entities/arrow.dart';
 import '../../../domain/game_core/value_objects/direction.dart';
 import '../painters/arrow_painter.dart';
 
-// Animates an arrow sliding off the board in its direction, then fading out.
-// Encapsula la animacion de salida (SRP) para que el tablero solo decida
-// cuando montarla; al terminar notifica con [onComplete] para que el estado
-// reactivo retire la pieza.
+/// Overlay cosmético de la flecha recién removida: se desliza fuera del tablero
+/// en su dirección y se desvanece. Auto-desmontable: al terminar renderiza
+/// vacío. Debe ir keyed por el `exitNonce` para que cada salida re-anime.
 class ExitingArrowWidget extends StatefulWidget {
   final Arrow arrow;
-  final double cellSize;
-  final VoidCallback onComplete;
+  final int minCol;
+  final int minRow;
+  final double cell;
+  final Color color;
+  final double travel;
+  final int nonce;
 
   const ExitingArrowWidget({
     super.key,
     required this.arrow,
-    required this.cellSize,
-    required this.onComplete,
+    required this.minCol,
+    required this.minRow,
+    required this.cell,
+    required this.color,
+    required this.travel,
+    required this.nonce,
   });
 
   @override
@@ -25,49 +32,47 @@ class ExitingArrowWidget extends StatefulWidget {
 
 class _ExitingArrowWidgetState extends State<ExitingArrowWidget>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Offset> _slideAnim;
-  late Animation<double> _fadeAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    final slideEnd = switch (widget.arrow.direction) {
-      Direction.right => const Offset(1.5, 0),
-      Direction.left => const Offset(-1.5, 0),
-      Direction.down => const Offset(0, 1.5),
-      Direction.up => const Offset(0, -1.5),
-    };
-    _slideAnim = Tween<Offset>(begin: Offset.zero, end: slideEnd)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-    _fadeAnim = Tween<double>(begin: 1, end: 0)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-    _controller.forward().then((_) => widget.onComplete());
-  }
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+  )..forward();
 
   @override
   void dispose() {
-    _controller.dispose();
+    _c.dispose();
     super.dispose();
   }
 
+  Offset _dirUnit() => switch (widget.arrow.direction) {
+        Direction.up => const Offset(0, -1),
+        Direction.down => const Offset(0, 1),
+        Direction.left => const Offset(-1, 0),
+        Direction.right => const Offset(1, 0),
+      };
+
   @override
   Widget build(BuildContext context) {
-    return SlideTransition(
-      position: _slideAnim,
-      child: FadeTransition(
-        opacity: _fadeAnim,
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, child) {
+          if (_c.isCompleted) return const SizedBox.shrink();
+          final t = Curves.easeIn.transform(_c.value);
+          final d = _dirUnit();
+          return Transform.translate(
+            offset: Offset(d.dx * widget.travel * t, d.dy * widget.travel * t),
+            child: Opacity(opacity: 1 - t, child: child),
+          );
+        },
         child: CustomPaint(
-          painter: ArrowPainter(
-            arrow: widget.arrow,
-            cellSize: widget.cellSize,
-            isHighlighted: true,
-          ),
           size: Size.infinite,
+          painter: ArrowPainter(
+            cells: widget.arrow.cells,
+            minCol: widget.minCol,
+            minRow: widget.minRow,
+            cell: widget.cell,
+            color: widget.color,
+          ),
         ),
       ),
     );

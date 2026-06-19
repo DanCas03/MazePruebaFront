@@ -7,18 +7,23 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 
-/// Generador stub que implementa el puerto: verifica que el contrato es
-/// sustituible (LSP) y respeta la firma de generate.
+/// Generador stub que implementa el puerto (nueva firma con seed opcional):
+/// verifica que el contrato es sustituible (LSP) y respeta la firma de generate.
 class _StubLevelGenerator implements ILevelGenerator {
   @override
-  ArrowBoard generate({required int cols, required int rows, required int arrowCount}) {
+  ArrowBoard generate({
+    required int cols,
+    required int rows,
+    required int arrowCount,
+    int? seed,
+  }) {
     final arrows = List.generate(
       arrowCount,
       (i) => Arrow(
         id: ArrowId('a$i'),
         tail: Position(row: i, col: 0),
         direction: Direction.right,
-        length: ArrowLength(1),
+        length: ArrowLength(2), // mínimo 2 según nueva regla
       ),
     );
     return ArrowBoard(arrows: arrows, cols: cols, rows: rows);
@@ -44,6 +49,21 @@ void main() {
     test('generate returns a board with the requested arrow count', () {
       // Act
       final board = sut.generate(cols: 4, rows: 4, arrowCount: 3);
+      // Assert
+      expect(board.arrows.length, 3);
+    });
+
+    test('generate accepts optional seed without breaking the contract', () {
+      // Arrange / Act — seed pasado explícitamente
+      final boardWithSeed = sut.generate(cols: 4, rows: 4, arrowCount: 2, seed: 42);
+      // Assert — el puerto acepta seed; el stub lo ignora pero no falla
+      expect(boardWithSeed.cols, 4);
+      expect(boardWithSeed.arrows.length, 2);
+    });
+
+    test('generate without seed compiles and runs (seed is optional)', () {
+      // Act — sin seed (null por defecto)
+      final board = sut.generate(cols: 5, rows: 5, arrowCount: 3);
       // Assert
       expect(board.arrows.length, 3);
     });

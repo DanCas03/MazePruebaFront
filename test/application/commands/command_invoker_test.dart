@@ -78,5 +78,17 @@ void main() {
       expect(identical(result, board), isTrue);
       expect(sut.canUndo, isFalse);
     });
+
+    test('clear vacía el historial: canUndo pasa a false', () {
+      // Arrange — hay al menos un comando en el historial.
+      final board = makeBoard();
+      final cmd = RemoveArrowCommand(const ArrowId('a1'));
+      sut.executeCommand(cmd, board);
+      expect(sut.canUndo, isTrue);
+      // Act
+      sut.clear();
+      // Assert
+      expect(sut.canUndo, isFalse);
+    });
   });
 }

@@ -1,5 +1,17 @@
 # AI History — MazePruebaFront
 
+## Entrada 027 — Task 4.1: CommandInvoker.clear() para restart de nivel
+
+**Fecha:** 2026-06-19
+**Tarea o problema abordado:** Añadir `clear()` al `CommandInvoker` para vaciar el historial de undo al reiniciar un nivel, evitando que el jugador deshaga movimientos de una partida anterior.
+**Herramienta de IA utilizada:** Antigravity IDE (Claude Opus 4.6 Thinking) — ejecución inline por fases con checkpoints.
+**Prompt o instrucción proporcionada:** > "Fase 4 — Estado de aplicación: Task 4.1 CommandInvoker.clear()."
+**Resultado obtenido:**
+- `lib/application/commands/command_invoker.dart`: `void clear() => _history.clear();` — una línea que delega en el `List.clear` interno.
+- Test preexistente en `test/application/commands/command_invoker_test.dart` (escrito en TDD-first por subagente previo, confirmado RED). Ahora GREEN (5/5).
+**Modificaciones realizadas por el equipo:**
+
+
 ## Entrada 026 — Task 3.1: Generación determinista y escalable por nivel
 
 **Fecha:** 2026-06-19

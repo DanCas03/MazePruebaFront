@@ -54,4 +54,69 @@ void main() {
       expect(sut.contains(const ArrowId('ghost')), isFalse);
     });
   });
+
+  // ── Task 2.1: arrowById y arrowAt ─────────────────────────────────────────
+  // Board 4x4 con dos flechas para cubrir búsqueda por id y por celda.
+  ArrowBoard _board2() => ArrowBoard(
+        cols: 4,
+        rows: 4,
+        arrows: [
+          // ocupa (0,0) y (0,1)
+          Arrow(
+            id: const ArrowId('arrow-0'),
+            tail: Position(row: 0, col: 0),
+            direction: Direction.right,
+            length: ArrowLength(2),
+          ),
+          // ocupa (2,2) y (3,2)
+          Arrow(
+            id: const ArrowId('arrow-1'),
+            tail: Position(row: 2, col: 2),
+            direction: Direction.down,
+            length: ArrowLength(2),
+          ),
+        ],
+      );
+
+  group('ArrowBoard.arrowById', () {
+    test('devuelve la flecha presente', () {
+      // Arrange
+      final board = _board2();
+      // Act
+      final result = board.arrowById(const ArrowId('arrow-1'));
+      // Assert
+      expect(result?.id, const ArrowId('arrow-1'));
+    });
+
+    test('devuelve null si el id no existe', () {
+      // Arrange
+      final board = _board2();
+      // Act
+      final result = board.arrowById(const ArrowId('nope'));
+      // Assert
+      expect(result, isNull);
+    });
+  });
+
+  group('ArrowBoard.arrowAt', () {
+    test('devuelve la flecha que ocupa la celda', () {
+      // Arrange
+      final board = _board2();
+      // Act
+      final a = board.arrowAt(Position(row: 0, col: 1));
+      final b = board.arrowAt(Position(row: 3, col: 2));
+      // Assert
+      expect(a?.id, const ArrowId('arrow-0'));
+      expect(b?.id, const ArrowId('arrow-1'));
+    });
+
+    test('devuelve null en una celda vacía', () {
+      // Arrange
+      final board = _board2();
+      // Act
+      final result = board.arrowAt(Position(row: 1, col: 1));
+      // Assert
+      expect(result, isNull);
+    });
+  });
 }

@@ -21,6 +21,19 @@ class ArrowBoard extends Equatable {
   // sin exponer la búsqueda interna ni iterar la lista de arrows fuera del AR.
   bool contains(ArrowId id) => _findById(id) != null;
 
+  /// La flecha con [id], o null. Expone la búsqueda interna como query pública
+  /// sin que los consumidores iteren `arrows` fuera del aggregate root.
+  Arrow? arrowById(ArrowId id) => _findById(id);
+
+  /// La flecha que ocupa la celda [pos], o null si está vacía. Es la base del
+  /// hit-testing por celda (agnóstico de la forma de la flecha).
+  Arrow? arrowAt(Position pos) {
+    for (final a in arrows) {
+      if (a.cells.contains(pos)) return a;
+    }
+    return null;
+  }
+
   Arrow? _findById(ArrowId id) {
     for (final a in arrows) {
       if (a.id == id) return a;

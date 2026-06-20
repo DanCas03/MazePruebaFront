@@ -23,30 +23,28 @@ class GraphBoardGenerator implements ILevelGenerator {
     required int cols,
     required int rows,
     required int arrowCount,
+    required int maxPathLen,
     int? seed,
   }) {
     final rng = Random(seed);
     final placed = <Arrow>[];
-    final maxAttempts = cols * rows * 30; // escala con el tamaño del tablero
+    final maxAttempts = cols * rows * 30;
     var attempts = 0;
 
     while (placed.length < arrowCount && attempts < maxAttempts) {
       attempts++;
-      final candidate = _randomArrow(rng, cols, rows, placed.length);
+      final occupied = <Position>{for (final a in placed) ...a.cells};
+      final candidate =
+          _randomBentArrow(rng, cols, rows, placed.length, maxPathLen, occupied);
       if (candidate == null) continue;
 
       final tempBoard =
           ArrowBoard(arrows: [...placed, candidate], cols: cols, rows: rows);
-      // La candidata solo es válida si (1) no pisa el cuerpo de otra flecha y
-      // (2) puede salir en el momento de colocarla. Sin (1) dos flechas
-      // compartían celdas y se solapaban visualmente.
       if (!tempBoard.overlaps(candidate) && tempBoard.canExit(candidate.id)) {
-        placed.add(candidate); // ids contiguos: arrow-0..arrow-(n-1)
+        placed.add(candidate);
       }
     }
 
-    // Degradación con gracia: si no cupieron todas, devuelve las colocadas
-    // y lo registra vía AOP logger (nunca lanza excepción).
     if (placed.length < arrowCount) {
       _logger?.warn(
         'Graceful degradation: placed ${placed.length}/$arrowCount arrows '
@@ -58,29 +56,74 @@ class GraphBoardGenerator implements ILevelGenerator {
     return ArrowBoard(arrows: placed, cols: cols, rows: rows);
   }
 
-  Arrow? _randomArrow(Random rng, int cols, int rows, int index) {
+  /// Construye una flecha doblada: elige cabeza+dirección con carril de salida
+  /// libre, reserva ese carril, y crece el cuerpo HACIA ATRÁS con una caminata
+  /// aleatoria auto-evitante. Devuelve null si no logra un cuerpo de largo >= 2.
+  Arrow? _randomBentArrow(Random rng, int cols, int rows, int index,
+      int maxPathLen, Set<Position> occupied) {
     final dir = Direction.values[rng.nextInt(Direction.values.length)];
-    final horizontal = dir == Direction.left || dir == Direction.right;
-    final axis = horizontal ? cols : rows;
-    final maxLen = min(4, axis ~/ 2);
-    if (maxLen < 2) return null; // eje demasiado corto para una flecha de >=2
-    final length = 2 + rng.nextInt(maxLen - 1); // 2..maxLen
+    final head = _randomHeadWithClearLane(rng, cols, rows, dir, occupied);
+    if (head == null) return null;
 
-    final (rowMin, rowMax, colMin, colMax) = switch (dir) {
-      Direction.right => (0, rows - 1, 0, cols - length),
-      Direction.left => (0, rows - 1, length - 1, cols - 1),
-      Direction.down => (0, rows - length, 0, cols - 1),
-      Direction.up => (length - 1, rows - 1, 0, cols - 1),
-    };
-    if (rowMax < rowMin || colMax < colMin) return null;
-    final row = rowMin + rng.nextInt(rowMax - rowMin + 1);
-    final col = colMin + rng.nextInt(colMax - colMin + 1);
+    // Reserva el carril de salida para que la flecha nunca bloquee su salida.
+    final blocked = <Position>{...occupied, head, ..._lane(head, dir, cols, rows)};
 
-    return Arrow.straight(
+    final body = <Position>[head]; // head..tail; se invierte al final
+    final targetLen = 2 + rng.nextInt(maxPathLen - 1); // 2..maxPathLen
+    var cursor = head;
+    while (body.length < targetLen) {
+      final options = _freeNeighbors(cursor, cols, rows, blocked);
+      if (options.isEmpty) break; // acepta cuerpo más corto
+      final next = options[rng.nextInt(options.length)];
+      body.add(next);
+      blocked.add(next);
+      cursor = next;
+    }
+    if (body.length < 2) return null;
+
+    return Arrow(
       id: ArrowId('arrow-$index'),
-      tail: Position(row: row, col: col),
-      direction: dir,
-      length: length,
+      cells: body.reversed.toList(), // cola (first) .. cabeza (last)
+      headDirection: dir,
     );
+  }
+
+  /// Celdas del carril recto desde la cabeza (exclusive) hasta el borde en [dir].
+  List<Position> _lane(Position head, Direction dir, int cols, int rows) {
+    return switch (dir) {
+      Direction.right => List.generate(
+          cols - 1 - head.col, (i) => Position(row: head.row, col: head.col + 1 + i)),
+      Direction.left => List.generate(
+          head.col, (i) => Position(row: head.row, col: head.col - 1 - i)),
+      Direction.down => List.generate(
+          rows - 1 - head.row, (i) => Position(row: head.row + 1 + i, col: head.col)),
+      Direction.up => List.generate(
+          head.row, (i) => Position(row: head.row - 1 - i, col: head.col)),
+    };
+  }
+
+  /// Busca (hasta 20 intentos) una celda-cabeza libre cuyo carril recto al
+  /// borde en [dir] esté libre de [occupied].
+  Position? _randomHeadWithClearLane(
+      Random rng, int cols, int rows, Direction dir, Set<Position> occupied) {
+    for (var t = 0; t < 20; t++) {
+      final head = Position(row: rng.nextInt(rows), col: rng.nextInt(cols));
+      if (occupied.contains(head)) continue;
+      final lane = _lane(head, dir, cols, rows);
+      if (lane.every((p) => !occupied.contains(p))) return head;
+    }
+    return null;
+  }
+
+  /// Vecinos ortogonales en rango que no están bloqueados.
+  List<Position> _freeNeighbors(
+      Position p, int cols, int rows, Set<Position> blocked) {
+    final candidates = <Position>[
+      if (p.row > 0) Position(row: p.row - 1, col: p.col),
+      if (p.row < rows - 1) Position(row: p.row + 1, col: p.col),
+      if (p.col > 0) Position(row: p.row, col: p.col - 1),
+      if (p.col < cols - 1) Position(row: p.row, col: p.col + 1),
+    ];
+    return [for (final c in candidates) if (!blocked.contains(c)) c];
   }
 }

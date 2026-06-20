@@ -50,6 +50,7 @@ class GameController extends AsyncNotifier<GameState> {
       cols: bp.cols,
       rows: bp.rows,
       arrowCount: bp.arrowCount,
+      maxPathLen: bp.maxPathLen,
       seed: levelId.number, // determinista: mismo nivel ⇒ mismo tablero
     );
     state = AsyncValue.data(

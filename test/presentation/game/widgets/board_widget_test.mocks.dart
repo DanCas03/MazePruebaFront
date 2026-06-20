@@ -63,6 +63,7 @@ class MockILevelGenerator extends _i1.Mock implements _i4.ILevelGenerator {
     required int? cols,
     required int? rows,
     required int? arrowCount,
+    required int? maxPathLen,
     int? seed,
   }) =>
       (super.noSuchMethod(
@@ -73,6 +74,7 @@ class MockILevelGenerator extends _i1.Mock implements _i4.ILevelGenerator {
             #cols: cols,
             #rows: rows,
             #arrowCount: arrowCount,
+            #maxPathLen: maxPathLen,
             #seed: seed,
           },
         ),
@@ -85,6 +87,7 @@ class MockILevelGenerator extends _i1.Mock implements _i4.ILevelGenerator {
               #cols: cols,
               #rows: rows,
               #arrowCount: arrowCount,
+              #maxPathLen: maxPathLen,
               #seed: seed,
             },
           ),

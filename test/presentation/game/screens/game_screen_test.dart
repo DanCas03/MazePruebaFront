@@ -26,6 +26,7 @@ class _SingleArrowGenerator implements ILevelGenerator {
     required int cols,
     required int rows,
     required int arrowCount,
+    required int maxPathLen,
     int? seed,
   }) {
     return ArrowBoard(

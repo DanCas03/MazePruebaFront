@@ -63,6 +63,7 @@ Future<ProviderContainer> _ready(
     cols: anyNamed('cols'),
     rows: anyNamed('rows'),
     arrowCount: anyNamed('arrowCount'),
+    maxPathLen: anyNamed('maxPathLen'),
     seed: anyNamed('seed'),
   )).thenReturn(_board());
 

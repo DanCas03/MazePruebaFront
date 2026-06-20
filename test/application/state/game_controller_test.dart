@@ -50,6 +50,7 @@ void _stubGenerate(MockILevelGenerator gen, ArrowBoard board) {
     cols: anyNamed('cols'),
     rows: anyNamed('rows'),
     arrowCount: anyNamed('arrowCount'),
+    maxPathLen: anyNamed('maxPathLen'),
     seed: anyNamed('seed'),
   )).thenReturn(board);
 }
@@ -81,7 +82,11 @@ void main() {
 
     final bp = LevelBlueprint.forLevel(3);
     verify(gen.generate(
-            cols: bp.cols, rows: bp.rows, arrowCount: bp.arrowCount, seed: 3))
+            cols: bp.cols,
+            rows: bp.rows,
+            arrowCount: bp.arrowCount,
+            maxPathLen: bp.maxPathLen,
+            seed: 3))
         .called(1);
   });
 

@@ -362,5 +362,19 @@ void main() {
         expect(boardA.arrows[i], boardB.arrows[i]);
       }
     });
+
+    // ── 7. PRECONDITION: maxPathLen >= 2 ─────────────────────────────────────
+
+    test('precondition: generate throws AssertionError when maxPathLen < 2', () {
+      // Arrange
+      final gen = GraphBoardGenerator();
+
+      // Act + Assert
+      expect(
+        () => gen.generate(cols: 4, rows: 4, arrowCount: 2, maxPathLen: 1),
+        throwsA(isA<AssertionError>()),
+        reason: 'maxPathLen=1 must throw AssertionError (would cause RangeError in nextInt)',
+      );
+    });
   });
 }

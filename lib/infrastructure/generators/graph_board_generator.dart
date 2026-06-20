@@ -26,6 +26,7 @@ class GraphBoardGenerator implements ILevelGenerator {
     required int maxPathLen,
     int? seed,
   }) {
+    assert(maxPathLen >= 2, 'maxPathLen must be >= 2; got $maxPathLen');
     final rng = Random(seed);
     final placed = <Arrow>[];
     final maxAttempts = cols * rows * 30;

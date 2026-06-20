@@ -73,12 +73,7 @@ class BoardWidget extends ConsumerWidget {
                 ),
                 for (final arrow in board.arrows) _positionArrow(arrow, cell, state),
                 if (state.exitingArrow != null)
-                  _positionExiting(
-                    state.exitingArrow!,
-                    cell,
-                    state.exitNonce,
-                    math.max(width, height),
-                  ),
+                  _positionExiting(state.exitingArrow!, cell, state.exitNonce, board.cols, board.rows),
               ],
             ),
           ),
@@ -121,7 +116,8 @@ class BoardWidget extends ConsumerWidget {
     );
   }
 
-  Widget _positionExiting(Arrow arrow, double cell, int nonce, double travel) {
+  Widget _positionExiting(
+      Arrow arrow, double cell, int nonce, int cols, int rows) {
     final b = _bounds(arrow);
     return Positioned(
       left: b.minCol * cell,
@@ -133,9 +129,10 @@ class BoardWidget extends ConsumerWidget {
         arrow: arrow,
         minCol: b.minCol,
         minRow: b.minRow,
+        cols: cols,
+        rows: rows,
         cell: cell,
         color: arrowColorFor(arrow.id),
-        travel: travel * 1.15,
         nonce: nonce,
       ),
     );

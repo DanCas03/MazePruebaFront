@@ -49,6 +49,14 @@ class ArrowBoard extends Equatable {
     return set;
   }
 
+  /// True si alguna celda del cuerpo de [arrow] coincide con una celda ya
+  /// ocupada por otra flecha del tablero. Base para impedir que dos flechas
+  /// se coloquen superpuestas (cada celda pertenece a una sola flecha).
+  bool overlaps(Arrow arrow) {
+    final occupied = _occupiedExcluding(arrow.id);
+    return arrow.cells.any(occupied.contains);
+  }
+
   bool canExit(ArrowId id) {
     final arrow = _findById(id);
     if (arrow == null) return false;

@@ -38,7 +38,10 @@ class GraphBoardGenerator implements ILevelGenerator {
 
       final tempBoard =
           ArrowBoard(arrows: [...placed, candidate], cols: cols, rows: rows);
-      if (tempBoard.canExit(candidate.id)) {
+      // La candidata solo es válida si (1) no pisa el cuerpo de otra flecha y
+      // (2) puede salir en el momento de colocarla. Sin (1) dos flechas
+      // compartían celdas y se solapaban visualmente.
+      if (!tempBoard.overlaps(candidate) && tempBoard.canExit(candidate.id)) {
         placed.add(candidate); // ids contiguos: arrow-0..arrow-(n-1)
       }
     }

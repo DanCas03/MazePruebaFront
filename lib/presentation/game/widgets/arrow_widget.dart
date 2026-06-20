@@ -81,6 +81,7 @@ class _ArrowWidgetState extends State<ArrowWidget>
             minRow: widget.minRow,
             cell: widget.cell,
             color: widget.color,
+            headDirection: widget.arrow.headDirection,
           ),
         ),
       ),

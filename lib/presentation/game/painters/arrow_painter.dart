@@ -1,20 +1,22 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../domain/game_core/value_objects/direction.dart';
 import '../../../domain/game_core/value_objects/position.dart';
 
 /// Pinta una flecha multi-celda como una POLILÍNEA gruesa (recorre los centros
-/// de `cells`) con glow, brillo interior y punta triangular orientada por el
-/// último segmento. Coordenadas locales al bounding box (origen minCol/minRow).
+/// de `cells`) con glow, brillo interior y punta triangular orientada por
+/// `headDirection`. Coordenadas locales al bounding box (origen minCol/minRow).
 ///
-/// Agnóstico de la forma: sirve igual para flechas rectas y, en el futuro,
-/// dobladas — solo depende de `cells` y de la orientación de la punta.
+/// Agnóstico de la forma: sirve igual para flechas rectas y dobladas —
+/// solo depende de `cells` y de `headDirection` (no del último segmento).
 class ArrowPainter extends CustomPainter {
   final List<Position> cells;
   final int minCol;
   final int minRow;
   final double cell;
   final Color color;
+  final Direction headDirection;
 
   const ArrowPainter({
     required this.cells,
@@ -22,6 +24,7 @@ class ArrowPainter extends CustomPainter {
     required this.minRow,
     required this.cell,
     required this.color,
+    required this.headDirection,
   });
 
   Offset _center(Position p) => Offset(
@@ -81,14 +84,14 @@ class ArrowPainter extends CustomPainter {
 
   void _drawHead(Canvas canvas, double stroke) {
     final tip = _center(cells.last);
-    final prev = cells.length >= 2
-        ? _center(cells[cells.length - 2])
-        : Offset(tip.dx - cell, tip.dy);
-    final angle = math.atan2(tip.dy - prev.dy, tip.dx - prev.dx);
+    final angle = switch (headDirection) {
+      Direction.right => 0.0,
+      Direction.left => math.pi,
+      Direction.down => math.pi / 2,
+      Direction.up => -math.pi / 2,
+    };
     final headLen = stroke * 1.2;
     final headHalf = stroke * 0.95;
-
-    // Vértice adelantado medio celda para que sobresalga como punta.
     final apex = Offset(
       tip.dx + math.cos(angle) * (cell * 0.5),
       tip.dy + math.sin(angle) * (cell * 0.5),
@@ -106,7 +109,6 @@ class ArrowPainter extends CustomPainter {
       base.dx - math.cos(perp) * headHalf,
       base.dy - math.sin(perp) * headHalf,
     );
-
     final head = Path()
       ..moveTo(apex.dx, apex.dy)
       ..lineTo(left.dx, left.dy)
@@ -123,5 +125,6 @@ class ArrowPainter extends CustomPainter {
       old.color != color ||
       old.cell != cell ||
       old.minCol != minCol ||
-      old.minRow != minRow;
+      old.minRow != minRow ||
+      old.headDirection != headDirection;
 }

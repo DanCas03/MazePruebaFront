@@ -72,6 +72,7 @@ class _ExitingArrowWidgetState extends State<ExitingArrowWidget>
             minRow: widget.minRow,
             cell: widget.cell,
             color: widget.color,
+            headDirection: widget.arrow.headDirection,
           ),
         ),
       ),

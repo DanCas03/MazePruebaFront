@@ -3,7 +3,6 @@ import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 
@@ -19,11 +18,11 @@ class _StubLevelGenerator implements ILevelGenerator {
   }) {
     final arrows = List.generate(
       arrowCount,
-      (i) => Arrow(
+      (i) => Arrow.straight(
         id: ArrowId('a$i'),
         tail: Position(row: i, col: 0),
         direction: Direction.right,
-        length: ArrowLength(2), // mínimo 2 según nueva regla
+        length: 2, // mínimo 2 según nueva regla
       ),
     );
     return ArrowBoard(arrows: arrows, cols: cols, rows: rows);

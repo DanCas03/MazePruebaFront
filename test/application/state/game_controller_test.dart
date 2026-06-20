@@ -12,7 +12,6 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_blueprint.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception.dart';
@@ -22,11 +21,11 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'game_controller_test.mocks.dart';
 
 @GenerateMocks([ILevelGenerator, RemoveArrowUseCase])
-Arrow _arrow(String id, int col) => Arrow(
+Arrow _arrow(String id, int col) => Arrow.straight(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
-      length: ArrowLength(2),
+      length: 2,
     );
 
 /// Tablero 4x4 con dos flechas (no se vacía al quitar una).

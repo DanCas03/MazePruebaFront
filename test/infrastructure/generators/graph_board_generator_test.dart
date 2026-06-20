@@ -52,8 +52,8 @@ void main() {
       final board = gen.generate(cols: 8, rows: 8, arrowCount: 12, seed: 7);
       // Assert
       for (final a in board.arrows) {
-        expect(a.length.value, greaterThanOrEqualTo(2),
-            reason: 'Arrow ${a.id.value} has length ${a.length.value} < 2');
+        expect(a.length, greaterThanOrEqualTo(2),
+            reason: 'Arrow ${a.id.value} has length ${a.length} < 2');
       }
     });
 

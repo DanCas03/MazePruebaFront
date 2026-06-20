@@ -3,15 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/presentation/game/widgets/exiting_arrow_widget.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 
-Arrow _arrow(Direction dir) => Arrow(
+Arrow _arrow(Direction dir) => Arrow.straight(
       id: const ArrowId('arrow-0'),
       tail: Position(row: 1, col: 1),
       direction: dir,
-      length: ArrowLength(2),
+      length: 2,
     );
 
 Widget _host(Widget child) => MaterialApp(

@@ -11,7 +11,6 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
@@ -31,11 +30,11 @@ import 'board_widget_test.mocks.dart';
 
 /// Crea una flecha horizontal de longitud 2 en la fila 0, columna [col].
 /// Ocupa las celdas (row:0, col) y (row:0, col+1).
-Arrow _arrow(String id, int col) => Arrow(
+Arrow _arrow(String id, int col) => Arrow.straight(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
-      length: ArrowLength(2),
+      length: 2,
     );
 
 /// Tablero 4×4 con dos flechas:

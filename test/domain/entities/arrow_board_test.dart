@@ -4,12 +4,11 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 
 Arrow _makeArrow({required String id, required int row, required int col,
     Direction dir = Direction.right, int len = 2}) =>
-    Arrow(id: ArrowId(id), tail: Position(row: row, col: col),
-        direction: dir, length: ArrowLength(len));
+    Arrow.straight(id: ArrowId(id), tail: Position(row: row, col: col),
+        direction: dir, length: len);
 
 void main() {
   group('ArrowBoard', () {
@@ -62,18 +61,18 @@ void main() {
         rows: 4,
         arrows: [
           // ocupa (0,0) y (0,1)
-          Arrow(
+          Arrow.straight(
             id: const ArrowId('arrow-0'),
             tail: Position(row: 0, col: 0),
             direction: Direction.right,
-            length: ArrowLength(2),
+            length: 2,
           ),
           // ocupa (2,2) y (3,2)
-          Arrow(
+          Arrow.straight(
             id: const ArrowId('arrow-1'),
             tail: Position(row: 2, col: 2),
             direction: Direction.down,
-            length: ArrowLength(2),
+            length: 2,
           ),
         ],
       );

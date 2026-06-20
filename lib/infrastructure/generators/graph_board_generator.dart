@@ -4,7 +4,6 @@ import '../../domain/arrows/entities/arrow.dart';
 import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
-import '../../domain/arrows/value_objects/arrow_length.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
 
@@ -77,11 +76,11 @@ class GraphBoardGenerator implements ILevelGenerator {
     final row = rowMin + rng.nextInt(rowMax - rowMin + 1);
     final col = colMin + rng.nextInt(colMax - colMin + 1);
 
-    return Arrow(
+    return Arrow.straight(
       id: ArrowId('arrow-$index'),
       tail: Position(row: row, col: col),
       direction: dir,
-      length: ArrowLength(length),
+      length: length,
     );
   }
 }

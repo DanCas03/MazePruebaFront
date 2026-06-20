@@ -36,7 +36,7 @@
   - `List<Position> exitPath(int cols, int rows)` (rayo recto desde `head` en `headDirection` hasta el borde)
 - Consumes: `ArrowBoard.overlaps` / `canExit` / `arrowAt` (ya operan sobre `cells`, sin cambios).
 
-- [ ] **Step 1: Reescribir `Arrow` al modelo de camino**
+- [x] **Step 1: Reescribir `Arrow` al modelo de camino**
 
 Reemplaza el contenido de `lib/domain/arrows/entities/arrow.dart` por:
 
@@ -105,7 +105,7 @@ class Arrow extends Equatable {
 }
 ```
 
-- [ ] **Step 2: Retirar `ArrowLength`**
+- [x] **Step 2: Retirar `ArrowLength`**
 
 Borra `lib/domain/arrows/value_objects/arrow_length.dart` y `test/domain/value_objects/arrow_length_test.dart`.
 
@@ -113,7 +113,7 @@ Borra `lib/domain/arrows/value_objects/arrow_length.dart` y `test/domain/value_o
 git rm lib/domain/arrows/value_objects/arrow_length.dart test/domain/value_objects/arrow_length_test.dart
 ```
 
-- [ ] **Step 3: Hacer compilar el generador (interino, recto)**
+- [x] **Step 3: Hacer compilar el generador (interino, recto)**
 
 En `lib/infrastructure/generators/graph_board_generator.dart`: quita el `import` de `arrow_length.dart` y sustituye la construcción final de `_randomArrow` por la fábrica recta (la lógica bent llega en Task 3):
 
@@ -126,7 +126,7 @@ return Arrow.straight(
 );
 ```
 
-- [ ] **Step 4: Delegar migración + tests al subagente qa**
+- [x] **Step 4: Delegar migración + tests al subagente qa**
 
 Dispatch a `arrowmaze-qa` con este prompt:
 
@@ -135,11 +135,11 @@ Dispatch a `arrowmaze-qa` con este prompt:
 > Tarea 2 (tests del dominio): reescribe `test/domain/entities/arrow_test.dart` con AAA cubriendo, sobre caminos DOBLADOS además de rectos: `cells` cola→cabeza; `head`/`tail`/`length`/`direction(=headDirection)`; `exitPath` produce el rayo recto correcto desde la cabeza en `headDirection` para las 4 direcciones y se vacía en el borde; y un caso con CURVA justo en la cabeza (último segmento del cuerpo perpendicular a `headDirection`) verificando que `exitPath` sigue `headDirection` y no el último segmento. Añade un caso de `Arrow.straight` equivalente a un camino recto explícito (igualdad por Equatable).
 > Ejecuta `flutter test test/domain/entities/arrow_test.dart` y luego `flutter test` completo; todo en verde. Reporta archivos tocados.
 
-- [ ] **Step 5: Verificar suite y análisis**
+- [x] **Step 5: Verificar suite y análisis**
 
 Run: `flutter test` → Expected: PASS (toda la suite migrada). Run: `flutter analyze` → Expected: sin issues nuevos.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/domain/arrows/entities/arrow.dart lib/infrastructure/generators/graph_board_generator.dart test/ AI_HISTORY.MD
@@ -161,7 +161,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Consumes: `Arrow.headDirection`, `Arrow.cells` (Task 1).
 - Produces: `ArrowPainter({required List<Position> cells, required int minCol, required int minRow, required double cell, required Color color, required Direction headDirection})` — la punta se orienta por `headDirection`.
 
-- [ ] **Step 1: Añadir `headDirection` al painter y orientar la punta**
+- [x] **Step 1: Añadir `headDirection` al painter y orientar la punta**
 
 En `arrow_painter.dart`: añade `import '../../../domain/game_core/value_objects/direction.dart';`, el campo `final Direction headDirection;` al constructor, e implementa la orientación de la punta por dirección (reemplaza el cálculo por `atan2` del último segmento):
 
@@ -204,17 +204,17 @@ void _drawHead(Canvas canvas, double stroke) {
 
 Añade `headDirection` a `shouldRepaint`: `|| old.headDirection != headDirection`.
 
-- [ ] **Step 2: `ArrowWidget` pasa `headDirection`**
+- [x] **Step 2: `ArrowWidget` pasa `headDirection`**
 
 En `arrow_widget.dart`, en el `ArrowPainter(...)` interno añade `headDirection: widget.arrow.headDirection,`.
 
-- [ ] **Step 3: Delegar tests al subagente qa**
+- [x] **Step 3: Delegar tests al subagente qa**
 
 Dispatch a `arrowmaze-qa`:
 
 > En `MazePruebaFront`, `ArrowPainter` (`lib/presentation/game/painters/arrow_painter.dart`) ahora recibe `Direction headDirection` y orienta la punta por esa dirección (no por el último segmento del cuerpo). Actualiza `test/presentation/game/painters/arrow_painter_test.dart` (AAA): (a) migra los constructores para pasar `headDirection`; (b) añade un caso donde el cuerpo gira en la cabeza (último segmento perpendicular a `headDirection`) verificando que el ángulo/orientación de la punta corresponde a `headDirection` y no al último segmento. Usa el enfoque de testing de painter ya presente en ese archivo (no introduzcas dependencias nuevas). Deja `flutter test test/presentation/game/painters/arrow_painter_test.dart` y la suite completa en verde.
 
-- [ ] **Step 4: Verificar y commitear**
+- [x] **Step 4: Verificar y commitear**
 
 Run: `flutter test` → PASS. Run: `flutter analyze` → sin issues.
 
@@ -239,7 +239,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Produces: `ArrowBoard generate({required int cols, required int rows, required int arrowCount, required int maxPathLen, int? seed})`.
 - Consumes: `Arrow({id, cells, headDirection})`, `ArrowBoard.overlaps`, `ArrowBoard.canExit`.
 
-- [ ] **Step 1: Extender el puerto `ILevelGenerator`**
+- [x] **Step 1: Extender el puerto `ILevelGenerator`**
 
 En `lib/domain/arrows/services/i_level_generator.dart`, añade el parámetro requerido `maxPathLen`:
 
@@ -257,7 +257,7 @@ abstract interface class ILevelGenerator {
 }
 ```
 
-- [ ] **Step 2: Reescribir el cuerpo del generador a caminos doblados**
+- [x] **Step 2: Reescribir el cuerpo del generador a caminos doblados**
 
 En `lib/infrastructure/generators/graph_board_generator.dart`, actualiza `generate` (firma + paso de `occupied`) y reemplaza `_randomArrow` por `_randomBentArrow` con helpers. El bucle de validación `!overlaps && canExit` NO cambia (preserva el DAG):
 
@@ -372,12 +372,12 @@ En `lib/infrastructure/generators/graph_board_generator.dart`, actualiza `genera
   }
 ```
 
-- [ ] **Step 3: Regenerar mocks**
+- [x] **Step 3: Regenerar mocks**
 
 Run: `dart run build_runner build --delete-conflicting-outputs`
 Expected: regenera `test/application/state/game_controller_test.mocks.dart` con la nueva firma de `generate`.
 
-- [ ] **Step 4: Delegar tests al subagente qa**
+- [x] **Step 4: Delegar tests al subagente qa**
 
 Dispatch a `arrowmaze-qa`:
 
@@ -387,7 +387,7 @@ Dispatch a `arrowmaze-qa`:
 > 3) Si `game_controller_test.dart` rompe por la nueva firma del mock, ajústalo (el mock ya fue regenerado por build_runner).
 > Ejecuta `flutter test` completo en verde. Reporta archivos tocados.
 
-- [ ] **Step 5: Verificar y commitear**
+- [x] **Step 5: Verificar y commitear**
 
 Run: `flutter test` → PASS. Run: `flutter analyze` → sin issues.
 
@@ -411,7 +411,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Produces: `LevelBlueprint({required int cols, required int rows, required int arrowCount, required int maxPathLen})` y `factory LevelBlueprint.forLevel(int level)`.
 - Consumes: `ILevelGenerator.generate(... maxPathLen: ...)` (Task 3).
 
-- [ ] **Step 1: Nueva curva vertical-densa + campo `maxPathLen`**
+- [x] **Step 1: Nueva curva vertical-densa + campo `maxPathLen`**
 
 Reemplaza el contenido relevante de `lib/domain/board/value_objects/level_blueprint.dart`:
 
@@ -450,17 +450,17 @@ class LevelBlueprint {
 }
 ```
 
-- [ ] **Step 2: Pasar `maxPathLen` desde `GameController.loadLevel`**
+- [x] **Step 2: Pasar `maxPathLen` desde `GameController.loadLevel`**
 
 En `lib/application/state/game_controller.dart`, en la llamada `_generator.generate(...)` de `loadLevel`, añade `maxPathLen: bp.maxPathLen,`. (El bloque de `undoMove` que reconstruye un `ArrowBoard` vacío desde `LevelBlueprint.forLevel(...)` no necesita cambios.)
 
-- [ ] **Step 3: Delegar tests al subagente qa**
+- [x] **Step 3: Delegar tests al subagente qa**
 
 Dispatch a `arrowmaze-qa`:
 
 > En `MazePruebaFront`, `LevelBlueprint` ganó el campo `maxPathLen` y `LevelBlueprint.forLevel` usa una curva vertical-densa: `width=(6+(lvl-1)~/3).clamp(6,11)`, `height=(8+(lvl-1)~/2).clamp(8,15)`, `maxPathLen=(3+(lvl-1)~/2).clamp(3,12)`, `arrowCount=(width*height*0.68/((2+maxPathLen)/2)).round().clamp(4, width*height)`. Reescribe `test/domain/board/value_objects/level_blueprint_test.dart` (AAA) verificando: nivel 1 = 6x8 con `maxPathLen` 3; el tablero es vertical (`rows>=cols`) en toda la curva; los clamps superiores (niveles altos ⇒ 11x15, `maxPathLen` 12); `arrowCount` dentro de `[4, width*height]`; y monotonía no decreciente de `width`/`height`/`maxPathLen` respecto al nivel. Si otros tests construyen `LevelBlueprint(...)` directamente, añádeles `maxPathLen`. Deja `flutter test` en verde.
 
-- [ ] **Step 4: Verificar y commitear**
+- [x] **Step 4: Verificar y commitear**
 
 Run: `flutter test` → PASS. Run: `flutter analyze` → sin issues.
 
@@ -487,7 +487,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
   - `ExitingArrowWidget({required Arrow arrow, required int minCol, required int minRow, required int cols, required int rows, required double cell, required Color color, required int nonce})` (sin `travel`)
 - Consumes: `Arrow.cells`, `Arrow.headDirection` (Task 1); el `Stack` con `clipBehavior: Clip.none` de `BoardWidget`.
 
-- [ ] **Step 1: Crear `SnakeExitPainter`**
+- [x] **Step 1: Crear `SnakeExitPainter`**
 
 Crea `lib/presentation/game/painters/snake_exit_painter.dart`:
 
@@ -645,7 +645,7 @@ class SnakeExitPainter extends CustomPainter {
 }
 ```
 
-- [ ] **Step 2: Reescribir `ExitingArrowWidget`**
+- [x] **Step 2: Reescribir `ExitingArrowWidget`**
 
 Reemplaza `lib/presentation/game/widgets/exiting_arrow_widget.dart`:
 
@@ -726,7 +726,7 @@ class _ExitingArrowWidgetState extends State<ExitingArrowWidget>
 }
 ```
 
-- [ ] **Step 3: `BoardWidget` pasa `cols`/`rows` (y elimina `travel`)**
+- [x] **Step 3: `BoardWidget` pasa `cols`/`rows` (y elimina `travel`)**
 
 En `lib/presentation/game/widgets/board_widget.dart`:
 - Cambia la llamada del overlay a `_positionExiting(state.exitingArrow!, cell, state.exitNonce, board.cols, board.rows)` (elimina el argumento `math.max(width, height)`).
@@ -758,13 +758,13 @@ En `lib/presentation/game/widgets/board_widget.dart`:
 
 (Si tras quitar `math.max(width,height)` el import `dart:math as math` queda sin uso en otras partes del archivo, déjalo: `cell` se calcula con `math.min`. No lo elimines.)
 
-- [ ] **Step 4: Delegar tests al subagente qa**
+- [x] **Step 4: Delegar tests al subagente qa**
 
 Dispatch a `arrowmaze-qa`:
 
 > En `MazePruebaFront` se añadió `SnakeExitPainter` (`lib/presentation/game/painters/snake_exit_painter.dart`) y `ExitingArrowWidget` (`lib/presentation/game/widgets/exiting_arrow_widget.dart`) se reescribió: ahora recibe `{arrow, minCol, minRow, cols, rows, cell, color, nonce}` (SIN `travel`) y anima una retracción serpiente vía `SnakeExitPainter(progress:)`. Reescribe `test/presentation/game/widgets/exiting_arrow_widget_test.dart` (AAA, `flutter_test`) cubriendo: monta el widget con una flecha DOBLADA y verifica que (a) construye sin throw y pinta un `CustomPaint` con `SnakeExitPainter`; (b) tras `tester.pump` avanzando la animación el painter recibe `progress` creciente (puedes exponer/inspeccionar vía `find.byType(CustomPaint)` y casteo del painter); (c) al completarse la animación el widget colapsa a `SizedBox.shrink`. Migra cualquier construcción previa de `ExitingArrowWidget` (p. ej. en `board_widget_test.dart`/`game_screen_test.dart`) a la nueva firma. Si conviene, añade un test de unidad mínimo del `SnakeExitPainter` (no-throw + `shouldRepaint` true al cambiar `progress`). Deja `flutter test` completo en verde.
 
-- [ ] **Step 5: Verificar y commitear**
+- [x] **Step 5: Verificar y commitear**
 
 Run: `flutter test` → PASS. Run: `flutter analyze` → sin issues.
 
@@ -785,19 +785,19 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 **Interfaces:** ninguna (solo documentación).
 
-- [ ] **Step 1: Actualizar README**
+- [x] **Step 1: Actualizar README**
 
 En `MazePruebaFront/README.md`, en la sección de mecánica de juego/arquitectura, documenta el comportamiento público nuevo: flechas que doblan (modelo de camino `Arrow` con `cells` + `headDirection`), tablero vertical denso (curva `LevelBlueprint.forLevel`, ~6x8 → ~11x15, `maxPathLen`), y la salida "serpiente" (la cabeza sale y el cuerpo se retrae por su propio camino; solubilidad por construcción intacta).
 
-- [ ] **Step 2: Entrada de cierre en AI_HISTORY**
+- [x] **Step 2: Entrada de cierre en AI_HISTORY**
 
 Añade `## Entrada NNN — Flechas dobladas, tablero vertical denso y salida serpiente` con Fecha 2026-06-20 resumiendo el sprint (referencia al spec `docs/superpowers/specs/2026-06-20-flechas-dobladas-tablero-vertical-design.md` y al plan).
 
-- [ ] **Step 3: Verificación final**
+- [x] **Step 3: Verificación final**
 
 Run: `flutter analyze` → sin issues. Run: `flutter test` → PASS (toda la suite). Verifica manualmente (opcional) `flutter run` y juega un nivel alto: las flechas doblan, el tablero es vertical y denso, y la salida serpentea.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md AI_HISTORY.MD

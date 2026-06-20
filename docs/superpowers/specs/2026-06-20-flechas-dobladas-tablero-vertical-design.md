@@ -94,7 +94,7 @@ factory LevelBlueprint.forLevel(int level) {
 }
 ```
 
-- Se añade el campo **`maxPathLen`** al blueprint y la firma del generador lo recibe (extiende `ILevelGenerator.generate` con `maxPathLen`, o se pasa dentro del blueprint).
+- Se añade el campo **`maxPathLen`** al blueprint y se pasa como **parámetro explícito** de `ILevelGenerator.generate(...)` (coherente con `cols`/`rows`/`arrowCount`, que ya se pasan individualmente desde el blueprint en `GameController.loadLevel`).
 - Números aproximados; el ajuste fino (densidad real lograda, tasa de degradación) se valida en el plan con tableros generados de muestra.
 - Toda la dificultad sigue concentrada en un único lugar testeable; el generador solo genera.
 
@@ -131,7 +131,7 @@ Sustituye la traslación rígida de `ExitingArrowWidget` por una retracción rea
 | `domain/arrows/entities/arrow.dart` | Reescritura a modelo de camino (`cells` + `headDirection`, getters de compat). |
 | `domain/arrows/value_objects/arrow_length.dart` | **Se retira** (longitud = `cells.length`). |
 | `domain/arrows/entities/arrow_board.dart` | Sin cambios (ya opera sobre `cells`; `overlaps` ya presente en WIP). |
-| `domain/arrows/services/i_level_generator.dart` | Firma recibe `maxPathLen` (o vía blueprint). |
+| `domain/arrows/services/i_level_generator.dart` | `generate(...)` recibe `maxPathLen` como parámetro explícito. |
 | `domain/board/value_objects/level_blueprint.dart` | Curva vertical-densa + campo `maxPathLen`. |
 | `infrastructure/generators/graph_board_generator.dart` | `_randomArrow` → caminata auto-evitante cabeza-primero. |
 | `presentation/game/painters/arrow_painter.dart` | Punta orientada por `headDirection`. |

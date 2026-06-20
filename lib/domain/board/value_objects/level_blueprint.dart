@@ -14,15 +14,22 @@ class LevelBlueprint {
     required this.maxPathLen,
   });
 
-  /// Curva inicial: tablero cuadrado que crece de 4 a 9 con el nivel, relleno
-  /// ~50 % con flechas de largo medio ~3. Ajustable sin tocar generador ni UI.
+  /// Curva vertical-densa: tablero más alto que ancho que crece ~6x8 → ~11x15,
+  /// relleno ~68 % con caminos doblados cuyo largo máximo crece de 3 a 12.
   factory LevelBlueprint.forLevel(int level) {
     final lvl = level < 1 ? 1 : level;
-    final size = (4 + (lvl - 1) ~/ 2).clamp(4, 9);
-    final arrowCount = ((size * size * 0.5) / 3).round().clamp(4, size * size);
-    // maxPathLen crece con el nivel: niveles bajos tienen flechas más cortas.
-    final maxPathLen = (2 + (lvl - 1) ~/ 3).clamp(2, 6);
+    final width = (6 + (lvl - 1) ~/ 3).clamp(6, 11);
+    final height = (8 + (lvl - 1) ~/ 2).clamp(8, 15);
+    final maxPathLen = (3 + (lvl - 1) ~/ 2).clamp(3, 12);
+    final avgPathLen = (2 + maxPathLen) / 2;
+    final arrowCount = (width * height * 0.68 / avgPathLen)
+        .round()
+        .clamp(4, width * height);
     return LevelBlueprint(
-        cols: size, rows: size, arrowCount: arrowCount, maxPathLen: maxPathLen);
+      cols: width,
+      rows: height,
+      arrowCount: arrowCount,
+      maxPathLen: maxPathLen,
+    );
   }
 }

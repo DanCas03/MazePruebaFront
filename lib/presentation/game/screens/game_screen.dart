@@ -1,66 +1,82 @@
 import 'package:flutter/material.dart';
-import '../controllers/game_controller.dart';
-import '../../../domain/game_core/value_objects/direction.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../application/state/game_state.dart';
+import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../domain/board/value_objects/level_id.dart';
+import '../../providers/game_provider.dart';
 import '../widgets/board_widget.dart';
 
-class GameScreen extends StatelessWidget {
-  final GameController controller;
+// Re-exporta el provider para que el router (core) referencie GameScreen sin
+// alcanzar application/state directamente; presentation es el unico punto de
+// entrada al estado de juego.
+export '../../providers/game_provider.dart' show gameControllerProvider;
 
-  const GameScreen({super.key, required this.controller});
+/// Pantalla principal de partida. Recibe el [levelId] del router y dispara
+/// [loadLevel] en el primer frame via addPostFrameCallback para garantizar que
+/// el ProviderScope este montado antes de leer el notifier.
+class GameScreen extends ConsumerStatefulWidget {
+  final LevelId levelId;
+  const GameScreen({super.key, required this.levelId});
+
+  @override
+  ConsumerState<GameScreen> createState() => _GameScreenState();
+}
+
+class _GameScreenState extends ConsumerState<GameScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Post-frame: garantiza que build() haya corrido al menos una vez y el
+    // ProviderScope este activo antes de mutar el estado del notifier.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(gameControllerProvider.notifier).loadLevel(widget.levelId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final asyncState = ref.watch(gameControllerProvider);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? AppColors.surface : AppColors.lightSurface;
+    final onSurface =
+        isDark ? AppColors.onBackground : AppColors.lightOnBackground;
+    final accent = isDark ? AppColors.secondary : AppColors.lightSecondary;
+    final primary = isDark ? AppColors.primary : AppColors.lightPrimary;
+
+    ref.listen(gameControllerProvider, (_, next) {
+      if (next.valueOrNull is GameWon) {
+        final moves = (next.valueOrNull as GameWon).moves.value;
+        Navigator.pushReplacementNamed(context, AppRouter.victory,
+            arguments: moves);
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Arrow Maze'),
+        backgroundColor: surface,
+        title: asyncState.when(
+          data: (s) => s is GamePlaying
+              ? Text('Moves: ${s.moves.value}',
+                  style: TextStyle(color: onSurface))
+              : const Text('Arrow Maze'),
+          loading: () => const Text('Loading...'),
+          error: (e, _) => const Text('Error'),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.undo),
-            onPressed: controller.onUndoPressed,
-            tooltip: 'Deshacer',
+            icon: Icon(Icons.undo, color: accent),
+            onPressed: () =>
+                ref.read(gameControllerProvider.notifier).undoMove(),
           ),
         ],
       ),
-      body: GestureDetector(
-        onVerticalDragEnd: (details) {
-          if (details.primaryVelocity == null) return;
-          final dir = details.primaryVelocity! < 0 ? Direction.up : Direction.down;
-          controller.onSwipe(dir);
-        },
-        onHorizontalDragEnd: (details) {
-          if (details.primaryVelocity == null) return;
-          final dir = details.primaryVelocity! < 0 ? Direction.left : Direction.right;
-          controller.onSwipe(dir);
-        },
-        child: ListenableBuilder(
-          listenable: controller,
-          builder: (context, _) {
-            return Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: BoardWidget(controller: controller),
-                  ),
-                ),
-                if (controller.isVictory)
-                  Container(
-                    width: double.infinity,
-                    color: Colors.green,
-                    padding: const EdgeInsets.all(16),
-                    child: const Text(
-                      '¡Nivel completado!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
+      body: Center(
+        child: asyncState.when(
+          data: (_) => const BoardWidget(),
+          loading: () => CircularProgressIndicator(color: primary),
+          error: (e, _) => Text('$e'),
         ),
       ),
     );

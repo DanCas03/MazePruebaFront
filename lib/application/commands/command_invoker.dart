@@ -1,34 +1,28 @@
-// lib/application/commands/command_invoker.dart
-
+import '../../domain/arrows/entities/arrow_board.dart';
 import 'command.dart';
 
+/// Command Pattern invoker: keeps a history of [ICommand]s and delegates undo
+/// back to each command so the reversal logic lives with the operation itself.
 class CommandInvoker {
-  // Historial global de todas las acciones del juego
   final List<ICommand> _history = [];
 
-  /// Ejecuta cualquier comando y lo guarda en el historial
-  void executeCommand(ICommand command) {
-    command.execute();
+  bool get canUndo => _history.isNotEmpty;
+
+  ArrowBoard executeCommand(ICommand command, ArrowBoard board) {
+    final newBoard = command.execute(board);
     _history.add(command);
+    return newBoard;
   }
 
-  /// Deshace la última acción, sin importar si fue movimiento o rotación
-  bool undoLastCommand() {
-    if (_history.isEmpty) {
-      return false; // No hay nada que deshacer
-    }
-
-    // Extraemos el último comando y le pedimos que se deshaga a sí mismo
-    final lastCommand = _history.removeLast();
-    lastCommand.undo();
-    return true;
+  /// Pops the last command and asks it to undo itself against the CURRENT
+  /// board, returning the resulting state. Returns [currentBoard] unchanged
+  /// when there is nothing to undo.
+  ArrowBoard undo(ArrowBoard currentBoard) {
+    if (!canUndo) return currentBoard;
+    final command = _history.removeLast();
+    return command.undo(currentBoard);
   }
 
-  /// Útil para reiniciar el nivel
-  void clearHistory() {
-    _history.clear();
-  }
-
-  /// Útil para el sistema de puntuación (ej. 3 estrellas si lo pasas en menos de X movimientos)
-  int get actionCount => _history.length;
+  /// Vacía el historial (para reiniciar un nivel sin arrastrar undos previos).
+  void clear() => _history.clear();
 }

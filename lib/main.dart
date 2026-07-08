@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
+import 'application/state/auth_controller.dart';
+import 'application/use_cases/restore_session_use_case.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'hive_registrar.g.dart';
+import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
+import 'infrastructure/repositories/secure_auth_token_repository.dart';
 
 /// Composition root de la app: inicializa Hive, registra los TypeAdapters
 /// (via la extension generada `registerAdapters`) y abre el box de progreso
@@ -16,7 +21,25 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
   await Hive.openBox<LevelProgressHiveModel>('level_progress');
-  runApp(const ProviderScope(child: ArrowMazeApp()));
+
+  // Composición del lazo de auth (front#14): el token se persiste en el
+  // almacenamiento seguro del SO. Se inyecta por constructor (DIP) al
+  // AuthController, cuyo build() restaura la sesión (auto-login) cuando el
+  // guard de ruta (front#15) lo lea por primera vez.
+  final tokenStorage = SecureAuthTokenRepository(
+    SecureTokenDataSource(const FlutterSecureStorage()),
+  );
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => AuthController(tokenStorage, RestoreSessionUseCase(tokenStorage)),
+        ),
+      ],
+      child: const ArrowMazeApp(),
+    ),
+  );
 }
 
 class ArrowMazeApp extends StatelessWidget {

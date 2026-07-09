@@ -4,12 +4,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import 'application/state/auth_controller.dart';
+import 'application/state/auth_form_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
+import 'core/auth/auth_gate.dart';
+import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'hive_registrar.g.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
+import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
+import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
 
 /// Composition root: inicializa Hive y conecta las dependencias concretas de
@@ -29,12 +34,19 @@ void main() async {
     SecureTokenDataSource(const FlutterSecureStorage()),
   );
 
+  // Cliente HTTP con la URL base configurable y el interceptor de token (front#15).
+  final dio = DioClient.create(tokenStorage);
+  final authRepository = RemoteAuthRepository(AuthRemoteDataSource(dio));
+
   runApp(
     ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
           () => AuthController(tokenStorage, RestoreSessionUseCase(tokenStorage)),
         ),
+        // front#15: repo remoto de auth compuesto aquí (DIP); las capas
+        // internas solo conocen el puerto IAuthRepository.
+        authRepositoryProvider.overrideWithValue(authRepository),
       ],
       child: const ArrowMazeApp(),
     ),
@@ -53,7 +65,7 @@ class ArrowMazeApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      initialRoute: AppRouter.home,
+      home: const AuthGate(),
       onGenerateRoute: AppRouter.onGenerateRoute,
       debugShowCheckedModeBanner: false,
     );

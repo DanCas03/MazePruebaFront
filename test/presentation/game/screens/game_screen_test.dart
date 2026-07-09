@@ -16,6 +16,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
+import 'package:flutter_arrow_maze/presentation/level_selection/defeat_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
 /// Genera un tablero con una unica flecha de salida libre, de modo que al
@@ -44,10 +45,46 @@ class _SingleArrowGenerator implements ILevelGenerator {
   }
 }
 
-ProviderContainer _container() => ProviderContainer(overrides: [
+/// Genera un tablero cuya flecha objetivo ('a1') tiene la salida bloqueada por
+/// una segunda flecha en su carril: cada tap sobre 'a1' es un choque, de modo
+/// que 5 taps llevan el juego a GameLost sin vaciar el tablero.
+class _BlockedArrowGenerator implements ILevelGenerator {
+  @override
+  ArrowBoard generate({
+    required int cols,
+    required int rows,
+    required int arrowCount,
+    required int maxPathLen,
+    int? seed,
+  }) {
+    return ArrowBoard(
+      cols: 4,
+      rows: 4,
+      arrows: [
+        // Sale hacia la derecha; su exitPath incluye (0,3).
+        Arrow.straight(
+          id: const ArrowId('a1'),
+          tail: Position(row: 0, col: 0),
+          direction: Direction.right,
+          length: 2,
+        ),
+        // Ocupa (0,3) → bloquea la salida de 'a1'.
+        Arrow.straight(
+          id: const ArrowId('blk'),
+          tail: Position(row: 0, col: 3),
+          direction: Direction.right,
+          length: 1,
+        ),
+      ],
+    );
+  }
+}
+
+ProviderContainer _container([ILevelGenerator? generator]) =>
+    ProviderContainer(overrides: [
       gameControllerProvider.overrideWith(
         () => GameController(
-          _SingleArrowGenerator(),
+          generator ?? _SingleArrowGenerator(),
           RemoveArrowUseCase(),
           CommandInvoker(),
         ),
@@ -62,6 +99,10 @@ Widget _host(ProviderContainer container) => UncontrolledProviderScope(
           AppRouter.victory => MaterialPageRoute<void>(
               settings: settings,
               builder: (_) => const VictoryScreen(),
+            ),
+          AppRouter.defeat => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const DefeatScreen(),
             ),
           _ => MaterialPageRoute<void>(
               builder: (_) => GameScreen(levelId: LevelId('1')),
@@ -109,6 +150,31 @@ void main() {
       // Assert
       expect(find.byType(VictoryScreen), findsOneWidget);
       expect(find.text('1 moves'), findsOneWidget);
+    });
+
+    testWidgets('navigates to DefeatScreen when the fifth collision is reached',
+        (tester) async {
+      // Arrange
+      final container = _container(_BlockedArrowGenerator());
+      addTearDown(container.dispose);
+      await tester.pumpWidget(_host(container));
+      await container
+          .read(gameControllerProvider.notifier)
+          .loadLevel(LevelId('level-1'));
+      await tester.pump();
+
+      // Act — tap the blocked arrow 5 times: GameLost -> navigation
+      for (var i = 0; i < 5; i++) {
+        await container
+            .read(gameControllerProvider.notifier)
+            .tapArrow(const ArrowId('a1'));
+      }
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(find.byType(DefeatScreen), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Retry'), findsOneWidget);
+      expect(find.text('0 moves · 5 strikes'), findsOneWidget);
     });
 
     // BUG-2 regression: provider not overridden + loadLevel never called on mount

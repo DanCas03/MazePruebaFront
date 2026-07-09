@@ -129,7 +129,7 @@ Re-run `build_runner` whenever you add or change files annotated with `@HiveType
 ## Running Tests
 
 ```bash
-flutter test       # unit & widget tests (AAA, mockito mocks) — 105 tests
+flutter test       # unit & widget tests (AAA, mockito mocks) — 255 tests
 flutter analyze    # static analysis — expected: 0 issues
 ```
 

@@ -145,6 +145,74 @@ void main() {
     expect((state as GameWon).moves.value, 1);
   });
 
+  test('should_keep_playing_when_fourth_collision', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any))
+        .thenReturn(Left(InvalidMoveException('blocked')));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+
+    // Act
+    for (var i = 0; i < 4; i++) {
+      await notifier.tapArrow(const ArrowId('arrow-0'));
+    }
+
+    // Assert
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GamePlaying>());
+    expect((state as GamePlaying).strikes.value, 4);
+  });
+
+  test('should_lose_when_fifth_collision', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any))
+        .thenReturn(Left(InvalidMoveException('blocked')));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+
+    // Act
+    for (var i = 0; i < 5; i++) {
+      await notifier.tapArrow(const ArrowId('arrow-0'));
+    }
+
+    // Assert
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GameLost>());
+    expect((state as GameLost).strikes.value, 5);
+    expect(state.strikes.isFatal, isTrue);
+  });
+
+  test('should_reset_strikes_when_level_reloaded', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any))
+        .thenReturn(Left(InvalidMoveException('blocked')));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+    for (var i = 0; i < 5; i++) {
+      await notifier.tapArrow(const ArrowId('arrow-0'));
+    }
+
+    // Act
+    await notifier.restartLevel();
+
+    // Assert
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GamePlaying>());
+    expect((state as GamePlaying).strikes.value, 0);
+  });
+
   test('undoMove restaura el tablero y decrementa movimientos', () async {
     final gen = MockILevelGenerator();
     final uc = MockRemoveArrowUseCase();
@@ -161,6 +229,29 @@ void main() {
     expect(s.board.arrows.length, 2); // flecha reinsertada
     expect(s.moves.value, 0);
     expect(s.canUndo, isFalse);
+  });
+
+  test('should_preserve_move_count_when_undo_after_victory', () async {
+    // Arrange: dos taps legales vacían el tablero → GameWon con moves == 2.
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any)).thenReturn(Right(_twoArrowBoard()));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    await notifier.tapArrow(const ArrowId('arrow-2'));
+    expect(c.read(gameControllerProvider).valueOrNull, isA<GameWon>());
+
+    // Act
+    await notifier.undoMove();
+
+    // Assert: BUG-1 — el contador retrocede a N-1, no se reinicia a 0.
+    final s = c.read(gameControllerProvider).valueOrNull;
+    expect(s, isA<GamePlaying>());
+    expect((s as GamePlaying).moves.value, 1);
+    expect(s.board.arrows.length, 1); // la última flecha fue reinsertada
   });
 
   test('restartLevel limpia el historial y regenera (canUndo false, 0 movimientos)', () async {

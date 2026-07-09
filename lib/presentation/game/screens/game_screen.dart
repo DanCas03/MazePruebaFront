@@ -46,10 +46,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final primary = isDark ? AppColors.primary : AppColors.lightPrimary;
 
     ref.listen(gameControllerProvider, (_, next) {
-      if (next.valueOrNull is GameWon) {
-        final moves = (next.valueOrNull as GameWon).moves.value;
+      final state = next.valueOrNull;
+      if (state is GameWon) {
         Navigator.pushReplacementNamed(context, AppRouter.victory,
-            arguments: moves);
+            arguments: state.moves.value);
+      } else if (state is GameLost) {
+        // La derrota lleva el LevelId para que el CTA "Retry" recargue el nivel.
+        Navigator.pushReplacementNamed(
+          context,
+          AppRouter.defeat,
+          arguments: (
+            levelId: widget.levelId,
+            moves: state.moves.value,
+            strikes: state.strikes.value,
+          ),
+        );
       }
     });
 

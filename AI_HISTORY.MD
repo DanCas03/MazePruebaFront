@@ -1,17 +1,5 @@
 # AI History — MazePruebaFront
 
-## Entrada 039 — front#12: value objects Score y Stars + fórmula de puntaje
-
-**Fecha:** 2026-07-09
-**Tarea o problema abordado:** Issue front#12 — value objects de dominio `Score` (puntaje numérico determinista) y `Stars` (1–3★) con la fórmula del ADR 0001 (decisión 7): `score = f(tiempo, movimientos sobre óptimo, choques)`, siendo el óptimo el número de flechas. Desbloqueado por front#2 (ya en main).
-**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `feat/#12-score-stars` desde `origin/main`, guiado por Claudia.
-**Prompt o instrucción proporcionada:** > "Sigamos con el issue front#12"
-**Resultado obtenido:**
-- `lib/domain/game_core/value_objects/score.dart` (nuevo): VO `Score` con invariante `value >= 0` (validada con `throw ArgumentError` en runtime), igualdad por valor y factory `Score.fromRun({time, moves, optimalMoves, collisions})`. Fórmula = `base(10000) − 5/seg − 100/movimiento-extra − 250/choque`, acotada a `[0, base]`. Constantes públicas para los pesos.
-- `lib/domain/game_core/value_objects/stars.dart` (nuevo): VO `Stars` (1–3) con factory `Stars.rate({moves, optimalMoves, collisions})`. Umbrales: 3★ = cero choques y movimientos ≤ óptimo + `k`(=2); 2★ = ≤2 choques y ≤6 movimientos extra; 1★ en otro caso (ganar siempre da ≥1★). Movimientos por debajo del óptimo no dan crédito extra (exceso acotado a 0).
-- Tests AAA `should_..._when_...`: `test/domain/value_objects/score_test.dart` (9) y `stars_test.dart` (9), 18 verdes; `flutter analyze` limpio sobre los 4 archivos.
-- Sin API pública nueva consumida aún por presentación/aplicación: no requiere cambios de README.
-- Auditoría posterior (contrato de scoring del back ya en `origin/main`: `ScoreEntry` + VOs `Score`/`Stars`/`MoveCount`/`ElapsedTime` + `SubmitScoreDto`): rangos y tipos del front alineados (score entero ≥0, stars 1..3, tiempo en segundos enteros). Ajuste aplicado: la invariante de `Score` pasó de `assert` (se elimina en release) a `throw ArgumentError`, coherente con `AuthToken` y con el `Score` del back; test de negativo actualizado a `throwsArgumentError`.
 ## Entrada 037 — front#10: pantalla de derrota con reintento
 
 **Fecha:** 2026-07-09

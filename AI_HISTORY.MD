@@ -625,3 +625,12 @@
 **Prompt o instrucción proporcionada:** > "Ayudame a resolver el pull request del front que esta pendiente. Las pruebas salen con error por lo que no se puede hacer el merge (no quiero quitar la regla de que los pull request deben tener bien las pruebas)."
 **Resultado obtenido:** Se eliminaron los 4 imports sin uso de `lib/main.dart`. Sin cambios de comportamiento ni de funcionalidad pública (no aplica actualización de README ni tests nuevos: es limpieza de imports detectada por el linter). Verificación local en la rama del PR: `flutter analyze` → No issues found!; `flutter test` → 208/208 en verde.
 **Modificaciones realizadas por el equipo:**
+
+## Entrada 029 — Password VO
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Task 1 de `front#15` (login/registro UI): crear el Value Object `Password` en `domain/auth/value_objects/`, primera pieza del formulario de registro/login. Encapsula la política mínima de longitud (≥8 caracteres, alineada con la validación del back) como regla de dominio reutilizable en lugar de esparcir el número mágico "8" por formularios y use cases.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#15 login/registro UI"
+**Resultado obtenido:** `lib/domain/auth/value_objects/password.dart` — clase `Password extends Equatable` (mismo patrón que la `Email` VO hermana) con `static const int minLength = 8` y constructor que lanza `ArgumentError` si `value.length < minLength`. `test/domain/auth/password_test.dart` — 4 casos AAA: acepta 8 caracteres, rechaza 7 caracteres, rechaza vacío, igualdad por valor (Equatable). TDD estricto: RED confirmado (`Password` no definido / target of URI doesn't exist) → GREEN confirmado (4/4 tests en verde) tras la implementación mínima. Sin dependencias de otras tareas del feature; VO autocontenido, Dart puro sin imports de Flutter.
+**Modificaciones realizadas por el equipo:**

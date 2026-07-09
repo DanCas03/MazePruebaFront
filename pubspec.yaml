@@ -20,6 +20,9 @@ dependencies:
   sqflite: ^2.3.3+1
   path_provider: ^2.1.4
 
+  # Secure token storage (Keychain / Keystore) — front#14
+  flutter_secure_storage: ^9.2.2
+
   # Networking
   dio: ^5.7.0
 

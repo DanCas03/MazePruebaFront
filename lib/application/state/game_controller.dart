@@ -5,6 +5,7 @@ import '../../domain/arrows/value_objects/arrow_id.dart';
 import '../../domain/board/value_objects/level_blueprint.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
+import '../../domain/game_core/value_objects/strike_count.dart';
 import '../commands/command_invoker.dart';
 import '../commands/remove_arrow_command.dart';
 import '../use_cases/remove_arrow_use_case.dart';
@@ -32,6 +33,7 @@ class GameController extends AsyncNotifier<GameState> {
   LevelId? _currentLevel;
   int _blockedNonce = 0;
   int _exitNonce = 0;
+  StrikeCount _strikes = const StrikeCount(0);
 
   @override
   Future<GameState> build() async => GameLoading();
@@ -42,6 +44,7 @@ class GameController extends AsyncNotifier<GameState> {
     _currentLevel = levelId;
     _blockedNonce = 0;
     _exitNonce = 0;
+    _strikes = const StrikeCount(0);
     _invoker.clear();
 
     // La dificultad la decide LevelBlueprint (dominio); el generador solo genera.
@@ -65,11 +68,20 @@ class GameController extends AsyncNotifier<GameState> {
     final result = _removeArrow.execute(current.board, arrowId);
     result.fold(
       (_) {
-        // Bloqueada o ausente → feedback de shake (sin cambiar el tablero).
+        // Bloqueada o ausente → choque (ADR 0001 §6): al 5º se pierde;
+        // antes, feedback de shake (sin cambiar el tablero).
+        _strikes = _strikes.increment();
+        if (_strikes.isFatal) {
+          state = AsyncValue.data(
+            GameLost(moves: current.moves, strikes: _strikes),
+          );
+          return;
+        }
         _blockedNonce++;
         state = AsyncValue.data(GamePlaying(
           board: current.board,
           moves: current.moves,
+          strikes: _strikes,
           blockedArrow: arrowId,
           blockedNonce: _blockedNonce,
           exitNonce: _exitNonce,
@@ -90,6 +102,7 @@ class GameController extends AsyncNotifier<GameState> {
           state = AsyncValue.data(GamePlaying(
             board: newBoard,
             moves: newMoves,
+            strikes: _strikes,
             exitingArrow: removed,
             exitNonce: _exitNonce,
             blockedNonce: _blockedNonce,
@@ -124,6 +137,7 @@ class GameController extends AsyncNotifier<GameState> {
     state = AsyncValue.data(GamePlaying(
       board: previousBoard,
       moves: previousMoves,
+      strikes: _strikes,
       blockedNonce: _blockedNonce,
       exitNonce: _exitNonce,
       canUndo: _invoker.canUndo,

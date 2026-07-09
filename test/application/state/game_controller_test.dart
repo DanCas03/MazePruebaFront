@@ -145,6 +145,74 @@ void main() {
     expect((state as GameWon).moves.value, 1);
   });
 
+  test('should_keep_playing_when_fourth_collision', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any))
+        .thenReturn(Left(InvalidMoveException('blocked')));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+
+    // Act
+    for (var i = 0; i < 4; i++) {
+      await notifier.tapArrow(const ArrowId('arrow-0'));
+    }
+
+    // Assert
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GamePlaying>());
+    expect((state as GamePlaying).strikes.value, 4);
+  });
+
+  test('should_lose_when_fifth_collision', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any))
+        .thenReturn(Left(InvalidMoveException('blocked')));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+
+    // Act
+    for (var i = 0; i < 5; i++) {
+      await notifier.tapArrow(const ArrowId('arrow-0'));
+    }
+
+    // Assert
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GameLost>());
+    expect((state as GameLost).strikes.value, 5);
+    expect(state.strikes.isFatal, isTrue);
+  });
+
+  test('should_reset_strikes_when_level_reloaded', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any))
+        .thenReturn(Left(InvalidMoveException('blocked')));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+    for (var i = 0; i < 5; i++) {
+      await notifier.tapArrow(const ArrowId('arrow-0'));
+    }
+
+    // Act
+    await notifier.restartLevel();
+
+    // Assert
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GamePlaying>());
+    expect((state as GamePlaying).strikes.value, 0);
+  });
+
   test('undoMove restaura el tablero y decrementa movimientos', () async {
     final gen = MockILevelGenerator();
     final uc = MockRemoveArrowUseCase();

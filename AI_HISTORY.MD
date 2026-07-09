@@ -1,5 +1,18 @@
 # AI History — MazePruebaFront
 
+## Entrada 035 — Fix: tests de HomeScreen desincronizados del rediseño (main en rojo)
+
+**Fecha:** 2026-07-08
+**Tarea o problema abordado:** Los 2 tests de `home_screen_test.dart` fallaban en `main` limpio (detectado al verificar front#2). Causa raíz doble: (1) los tests buscaban los textos del home original en inglés ('Arrow Maze', 'Clear the board', botón 'Play') pero el rediseño mergeado renderiza 'ARROW MAZE', 'Despeja el tablero. Saca cada flecha.' y 'JUGAR'; (2) el test de navegación usaba `pumpAndSettle()`, que nunca se asienta porque el logo `_LogoArrows` anima en bucle infinito (`AnimationController..repeat()`). Bloqueaba front#7: el CI correría `flutter test` en rojo para todos los PRs.
+**Herramienta de IA utilizada:** Claude Code (Fable 5) — rama `fix/home-screen-tests`, guiado por Claudia.
+**Prompt o instrucción proporcionada:** > "sí, sigamos con eso" (arreglar los tests preexistentes antes de montar el CI de front#7)
+**Resultado obtenido:**
+- `test/presentation/home/home_screen_test.dart`: asserts actualizados a los textos reales del widget (fuente de verdad); el tap navega con pumps acotados (`pump()` + `pump(400ms)`) en vez de `pumpAndSettle()`.
+- Suite completa **182/182 verde por primera vez** en esta máquina; `flutter analyze` → "No issues found!".
+- Nota: cuando front#4 (i18n, Isaac) extraiga los strings, estos asserts deberán pasar a keys localizadas.
+- Nota de numeración: asume 033 = front#2 y 034 = front#3 (ramas paralelas).
+**Modificaciones realizadas por el equipo:**
+
 ## Entrada 032 — Fix colateral: stubs de ILevelGenerator + lints (cierre Fase 5)
 
 **Fecha:** 2026-06-19

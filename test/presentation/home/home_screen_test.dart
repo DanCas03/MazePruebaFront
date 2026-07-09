@@ -27,9 +27,9 @@ void main() {
 
       // Assert
       expect(find.byType(HomeScreen), findsOneWidget);
-      expect(find.text('Arrow Maze'), findsOneWidget);
-      expect(find.text('Clear the board'), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, 'Play'), findsOneWidget);
+      expect(find.text('ARROW MAZE'), findsOneWidget);
+      expect(find.text('Despeja el tablero. Saca cada flecha.'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'JUGAR'), findsOneWidget);
     });
 
     testWidgets('Play navigates to LevelSelectionScreen', (tester) async {
@@ -37,8 +37,12 @@ void main() {
       await tester.pumpWidget(_appUnderTest());
 
       // Act
-      await tester.tap(find.widgetWithText(FilledButton, 'Play'));
-      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'JUGAR'));
+      // El logo del home anima en bucle infinito (repeat), así que
+      // pumpAndSettle nunca se asentaría; bombeamos la transición de ruta
+      // con pumps acotados.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       // Assert
       expect(find.byType(LevelSelectionScreen), findsOneWidget);

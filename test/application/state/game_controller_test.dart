@@ -231,6 +231,29 @@ void main() {
     expect(s.canUndo, isFalse);
   });
 
+  test('should_preserve_move_count_when_undo_after_victory', () async {
+    // Arrange: dos taps legales vacían el tablero → GameWon con moves == 2.
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    when(uc.execute(any, any)).thenReturn(Right(_twoArrowBoard()));
+    final c = _container(gen, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    await notifier.tapArrow(const ArrowId('arrow-2'));
+    expect(c.read(gameControllerProvider).valueOrNull, isA<GameWon>());
+
+    // Act
+    await notifier.undoMove();
+
+    // Assert: BUG-1 — el contador retrocede a N-1, no se reinicia a 0.
+    final s = c.read(gameControllerProvider).valueOrNull;
+    expect(s, isA<GamePlaying>());
+    expect((s as GamePlaying).moves.value, 1);
+    expect(s.board.arrows.length, 1); // la última flecha fue reinsertada
+  });
+
   test('restartLevel limpia el historial y regenera (canUndo false, 0 movimientos)', () async {
     final gen = MockILevelGenerator();
     final uc = MockRemoveArrowUseCase();

@@ -1,5 +1,18 @@
 # AI History — MazePruebaFront
 
+## Entrada 038 — front#11: límite de tiempo opcional con reloj inyectable
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Issue front#11 (plan E4.5/E4.6, ADR 0001 decisión 6) — dar a los niveles avanzados un `timeLimitSec` opcional y una cuenta atrás que, al agotarse, transiciona a `GameLost`. El reloj debe ser **inyectable** para poder probar el timeout con un reloj falso, sin fragilidad temporal. Depende de front#2 (`GameLost`, ya en `origin/main`) y de back#5 (que el JSON de `Level` traiga `timeLimitSec`); como el front aún genera niveles en local (no consume el back), el portador del límite en el front es `LevelBlueprint`.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `feat/#11-time-limit-clock` desde `origin/main` (no desde `main` local, contaminado por `ci/#7` sin mergear), guiado por Claudia. Convención de modelos del equipo: dominio→Fable, aplicación/cableado→Sonnet, pantallas→Opus; aquí implementado end-to-end por Opus.
+**Prompt o instrucción proporcionada:** > "Sigamos con el issue front#11" (con la indicación de dividir en commits no muy cargados y pedir autorización antes del PR).
+**Resultado obtenido (3 commits):**
+- **Commit 1 (domain):** `lib/domain/game_core/services/i_ticker.dart` (nuevo) — puerto `ITicker` que emite los segundos restantes hasta 0, con `NullTicker` (Null Object) como valor por defecto inerte para no acoplar la aplicación a infraestructura. `LevelBlueprint` gana `timeLimitSec` opcional; la curva asigna límite desde el nivel 6 (90 s bajando 5 s/nivel, piso 30 s). Tests AAA que fijan la curva (sin límite bajo el umbral, 90 s de arranque, decremento, piso e invariante de rango).
+- **Commit 2 (application/infra):** `GameController` recibe un `ITicker` opcional; `loadLevel` arranca la cuenta atrás si el blueprint tiene límite, cada tick refresca `GamePlaying.remainingSeconds` y el 0 emite `GameLost`; la suscripción se cancela en victoria/derrota/recarga y en `dispose` (sin fugas de reloj). `GamePlaying` expone `remainingSeconds` (null si el nivel no está cronometrado). `SystemTicker` (nuevo, infra) implementa `ITicker` sobre `Stream.periodic`. `main.dart` inyecta `SystemTicker` en el override del `GameController` — **esto además restaura el override de `gameControllerProvider` que se había perdido al cablear auth (regresión de BUG-2: entrar a la partida lanzaba `UnimplementedError`)**. Tests AAA con reloj falso controlado a mano: la cuenta atrás solo arranca en niveles con límite, los segundos se actualizan por tick, el timeout pierde, y un tick tardío tras la victoria se ignora.
+- **Commit 3 (presentation):** `game_screen.dart` muestra en la AppBar un `_CountdownChip` (`m:ss`, icono `timer_outlined`) cuando `remainingSeconds != null`. Tests de widget: se ve "1:30" en un nivel cronometrado y no hay reloj en uno sin límite.
+- **Verificación:** `flutter analyze` sobre lo tocado → "No issues found!"; suite completa **220/220 verde**.
+- Nota de numeración: en `origin/main` el tope es 034; 035/036 viven en `ci/#7` y 037 en `feat/#10` (ambas aún sin mergear). Se usa 038 para no colisionar.
+
 ## Entrada 034 — front#3: test de regresión BUG-1 (undo tras victoria preserva el contador)
 
 **Fecha:** 2026-07-08

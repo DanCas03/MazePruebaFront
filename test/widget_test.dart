@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_arrow_maze/core/router/app_router.dart';
+import 'package:flutter_arrow_maze/core/auth/auth_gate.dart';
 import 'package:flutter_arrow_maze/main.dart';
 
 void main() {
   group('ArrowMazeApp', () {
-    testWidgets('renders a MaterialApp wired to the AppRouter home route',
+    testWidgets('renders a MaterialApp guarded by AuthGate, with named game routes still resolvable',
         (WidgetTester tester) async {
       // Arrange
       await tester.pumpWidget(
@@ -19,8 +19,11 @@ void main() {
           tester.widget<MaterialApp>(find.byType(MaterialApp));
 
       // Assert
+      // front#15: el guard de ruta (AuthGate) reemplaza initialRoute como
+      // home; onGenerateRoute se mantiene para que las rutas nombradas del
+      // juego sigan resolviéndose dentro del subtree autenticado.
       expect(find.byType(MaterialApp), findsOneWidget);
-      expect(materialApp.initialRoute, AppRouter.home);
+      expect(materialApp.home, isA<AuthGate>());
       expect(materialApp.onGenerateRoute, isNotNull);
       expect(materialApp.debugShowCheckedModeBanner, isFalse);
     });

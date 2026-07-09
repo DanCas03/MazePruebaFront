@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../presentation/game/screens/game_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
+import '../../presentation/level_selection/defeat_screen.dart';
 import '../../presentation/level_selection/level_selection_screen.dart';
 import '../../presentation/level_selection/victory_screen.dart';
 
@@ -16,23 +17,29 @@ class AppRouter {
   static const String levelSelection = '/levels';
   static const String game = '/game';
   static const String victory = '/victory';
+  static const String defeat = '/defeat';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     return switch (settings.name) {
-      AppRouter.home => _fade(const HomeScreen()),
-      AppRouter.levelSelection => _fade(const LevelSelectionScreen()),
+      AppRouter.home => _fade(const HomeScreen(), settings),
+      AppRouter.levelSelection => _fade(const LevelSelectionScreen(), settings),
       AppRouter.game => _fade(
           GameScreen(
             levelId: settings.arguments is LevelId
                 ? settings.arguments as LevelId
                 : LevelId('1'),
           ),
+          settings,
         ),
-      AppRouter.victory => _fade(const VictoryScreen()),
-      _ => _fade(const HomeScreen()),
+      AppRouter.victory => _fade(const VictoryScreen(), settings),
+      AppRouter.defeat => _fade(const DefeatScreen(), settings),
+      _ => _fade(const HomeScreen(), settings),
     };
   }
 
-  static MaterialPageRoute<dynamic> _fade(Widget page) =>
-      MaterialPageRoute<dynamic>(builder: (_) => page);
+  // Reenvia `settings` a la ruta para que las pantallas destino puedan leer sus
+  // `arguments` via ModalRoute (p.ej. VictoryScreen los movimientos, DefeatScreen
+  // el LevelId a reintentar).
+  static MaterialPageRoute<dynamic> _fade(Widget page, RouteSettings settings) =>
+      MaterialPageRoute<dynamic>(builder: (_) => page, settings: settings);
 }

@@ -634,3 +634,12 @@
 **Prompt o instrucción proporcionada:** > "front#15 login/registro UI"
 **Resultado obtenido:** `lib/domain/auth/value_objects/password.dart` — clase `Password extends Equatable` (mismo patrón que la `Email` VO hermana) con `static const int minLength = 8` y constructor que lanza `ArgumentError` si `value.length < minLength`. `test/domain/auth/password_test.dart` — 4 casos AAA: acepta 8 caracteres, rechaza 7 caracteres, rechaza vacío, igualdad por valor (Equatable). TDD estricto: RED confirmado (`Password` no definido / target of URI doesn't exist) → GREEN confirmado (4/4 tests en verde) tras la implementación mínima. Sin dependencias de otras tareas del feature; VO autocontenido, Dart puro sin imports de Flutter.
 **Modificaciones realizadas por el equipo:**
+
+## Entrada 030 — AuthFailure sellado
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Task 2 de `front#15` (login/registro UI): crear la jerarquía sellada `AuthFailure` en `domain/auth/failures/`, para que la UI de login/registro (tareas posteriores del mismo feature) haga pattern matching exhaustivo sobre los fallos esperados del flujo de autenticación y muestre un mensaje en español sin conocer detalles de red/HTTP.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#15 login/registro UI"
+**Resultado obtenido:** `lib/domain/auth/failures/auth_failure.dart` — `sealed class AuthFailure { const AuthFailure(); String get message; }` con cuatro subclases `const`: `InvalidCredentials` ("Email o contraseña incorrectos"), `EmailAlreadyRegistered` ("Ese email ya está registrado"), `NetworkFailure` ("Sin conexión. Intenta de nuevo") y `UnexpectedFailure` ("Algo salió mal. Intenta más tarde"). `test/domain/auth/auth_failure_test.dart` — 2 casos AAA: los cuatro mensajes exactos y que las subclases son `AuthFailure`. TDD estricto: RED confirmado (tipos no definidos) → GREEN confirmado (2/2 tests en verde) tras la implementación mínima. Dart puro sin imports de Flutter ni dependencias de otras tareas del feature. Verificación completa: `flutter analyze` → No issues found!; `flutter test` → 219/219 en verde (sin regresiones).
+**Modificaciones realizadas por el equipo:**

@@ -39,7 +39,7 @@ lib/
 │   └── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login)
 ├── infrastructure/  Hive persistence, secure token storage, GraphBoardGenerator (implements the domain ports)
 ├── presentation/    Screens, Widgets, Painters + providers/ (the only place infra is built)
-└── core/            Cross-cutting: aspects/ (logger), theme/, router/
+└── core/            Cross-cutting: aspects/ (logger), config/ (AppConfig), network/ (DioClient, AuthTokenInterceptor), theme/, router/
 ```
 
 The rule that keeps the boundary honest: `domain/` imports nothing from Flutter, Hive, or Riverpod, and every Riverpod provider that constructs a concrete `infrastructure/` class lives in `presentation/providers/`.
@@ -51,6 +51,7 @@ The rule that keeps the boundary honest: `domain/` imports nothing from Flutter,
 | **Command** | [`command.dart`](lib/application/commands/command.dart), [`command_invoker.dart`](lib/application/commands/command_invoker.dart), [`remove_arrow_command.dart`](lib/application/commands/remove_arrow_command.dart) | Models a move as a reversible operation. The invoker keeps history and delegates `undo` back to each command, so reversal logic lives with the operation. |
 | **Aggregate Root** | [`arrow_board.dart`](lib/domain/arrows/entities/arrow_board.dart) | `ArrowBoard` is the single entry point to the arrows; lookups are private, so no consumer iterates the arrow list outside the root. |
 | **Adapter** | [`logger_service_adapter.dart`](lib/core/aspects/logger_service_adapter.dart), [`secure_auth_token_repository.dart`](lib/infrastructure/repositories/secure_auth_token_repository.dart) | Wraps an external package behind a domain port, isolating the rest of the app from its concrete API: `logger` behind `ILoggerService`, and `flutter_secure_storage` behind `IAuthTokenStorage`. |
+| **AOP + Adapter** | [`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart) | `AuthTokenInterceptor` (a Dio `Interceptor`) injects `Authorization: Bearer <token>` on every outgoing request by reading `IAuthTokenStorage`, so authenticated calls never repeat that boilerplate in application code. |
 | **Strategy** | [`graph_board_generator.dart`](lib/infrastructure/generators/graph_board_generator.dart) | `GraphBoardGenerator` implements `ILevelGenerator` as a swappable generation algorithm (a DAG that guarantees solvability). |
 | **Composition Root (DI)** | [`dependency_providers.dart`](lib/presentation/providers/dependency_providers.dart) | The one place concrete infrastructure is instantiated and injected as abstractions. |
 | **Custom Painter** | [`arrow_painter.dart`](lib/presentation/game/painters/arrow_painter.dart) | Procedural rendering of arrows with a 3-D glow, avoiding image assets. |

@@ -270,4 +270,72 @@ void main() {
       expect(bp.maxPathLen, 12);
     });
   });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // GROUP 8 — timeLimitSec: opcional, solo en niveles avanzados (front#11)
+  // ══════════════════════════════════════════════════════════════════════════
+  group('LevelBlueprint.forLevel — timeLimitSec (límite de tiempo opcional)', () {
+    test('should_have_no_time_limit_when_level_below_timedFromLevel', () {
+      // Arrange — niveles previos al umbral no tienen presión temporal
+      for (var lvl = 1; lvl < LevelBlueprint.timedFromLevel; lvl++) {
+        // Act
+        final bp = LevelBlueprint.forLevel(lvl);
+
+        // Assert
+        expect(bp.timeLimitSec, isNull, reason: 'nivel $lvl no debe tener límite');
+      }
+    });
+
+    test('should_start_time_limit_at_90s_when_level_is_timedFromLevel', () {
+      // Arrange — primer nivel cronometrado
+      final level = LevelBlueprint.timedFromLevel;
+
+      // Act
+      final bp = LevelBlueprint.forLevel(level);
+
+      // Assert — 90 - (6-6)*5 = 90
+      expect(bp.timeLimitSec, 90);
+    });
+
+    test('should_decrease_time_limit_by_5s_per_level_when_advanced', () {
+      // Arrange
+      const level = 10; // 90 - (10-6)*5 = 70
+
+      // Act
+      final bp = LevelBlueprint.forLevel(level);
+
+      // Assert
+      expect(bp.timeLimitSec, 70);
+    });
+
+    test('should_floor_time_limit_at_30s_when_level_very_high', () {
+      // Arrange — la fórmula raw caería por debajo de 30
+      final highLevels = [20, 30, 60, 100, 1000];
+
+      for (final lvl in highLevels) {
+        // Act
+        final bp = LevelBlueprint.forLevel(lvl);
+
+        // Assert — piso de 30 s
+        expect(
+          bp.timeLimitSec,
+          30,
+          reason: 'nivel $lvl debe tener piso de 30 s, fue ${bp.timeLimitSec}',
+        );
+      }
+    });
+
+    test('should_keep_time_limit_within_30_and_90_when_timed', () {
+      // Arrange — invariante de rango en toda la zona cronometrada
+      for (var lvl = LevelBlueprint.timedFromLevel; lvl <= 100; lvl++) {
+        // Act
+        final bp = LevelBlueprint.forLevel(lvl);
+
+        // Assert
+        expect(bp.timeLimitSec, isNotNull);
+        expect(bp.timeLimitSec!, inInclusiveRange(30, 90),
+            reason: 'nivel $lvl fuera de rango: ${bp.timeLimitSec}');
+      }
+    });
+  });
 }

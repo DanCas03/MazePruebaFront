@@ -1,14 +1,13 @@
 # Arrow Maze — Flutter Client
 
+[![CI](https://github.com/DanCas03/MazePruebaFront/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DanCas03/MazePruebaFront/actions/workflows/ci.yml)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-%3E%3D3.3-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/State-Riverpod-3F51B5)
 ![Hive CE](https://img.shields.io/badge/Storage-Hive%20CE-FFCA28)
-![Tests](https://img.shields.io/badge/tests-105%20passing-brightgreen)
-![Analyze](https://img.shields.io/badge/flutter%20analyze-0%20issues-brightgreen)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
 
-> Status badges reflect the latest local verification. Continuous integration (CI/CD) is not wired up yet; see [Contributing](#contributing).
+> CI runs `flutter analyze` + `flutter test` on every PR and on `main` (see [.github/workflows/ci.yml](.github/workflows/ci.yml)); `main` requires a green build plus one review to merge.
 
 A casual mobile puzzle game built with Flutter. The board is filled with multi-cell arrows of varying sizes and directions. Tap an arrow to slide it in its facing direction; if the path to the board edge is clear of other arrows, it exits. Clear every arrow to win the level.
 

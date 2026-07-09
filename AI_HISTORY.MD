@@ -1,5 +1,16 @@
 # AI History — MazePruebaFront
 
+## Entrada 036 — front#7: CI de GitHub Actions (analyze + test en PR) + badge
+
+**Fecha:** 2026-07-08
+**Tarea o problema abordado:** Issue front#7 — workflow de GitHub Actions que corre `flutter analyze` + `flutter test` en cada PR y en push a `main`; badge real de build en el README (reemplaza los badges estáticos de tests/analyze que decían "105 passing" y ya estaban desactualizados). La protección de `main` (PR obligatorio + checks + 1 review) es configuración del repo en GitHub Settings y se hace aparte (requiere admin).
+**Herramienta de IA utilizada:** Claude Code (Fable 5) — rama `ci/#7-flutter-checks`, guiado por Claudia.
+**Prompt o instrucción proporcionada:** > "sí, sigamos con eso" (front#7 tras dejar la suite verde)
+**Resultado obtenido:**
+- `.github/workflows/ci.yml` (nuevo): job único `flutter analyze + test` en ubuntu-latest con `subosito/flutter-action@v2` (canal stable, cache activado), disparado por `pull_request` y `push` a `main`.
+- `README.md`: badge dinámico de CI apuntando al workflow; nota actualizada (antes decía "CI is not wired up yet").
+- Dependencia de orden: mergear ANTES `fix/home-screen-tests` (Entrada 035) o el primer run del CI saldrá rojo por los tests desincronizados del home.
+- Nota de numeración: asume 033 = front#2, 034 = front#3, 035 = fix home tests (ramas paralelas).
 ## Entrada 034 — front#3: test de regresión BUG-1 (undo tras victoria preserva el contador)
 
 **Fecha:** 2026-07-08
@@ -591,3 +602,12 @@
 - **Tests AAA (22 nuevos):** `auth_token_test.dart` (9: validación + expiración con JWT de juguete y reloj inyectado), `secure_auth_token_repository_test.dart` (5, `SecureTokenDataSource` mockeado — incluye string vacío→null), `restore_session_use_case_test.dart` (4, `IAuthTokenStorage` mockeado — válido/ausente/expirado+clear), `auth_controller_test.dart` (4, `ProviderContainer` con override — build restaura, saveSession, signOut). Mocks vía `build_runner`/mockito.
 - **TDD:** RED→GREEN verificado en cada ciclo (AuthToken aislado sin mocks; resto con stubs `UnimplementedError` → impl). `flutter analyze`: No issues found! `flutter test`: **127/127** (105 previos + 22 nuevos, sin regresiones).
 
+
+## Entrada 028 — fix: eliminar imports sin uso en main.dart (desbloquea CI del PR #27)
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** El PR #27 (`ci/#7-flutter-checks`, que añade el workflow de `flutter analyze` + `flutter test` en cada PR) no podía mergearse: el propio check de `flutter analyze` fallaba con exit code 1 por 4 warnings `unused_import` en `lib/main.dart` (líneas 12-15: `command_invoker.dart`, `game_controller.dart`, `remove_arrow_use_case.dart`, `graph_board_generator.dart`). Eran restos del wiring manual de GameController previo a que el provider asumiera su propia composición; el composition root ya no los referencia.
+**Herramienta de IA utilizada:** Claude Code (Fable 5)
+**Prompt o instrucción proporcionada:** > "Ayudame a resolver el pull request del front que esta pendiente. Las pruebas salen con error por lo que no se puede hacer el merge (no quiero quitar la regla de que los pull request deben tener bien las pruebas)."
+**Resultado obtenido:** Se eliminaron los 4 imports sin uso de `lib/main.dart`. Sin cambios de comportamiento ni de funcionalidad pública (no aplica actualización de README ni tests nuevos: es limpieza de imports detectada por el linter). Verificación local en la rama del PR: `flutter analyze` → No issues found!; `flutter test` → 208/208 en verde.
+**Modificaciones realizadas por el equipo:**

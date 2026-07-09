@@ -22,8 +22,15 @@ class Score extends Equatable {
 
   final int value;
 
-  const Score(this.value)
-      : assert(value >= 0, 'Score must not be negative');
+  /// Invariante de dominio validada en tiempo de ejecución (no con `assert`,
+  /// que se elimina en builds release): un puntaje nunca es negativo. Coherente
+  /// con `AuthToken` en este repo y con el VO `Score` del back (contrato de
+  /// `ScoreEntry`/`SubmitScore`, ADR 0001 decisión 7).
+  Score(this.value) {
+    if (value < 0) {
+      throw ArgumentError('Score must not be negative');
+    }
+  }
 
   /// Calcula el puntaje de una partida ganada a partir de sus métricas.
   ///

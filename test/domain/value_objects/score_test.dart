@@ -106,13 +106,13 @@ void main() {
 
   group('Score — invariantes', () {
     test('should_reject_negative_value', () {
-      // Arrange / Act / Assert
-      expect(() => Score(-1), throwsA(isA<AssertionError>()));
+      // Arrange / Act / Assert — invariante en runtime (vale también en release)
+      expect(() => Score(-1), throwsArgumentError);
     });
 
     test('should_be_equal_when_same_value', () {
       // Arrange / Act / Assert
-      expect(const Score(100), const Score(100));
+      expect(Score(100), Score(100));
     });
   });
 }

@@ -15,6 +15,7 @@ import 'application/use_cases/remove_arrow_use_case.dart';
 import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
+import 'infrastructure/time/system_ticker.dart';
 
 /// Composition root: inicializa Hive y conecta las dependencias concretas de
 /// GameController via ProviderScope.overrides (DIP). Ninguna capa interna
@@ -38,6 +39,18 @@ void main() async {
       overrides: [
         authControllerProvider.overrideWith(
           () => AuthController(tokenStorage, RestoreSessionUseCase(tokenStorage)),
+        ),
+        // GameController compuesto con sus dependencias concretas (DIP). Incluye
+        // el reloj real (SystemTicker) que dispara la cuenta atrás de los niveles
+        // con límite (front#11). Sin este override, entrar a la partida lanzaría
+        // UnimplementedError (regresión de BUG-2 al cablear auth).
+        gameControllerProvider.overrideWith(
+          () => GameController(
+            GraphBoardGenerator(),
+            RemoveArrowUseCase(),
+            CommandInvoker(),
+            const SystemTicker(),
+          ),
         ),
       ],
       child: const ArrowMazeApp(),

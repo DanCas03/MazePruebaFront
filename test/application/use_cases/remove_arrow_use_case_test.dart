@@ -3,7 +3,6 @@ import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.d
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/arrow_not_found_exception.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/domain_exception.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception.dart';
@@ -12,8 +11,8 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 
 Arrow _makeArrow({required String id, required int row, required int col,
     Direction dir = Direction.right, int len = 2}) =>
-    Arrow(id: ArrowId(id), tail: Position(row: row, col: col),
-        direction: dir, length: ArrowLength(len));
+    Arrow.straight(id: ArrowId(id), tail: Position(row: row, col: col),
+        direction: dir, length: len);
 
 void main() {
   late RemoveArrowUseCase sut;

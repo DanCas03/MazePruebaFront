@@ -7,6 +7,10 @@ class LevelId extends Equatable {
     if (value.trim().isEmpty) throw InvalidLevelIdException('LevelId cannot be blank');
   }
 
+  /// Número de nivel para escalar dificultad y sembrar la generación.
+  /// Fallback a 1 si el valor no es numérico (ids siempre son "1", "2", …).
+  int get number => int.tryParse(value) ?? 1;
+
   @override
   List<Object?> get props => [value];
 }

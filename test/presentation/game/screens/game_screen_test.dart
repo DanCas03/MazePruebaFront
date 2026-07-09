@@ -11,11 +11,11 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
+import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
 /// Genera un tablero con una unica flecha de salida libre, de modo que al
@@ -26,16 +26,18 @@ class _SingleArrowGenerator implements ILevelGenerator {
     required int cols,
     required int rows,
     required int arrowCount,
+    required int maxPathLen,
+    int? seed,
   }) {
     return ArrowBoard(
       cols: 4,
       rows: 4,
       arrows: [
-        Arrow(
+        Arrow.straight(
           id: const ArrowId('a1'),
           tail: Position(row: 0, col: 0),
           direction: Direction.left,
-          length: ArrowLength(1),
+          length: 1,
         ),
       ],
     );
@@ -61,7 +63,9 @@ Widget _host(ProviderContainer container) => UncontrolledProviderScope(
               settings: settings,
               builder: (_) => const VictoryScreen(),
             ),
-          _ => MaterialPageRoute<void>(builder: (_) => const GameScreen()),
+          _ => MaterialPageRoute<void>(
+              builder: (_) => GameScreen(levelId: LevelId('1')),
+            ),
         },
       ),
     );
@@ -106,5 +110,41 @@ void main() {
       expect(find.byType(VictoryScreen), findsOneWidget);
       expect(find.text('1 moves'), findsOneWidget);
     });
+
+    // BUG-2 regression: provider not overridden + loadLevel never called on mount
+    testWidgets(
+      'BUG-2 regression: navigating to /game via router renders board without manual loadLevel call',
+      (tester) async {
+        // Arrange — ProviderScope with override mirrors post-fix main.dart composition root
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              gameControllerProvider.overrideWith(
+                () => GameController(
+                  _SingleArrowGenerator(),
+                  RemoveArrowUseCase(),
+                  CommandInvoker(),
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark(),
+              initialRoute: AppRouter.game,
+              onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => GameScreen(levelId: LevelId('1')),
+              ),
+            ),
+          ),
+        );
+
+        // Act — initState post-frame callback fires; loadLevel completes async
+        await tester.pumpAndSettle();
+
+        // Assert — board renders arrows, not SizedBox.shrink
+        expect(find.byType(GameScreen), findsOneWidget);
+        expect(find.byType(ArrowWidget), findsWidgets);
+      },
+    );
   });
 }

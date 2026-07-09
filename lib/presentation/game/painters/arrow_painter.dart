@@ -1,135 +1,130 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../../domain/arrows/entities/arrow.dart';
 import '../../../domain/game_core/value_objects/direction.dart';
 import '../../../domain/game_core/value_objects/position.dart';
-import '../../../core/theme/app_colors.dart';
 
-/// Pinta una flecha multi-celda de forma procedural sobre el [Canvas]
-/// (sin SVG ni assets), con profundidad 3D segun el diseno aprobado
-/// (decisions/2026-06-17-ui-design.md): cuerpo de color por direccion,
-/// sombra proyectada abajo-derecha, bisel/relieve arriba-izquierda, punta
-/// triangular clara y un glow purpura cuando la pieza esta resaltada.
+/// Pinta una flecha multi-celda como una POLILÍNEA gruesa (recorre los centros
+/// de `cells`) con glow, brillo interior y punta triangular orientada por
+/// `headDirection`. Coordenadas locales al bounding box (origen minCol/minRow).
+///
+/// Agnóstico de la forma: sirve igual para flechas rectas y dobladas —
+/// solo depende de `cells` y de `headDirection` (no del último segmento).
 class ArrowPainter extends CustomPainter {
-  final Arrow arrow;
-  final double cellSize;
-  final bool isHighlighted;
+  final List<Position> cells;
+  final int minCol;
+  final int minRow;
+  final double cell;
+  final Color color;
+  final Direction headDirection;
 
   const ArrowPainter({
-    required this.arrow,
-    required this.cellSize,
-    this.isHighlighted = false,
+    required this.cells,
+    required this.minCol,
+    required this.minRow,
+    required this.cell,
+    required this.color,
+    required this.headDirection,
   });
 
-  /// Resuelve el color del cuerpo a partir de la direccion. La paleta es la
-  /// unica fuente de verdad de color (AppColors); el painter no hardcodea hex.
-  static Color bodyColorFor(Direction direction) => switch (direction) {
-        Direction.up => AppColors.arrowUp,
-        Direction.down => AppColors.arrowDown,
-        Direction.left => AppColors.arrowLeft,
-        Direction.right => AppColors.arrowRight,
-      };
+  Offset _center(Position p) => Offset(
+        (p.col - minCol + 0.5) * cell,
+        (p.row - minRow + 0.5) * cell,
+      );
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bodyColor =
-        isHighlighted ? AppColors.arrowHighlight : bodyColorFor(arrow.direction);
-    final glowColor = AppColors.secondary.withValues(alpha: isHighlighted ? 0.6 : 0.0);
-    final bodyPath = _bodyPath();
+    if (cells.isEmpty) return;
+    final stroke = cell * 0.40;
 
-    // --- Glow layer (detras del cuerpo, solo si esta resaltada) ---
-    if (isHighlighted) {
-      final glowPaint = Paint()
-        ..color = glowColor
-        ..strokeWidth = cellSize * 0.55
+    final body = Path();
+    final first = _center(cells.first);
+    body.moveTo(first.dx, first.dy);
+    for (final p in cells.skip(1)) {
+      final c = _center(p);
+      body.lineTo(c.dx, c.dy);
+    }
+
+    // Glow (debajo).
+    canvas.drawPath(
+      body,
+      Paint()
+        ..color = color.withValues(alpha: 0.30)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, stroke * 0.45),
+    );
+
+    // Cuerpo.
+    canvas.drawPath(
+      body,
+      Paint()
+        ..color = color
         ..style = PaintingStyle.stroke
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-      canvas.drawPath(bodyPath, glowPaint);
-    }
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
 
-    // --- Sombra proyectada (offset abajo-derecha, difuminada): sensacion de
-    // pieza que flota sobre el tablero. No tapa celdas: blur moderado. ---
-    final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.35)
-      ..strokeWidth = cellSize * 0.35
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-    canvas.save();
-    canvas.translate(cellSize * 0.06, cellSize * 0.06);
-    canvas.drawPath(bodyPath, shadowPaint);
-    canvas.restore();
+    // Brillo interior.
+    canvas.drawPath(
+      body,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.22)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke * 0.26
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
 
-    // --- Cuerpo de la flecha ---
-    final bodyPaint = Paint()
-      ..color = bodyColor
-      ..strokeWidth = cellSize * 0.35
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(bodyPath, bodyPaint);
-
-    // --- Bisel/relieve: highlight fino arriba-izquierda sobre el cuerpo ---
-    final bevelPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.25)
-      ..strokeWidth = cellSize * 0.08
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    canvas.save();
-    canvas.translate(-cellSize * 0.05, -cellSize * 0.05);
-    canvas.drawPath(bodyPath, bevelPaint);
-    canvas.restore();
-
-    // --- Punta triangular clara ---
-    _drawHead(canvas, bodyColor);
+    _drawHead(canvas, stroke);
   }
 
-  Path _bodyPath() {
-    final cells = arrow.cells;
-    final path = Path();
-    final start = _cellCenter(cells.first);
-    path.moveTo(start.dx, start.dy);
-    for (final cell in cells.skip(1)) {
-      final center = _cellCenter(cell);
-      path.lineTo(center.dx, center.dy);
-    }
-    return path;
-  }
-
-  Offset _cellCenter(Position pos) => Offset(
-        (pos.col + 0.5) * cellSize,
-        (pos.row + 0.5) * cellSize,
-      );
-
-  void _drawHead(Canvas canvas, Color color) {
-    final headCenter = _cellCenter(arrow.head);
-    final angle = switch (arrow.direction) {
+  void _drawHead(Canvas canvas, double stroke) {
+    final tip = _center(cells.last);
+    final angle = switch (headDirection) {
       Direction.right => 0.0,
       Direction.left => math.pi,
       Direction.down => math.pi / 2,
       Direction.up => -math.pi / 2,
     };
-    final size = cellSize * 0.3;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = Path()
-      ..moveTo(headCenter.dx + math.cos(angle) * size,
-          headCenter.dy + math.sin(angle) * size)
-      ..lineTo(headCenter.dx + math.cos(angle + 2.6) * size,
-          headCenter.dy + math.sin(angle + 2.6) * size)
-      ..lineTo(headCenter.dx + math.cos(angle - 2.6) * size,
-          headCenter.dy + math.sin(angle - 2.6) * size)
+    final headLen = stroke * 1.2;
+    final headHalf = stroke * 0.95;
+    final apex = Offset(
+      tip.dx + math.cos(angle) * (cell * 0.5),
+      tip.dy + math.sin(angle) * (cell * 0.5),
+    );
+    final base = Offset(
+      apex.dx - math.cos(angle) * headLen,
+      apex.dy - math.sin(angle) * headLen,
+    );
+    final perp = angle + math.pi / 2;
+    final left = Offset(
+      base.dx + math.cos(perp) * headHalf,
+      base.dy + math.sin(perp) * headHalf,
+    );
+    final right = Offset(
+      base.dx - math.cos(perp) * headHalf,
+      base.dy - math.sin(perp) * headHalf,
+    );
+    final head = Path()
+      ..moveTo(apex.dx, apex.dy)
+      ..lineTo(left.dx, left.dy)
+      ..lineTo(right.dx, right.dy)
       ..close();
-    canvas.drawPath(path, paint);
+    canvas.drawPath(head, Paint()..color = color);
   }
 
   @override
-  bool shouldRepaint(ArrowPainter old) =>
-      old.arrow != arrow || old.isHighlighted != isHighlighted;
+  bool shouldRepaint(covariant ArrowPainter old) =>
+      // `cells` se compara por contenido (listEquals); `Position` es Equatable,
+      // así que dos polilíneas con las mismas celdas no fuerzan un repintado.
+      !listEquals(old.cells, cells) ||
+      old.color != color ||
+      old.cell != cell ||
+      old.minCol != minCol ||
+      old.minRow != minRow ||
+      old.headDirection != headDirection;
 }

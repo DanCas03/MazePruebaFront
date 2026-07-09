@@ -4,7 +4,6 @@ import 'package:flutter_arrow_maze/application/commands/remove_arrow_command.dar
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
-import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_length.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 
@@ -14,11 +13,11 @@ void main() {
   setUp(() => sut = CommandInvoker());
 
   ArrowBoard makeBoard() {
-    final arrow = Arrow(
+    final arrow = Arrow.straight(
       id: const ArrowId('a1'),
       tail: Position(row: 0, col: 0),
       direction: Direction.right,
-      length: ArrowLength(2),
+      length: 2,
     );
     return ArrowBoard(arrows: [arrow], cols: 4, rows: 4);
   }
@@ -41,17 +40,17 @@ void main() {
 
     test('undo delegates to the command, restoring onto the current board', () {
       // Arrange — start from a two-arrow board and remove a1.
-      final a1 = Arrow(
+      final a1 = Arrow.straight(
         id: const ArrowId('a1'),
         tail: Position(row: 0, col: 0),
         direction: Direction.right,
-        length: ArrowLength(2),
+        length: 2,
       );
-      final a2 = Arrow(
+      final a2 = Arrow.straight(
         id: const ArrowId('a2'),
         tail: Position(row: 2, col: 0),
         direction: Direction.right,
-        length: ArrowLength(2),
+        length: 2,
       );
       final board = ArrowBoard(arrows: [a1, a2], cols: 4, rows: 4);
       final cmd = RemoveArrowCommand(const ArrowId('a1'));
@@ -76,6 +75,18 @@ void main() {
       final result = sut.undo(board);
       // Assert
       expect(identical(result, board), isTrue);
+      expect(sut.canUndo, isFalse);
+    });
+
+    test('clear vacía el historial: canUndo pasa a false', () {
+      // Arrange — hay al menos un comando en el historial.
+      final board = makeBoard();
+      final cmd = RemoveArrowCommand(const ArrowId('a1'));
+      sut.executeCommand(cmd, board);
+      expect(sut.canUndo, isTrue);
+      // Act
+      sut.clear();
+      // Assert
       expect(sut.canUndo, isFalse);
     });
   });

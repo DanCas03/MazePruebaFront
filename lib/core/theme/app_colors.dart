@@ -1,44 +1,56 @@
 import 'package:flutter/material.dart';
 
-/// Paleta de Arrow Maze — "Dark neon" con fondo casi-negro neutro y su
-/// contraparte clara frosted-on-light. Hex aprobados por el usuario
-/// (decisions/2026-06-17-ui-design.md). Estas constantes son la fuente unica
-/// de verdad de color; ni widgets ni painters hardcodean hex.
+/// Paleta de Arrow Maze — índigo profundo + tonos joya maduros. Es la fuente
+/// única de verdad de color; widgets y painters no hardcodean hex. El color
+/// por flecha vive en presentación (ver arrow_color.dart), no en el dominio.
 class AppColors {
   AppColors._();
 
   // --- Tema oscuro (protagonista) ---
-  static const Color background = Color(0xFF0A0A0C); // casi negro neutro
-  static const Color surface = Color(0xFF141417); // superficie elevada
+  static const Color background = Color(0xFF0E1020);
+  static const Color backgroundDeep = Color(0xFF070812);
+  static const Color surface = Color(0xFF181B30);
+  static const Color pill = Color(0xFF242843);
+  static const Color onBackground = Color(0xFFE6E8F5);
+  static const Color onSurfaceMuted = Color(0xFF7E84A8);
+  static const Color primary = Color(0xFF5B6CC4); // seed / CTA
+  static const Color secondary = Color(0xFF8A6FD0); // acento violeta (glow)
+  static const Color victory = Color(0xFFE0B45A);
+
   static const Color glassBorder = Color(0x26FFFFFF); // blanco ~15%
   static const Color glassFill = Color(0x14FFFFFF); // blanco ~8%
-  static const Color primary = Color(0xFF22D3EE); // cyan neon
-  static const Color secondary = Color(0xFFA855F7); // purpura accent
-  static const Color onBackground = Color(0xFFE5E7EB); // texto on-dark
-  static const Color onSurfaceMuted = Color(0xFF94A3B8); // texto muted
 
-  // Flechas por direccion (tema oscuro)
-  static const Color arrowUp = Color(0xFFFB7185);
-  static const Color arrowDown = Color(0xFF38BDF8);
-  static const Color arrowLeft = Color(0xFF34D399);
-  static const Color arrowRight = Color(0xFFFBBF24);
+  // Estado
+  static const Color success = Color(0xFF46B98C);
+  static const Color warning = Color(0xFFD7A24A);
+  static const Color error = Color(0xFFCF646F);
 
-  // Cuerpo de flecha resaltada (seleccion): blanco casi puro para que el glow
-  // purpura (secondary) y el bisel destaquen sobre la pieza activa.
-  static const Color arrowHighlight = Color(0xFFF8FAFC);
-
-  // Estado (tema oscuro)
-  static const Color success = Color(0xFF34D399);
-  static const Color warning = Color(0xFFFBBF24);
-  static const Color error = Color(0xFFFB7185);
-
-  // --- Tema claro (contraparte, "seguir sistema") ---
-  static const Color lightBackground = Color(0xFFF4F4F6);
+  // --- Tema claro (contraparte) ---
+  static const Color lightBackground = Color(0xFFF4F5FB);
+  static const Color lightBackgroundDeep = Color(0xFFE7E9F4);
   static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightPill = Color(0xFFE7E9F5);
+  static const Color lightOnBackground = Color(0xFF1B1E33);
+  static const Color lightOnSurfaceMuted = Color(0xFF6B7095);
+  static const Color lightPrimary = Color(0xFF4B5BB5);
+  static const Color lightSecondary = Color(0xFF7C5FC0);
+
   static const Color lightGlassBorder = Color(0x14000000); // negro ~8%
   static const Color lightGlassFill = Color(0x0A000000); // negro ~4%
-  static const Color lightPrimary = Color(0xFF06B6D4); // cyan profundizado
-  static const Color lightSecondary = Color(0xFF9333EA); // purpura profundizado
-  static const Color lightOnBackground = Color(0xFF111827);
-  static const Color lightOnSurfaceMuted = Color(0xFF475569);
+
+  // --- Paleta de flechas (tonos joya). Indexada por flecha desde presentación. ---
+  static const List<Color> arrowPalette = <Color>[
+    Color(0xFF46B98C), // esmeralda
+    Color(0xFF39ACBE), // teal
+    Color(0xFFD56C8E), // rosa
+    Color(0xFFD7A24A), // ámbar
+    Color(0xFFC9764E), // terracota
+    Color(0xFF8A6FD0), // violeta
+    Color(0xFF5E7AD0), // índigo
+    Color(0xFFCF646F), // rojo apagado
+  ];
+
+  /// Resuelve el color de una flecha por índice (wrap-around módulo la paleta).
+  static Color arrowColor(int index) =>
+      arrowPalette[index % arrowPalette.length];
 }

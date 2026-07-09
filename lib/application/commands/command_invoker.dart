@@ -22,4 +22,7 @@ class CommandInvoker {
     final command = _history.removeLast();
     return command.undo(currentBoard);
   }
+
+  /// Vacía el historial (para reiniciar un nivel sin arrastrar undos previos).
+  void clear() => _history.clear();
 }

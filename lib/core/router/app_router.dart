@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/board/value_objects/level_id.dart';
 import '../../presentation/game/screens/game_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
 import '../../presentation/level_selection/level_selection_screen.dart';
@@ -20,7 +21,13 @@ class AppRouter {
     return switch (settings.name) {
       AppRouter.home => _fade(const HomeScreen()),
       AppRouter.levelSelection => _fade(const LevelSelectionScreen()),
-      AppRouter.game => _fade(const GameScreen()),
+      AppRouter.game => _fade(
+          GameScreen(
+            levelId: settings.arguments is LevelId
+                ? settings.arguments as LevelId
+                : LevelId('1'),
+          ),
+        ),
       AppRouter.victory => _fade(const VictoryScreen()),
       _ => _fade(const HomeScreen()),
     };

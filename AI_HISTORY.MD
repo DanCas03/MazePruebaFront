@@ -1,5 +1,19 @@
 # AI History — MazePruebaFront
 
+## Entrada 037 — front#10: pantalla de derrota con reintento
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Issue front#10 — al entrar en `GameLost` (5º choque, front#2) mostrar una pantalla de derrota con un CTA "Retry" que recarga el mismo nivel. Requería que la navegación por ruta nombrada propagara los `arguments` (el `_fade` del router los descartaba), porque el reintento necesita el `LevelId` de la partida perdida.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `feat/#10-defeat-screen` desde `origin/main`, guiado por Claudia.
+**Prompt o instrucción proporcionada:** > "Sigamos con el issue front#10"
+**Resultado obtenido:**
+- `lib/presentation/level_selection/defeat_screen.dart` (nuevo): `DefeatScreen` espejo de `VictoryScreen` (icono `error`, "Out of Moves!", resumen `N moves · M strikes`). CTA primario "Retry" hace `pushReplacementNamed(AppRouter.game, arguments: levelId)` → monta un `GameScreen` nuevo que recarga el nivel en `initState` (generación determinista ⇒ mismo tablero). CTA secundario "Back to Levels" limpia la pila. Args de ruta tipados con el record `DefeatArgs = ({LevelId levelId, int moves, int strikes})`; si faltan, "Retry" queda deshabilitado.
+- `lib/core/router/app_router.dart`: ruta `/defeat` registrada; `_fade` ahora **reenvía `RouteSettings`** a la ruta (antes los omitía, así que `ModalRoute...arguments` llegaba nulo en producción). Efecto colateral positivo: `VictoryScreen` ahora muestra los movimientos reales en la app, no solo en tests.
+- `lib/presentation/game/screens/game_screen.dart`: el `ref.listen` que ya navegaba a victoria en `GameWon` ahora también navega a `/defeat` en `GameLost`, pasando `levelId`, `moves` y `strikes`.
+- Tests AAA: `game_screen_test.dart` — `navigates to DefeatScreen when the fifth collision is reached` (transición requerida por el issue, con un generador de flecha bloqueada); `defeat_screen_test.dart` (nuevo) — render de args, fallback con "Retry" deshabilitado, "Retry" reenvía el `LevelId`, "Back to Levels" vuelve al selector.
+- Verificación: `flutter analyze` sobre lo tocado → "No issues found!"; suite completa **213/213 verde**.
+- Nota de numeración: en `main` la última entrada es 034; 035 (fix home) y 036 (front#7 CI) viven en `ci/#7-flutter-checks` aún sin mergear. Se reserva 037 para no colisionar cuando esa rama entre.
+
 ## Entrada 034 — front#3: test de regresión BUG-1 (undo tras victoria preserva el contador)
 
 **Fecha:** 2026-07-08

@@ -17,10 +17,13 @@ import 'hive_registrar.g.dart';
 import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
+import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
 import 'infrastructure/repositories/remote_auth_repository.dart';
+import 'infrastructure/repositories/remote_progress_repository.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
 import 'infrastructure/time/system_ticker.dart';
+import 'presentation/providers/dependency_providers.dart';
 
 /// Composition root: inicializa Hive y conecta las dependencias concretas de
 /// GameController via ProviderScope.overrides (DIP). Ninguna capa interna
@@ -64,6 +67,11 @@ void main() async {
         // front#15: repo remoto de auth compuesto aquí (DIP); las capas
         // internas solo conocen el puerto IAuthRepository.
         authRepositoryProvider.overrideWithValue(authRepository),
+        // front#18: repo remoto de progreso compuesto con el mismo Dio (token
+        // interceptor). Las capas internas solo conocen el puerto.
+        remoteProgressRepositoryProvider.overrideWithValue(
+          RemoteProgressRepository(RemoteProgressDataSource(dio)),
+        ),
       ],
       child: const ArrowMazeApp(),
     ),

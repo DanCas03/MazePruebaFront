@@ -1,5 +1,17 @@
 # AI History — MazePruebaFront
 
+## Entrada 037 — front#1 (fragmento 1): LevelJsonEncoder (formato wire arrow-path)
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Fragmento 1 del issue front#1 (= E2.1 del backlog de cutover). Serializar un `ArrowBoard` al JSON arrow-path wire-estricto del contrato canónico (`CONTEXT-MAP.md` raíz): `{levelId, cols, rows, timeLimitSec?, arrows:[{id, headDir, cells:[[row,col],…]}]}`, con `cells` de cola→cabeza y sin claves extra (copiable tal cual al seed del back). El encoder es el inverso natural del futuro `LevelDto.fromJson` (E1.3/front#8) sin adelantarlo.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `chore/front1-level-candidates`; tests delegados a subagente QA.
+**Prompt o instrucción proporcionada:** > "Ejecuta el plan del issue 1 del front (script generador de candidatos)."
+**Resultado obtenido:**
+- `lib/infrastructure/serialization/level_json_encoder.dart` (nuevo): `LevelJsonEncoder` con `toMap(...)` y `encode(...)`. `encode` usa `JsonEncoder.withIndent('  ')` + newline final para salida byte-estable (congelable en git). Solo importa `domain/` (capa correcta).
+- `test/infrastructure/serialization/level_json_encoder_test.dart` (nuevo): 7 tests AAA `should_..._when_...` sin mocks (claves exactas del wire, cells cola→cabeza en flecha doblada, 4 direcciones, omitir/incluir timeLimitSec, arrows vacío, indent+newline). 7/7 en verde; `flutter analyze` sin issues nuevos.
+**Modificaciones realizadas por el equipo:**
+
+
 ## Entrada 036 — front#7: CI de GitHub Actions (analyze + test en PR) + badge
 
 **Fecha:** 2026-07-08

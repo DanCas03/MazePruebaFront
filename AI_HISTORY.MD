@@ -826,3 +826,30 @@
   - **GREEN (Step 4):** `flutter test` tras la implementación → "All tests passed! (5/5)".
   - **Analyze (Step 5):** `flutter analyze lib/domain/board/value_objects/level_progress.dart` → "No issues found!" (0.1s).
 **Modificaciones realizadas por el equipo:**
+
+## Entrada 043 — front#18 — ProgressReconciler
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** front#18 — sync local progress with server. Segundo fragmento: implementar el servicio de dominio `ProgressReconciler` (capa pura Dart) que fusiona el progreso local y remoto aplicando la regla "best score wins, completed = OR": por nivel, completa si está completado en cualquiera de las dos fuentes; score/estrellas toman el máximo (tratando null como peor). Reproduce la regla de `SyncProgressUseCase` del back para poder reconciliar sin depender del orden de respuesta del server.
+**Herramienta de IA utilizada:** Claude Haiku 4.5 (agente task-2)
+**Prompt o instrucción proporcionada:** > "Implementar Task 2: ProgressReconciler domain service — TDD (RED → GREEN → analyze + AI_HISTORY + commit). Consumes: LevelProgress, LevelId. Produces: reconcile(local, remote) merging by levelId.value; completed = local || remote; bestScore/bestStars = máximo tratando null como peor."
+**Resultado obtenido:**
+- `lib/domain/board/services/progress_reconciler.dart` (nuevo): clase pura `ProgressReconciler` con método público `List<LevelProgress> reconcile(List<LevelProgress> local, List<LevelProgress> remote)` que:
+  1. Indexa local por `levelId.value` en un mapa (`byId`).
+  2. Itera remote; para cada nivel, si existe en local lo fusiona via `_merge()`, si no lo añade directamente.
+  3. Retorna `byId.values.toList()`.
+  - Método privado `_merge(LevelProgress a, LevelProgress b)` construye una nueva `LevelProgress` combinando: `levelId` de `a`, `completed` con OR lógico, scores/estrellas con `_maxNullable()`.
+  - Método privado `_maxNullable(int? a, int? b)` retorna el máximo no-null (si uno es null retorna el otro; si ambos null retorna null; si ambos no-null retorna el máximo).
+  - Dominio puro: única dependencia `level_progress.dart`; cero imports de Flutter/Hive/Dio/Riverpod.
+- `test/domain/board/services/progress_reconciler_test.dart` (nuevo): 4 tests AAA en `group('reconcile')`:
+  1. `should_keep_higher_score_when_both_sides_have_score` — local(score=800, stars=2) + remote(score=1200, stars=3) → merged(score=1200, stars=3).
+  2. `should_prefer_non_null_score_when_one_side_is_null` — local(no score) + remote(score=500, stars=1) → merged(score=500, stars=1).
+  3. `should_mark_completed_when_completed_on_either_side` — local(completed=false) + remote(completed=true) → merged(completed=true).
+  4. `should_include_levels_present_on_only_one_side` — local=[lp('1')], remote=[lp('2')] → merged.length=2 (ambos niveles presentes).
+  - Helper `lp(id, completed, {score, stars})` factory para tests (reduce boilerplate).
+  - Helper `pick(list, id)` para acceso por `levelId.value` (lee como en la app real).
+- TDD estricto verificado:
+  - **RED (Step 2):** `flutter test test/domain/board/services/progress_reconciler_test.dart` → "Error: Error when reading 'progress_reconciler.dart': No such file or directory" + 3 errores de compilación (ProgressReconciler not a type).
+  - **GREEN (Step 4):** `flutter test test/domain/board/services/progress_reconciler_test.dart` → "00:00 +4: All tests passed!" (4/4).
+  - **Analyze (Step 5):** `flutter analyze lib/domain/board/services/progress_reconciler.dart` → "No issues found!" (0.1s).
+**Modificaciones realizadas por el equipo:**

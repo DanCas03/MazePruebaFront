@@ -65,6 +65,14 @@ Definición de un nivel (dimensiones + flechas) identificada por `LevelId`, **ob
 backend**. El cliente no genera los niveles oficiales.
 _Avoid_: mapa, stage, pantalla.
 
+**GeneratedBoard** (Tablero generado):
+`ArrowBoard` creado **localmente** por el generador con parámetros elegidos por el jugador
+(dimensiones, preset de dificultad, timer opcional, seed opcional); soluble por construcción.
+Efímero: no es un `Level` (no tiene `LevelId`), no puntúa, no persiste `Progress` ni participa
+del `Leaderboard`. Reproducible por (seed, parámetros) **dentro de una misma versión de la
+app**. "Generar nivel" es solo el copy de UI de la feature.
+_Avoid_: nivel generado, nivel random, nivel de práctica, modo práctica, Candidato.
+
 **Progress** (Progreso):
 Por nivel: completado, mejores estrellas y mejor score. Se guarda local (Hive) y se
 sincroniza con el backend.

@@ -15,6 +15,7 @@ import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_token_storage
 import 'package:flutter_arrow_maze/domain/auth/value_objects/auth_token.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_remote_progress_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
+import 'package:flutter_arrow_maze/infrastructure/repositories/in_memory_session_token_store.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/login_screen.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/register_screen.dart';
@@ -53,7 +54,8 @@ void main() {
         overrides: [
           authRepositoryProvider.overrideWithValue(repo),
           authControllerProvider.overrideWith(
-            () => AuthController(storage, RestoreSessionUseCase(storage)),
+            () => AuthController(
+                storage, RestoreSessionUseCase(storage), InMemorySessionTokenStore()),
           ),
           remoteProgressRepositoryProvider.overrideWithValue(_FakeRemote()),
         ],

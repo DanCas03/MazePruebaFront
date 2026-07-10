@@ -12,6 +12,7 @@ import 'package:flutter_arrow_maze/domain/auth/failures/auth_failure.dart';
 import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_repository.dart';
 import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_token_storage.dart';
 import 'package:flutter_arrow_maze/domain/auth/value_objects/auth_token.dart';
+import 'package:flutter_arrow_maze/infrastructure/repositories/in_memory_session_token_store.dart';
 
 import 'auth_form_controller_test.mocks.dart';
 
@@ -29,7 +30,8 @@ void main() {
   ProviderContainer makeContainer() => ProviderContainer(overrides: [
         authRepositoryProvider.overrideWithValue(repo),
         authControllerProvider.overrideWith(
-          () => AuthController(storage, RestoreSessionUseCase(storage)),
+          () => AuthController(
+              storage, RestoreSessionUseCase(storage), InMemorySessionTokenStore()),
         ),
       ]);
 

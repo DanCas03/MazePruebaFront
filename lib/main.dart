@@ -21,6 +21,7 @@ import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
+import 'infrastructure/repositories/in_memory_session_token_store.dart';
 import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
@@ -44,15 +45,22 @@ void main() async {
     SecureTokenDataSource(const FlutterSecureStorage()),
   );
 
-  // Cliente HTTP con la URL base configurable y el interceptor de token (front#15).
-  final dio = DioClient.create(tokenStorage);
+  // front#16: fuente única del token vivo (memoria), compartida por el
+  // interceptor y el AuthController. Firma las llamadas autenticadas también en
+  // sesiones `remember:false`.
+  final sessionTokenStore = InMemorySessionTokenStore();
+
+  // Cliente HTTP con la URL base configurable y el interceptor de token que lee
+  // la sesión viva (front#15/#16).
+  final dio = DioClient.create(sessionTokenStore);
   final authRepository = RemoteAuthRepository(AuthRemoteDataSource(dio));
 
   runApp(
     ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
-          () => AuthController(tokenStorage, RestoreSessionUseCase(tokenStorage)),
+          () => AuthController(
+              tokenStorage, RestoreSessionUseCase(tokenStorage), sessionTokenStore),
         ),
         // GameController compuesto con sus dependencias concretas (DIP). Incluye
         // el reloj real (SystemTicker) que dispara la cuenta atrás de los niveles

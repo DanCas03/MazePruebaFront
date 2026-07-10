@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 
 /// Fake en memoria que implementa el puerto: verifica que el contrato es
@@ -8,6 +9,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dar
 class _InMemoryLevelProgressRepository implements ILevelProgressRepository {
   final Map<String, MoveCount> _progress = {};
   final Set<String> _completed = {};
+  final Map<String, LevelProgress> _all = {};
 
   @override
   Future<MoveCount?> getProgress(LevelId levelId) async => _progress[levelId.value];
@@ -24,6 +26,16 @@ class _InMemoryLevelProgressRepository implements ILevelProgressRepository {
 
   @override
   Future<bool> isCompleted(LevelId levelId) async => _completed.contains(levelId.value);
+
+  @override
+  Future<List<LevelProgress>> getAll() async => _all.values.toList();
+
+  @override
+  Future<void> upsertAll(List<LevelProgress> progress) async {
+    for (final p in progress) {
+      _all[p.levelId.value] = p;
+    }
+  }
 }
 
 void main() {

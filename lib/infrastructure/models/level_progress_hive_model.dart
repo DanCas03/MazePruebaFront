@@ -18,9 +18,17 @@ class LevelProgressHiveModel extends HiveObject {
   @HiveField(2)
   late bool completed;
 
+  @HiveField(3)
+  int? bestScore;
+
+  @HiveField(4)
+  int? bestStars;
+
   LevelProgressHiveModel({
     required this.levelId,
     required this.moveCount,
     required this.completed,
+    this.bestScore,
+    this.bestStars,
   });
 }

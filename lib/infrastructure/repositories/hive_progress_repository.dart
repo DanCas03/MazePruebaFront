@@ -1,5 +1,6 @@
 import '../../domain/board/repositories/i_level_progress_repository.dart';
 import '../../domain/board/value_objects/level_id.dart';
+import '../../domain/board/value_objects/level_progress.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
 import '../data_sources/local/hive_level_progress_data_source.dart';
 
@@ -29,4 +30,24 @@ class HiveProgressRepository implements ILevelProgressRepository {
   @override
   Future<bool> isCompleted(LevelId levelId) async =>
       _dataSource.isCompleted(levelId.value);
+
+  @override
+  Future<List<LevelProgress>> getAll() async {
+    return _dataSource.getAllProgress().map((m) {
+      return LevelProgress(
+        levelId: LevelId(m.levelId),
+        completed: m.completed,
+        bestScore: m.bestScore,
+        bestStars: m.bestStars,
+      );
+    }).toList();
+  }
+
+  @override
+  Future<void> upsertAll(List<LevelProgress> progress) async {
+    for (final p in progress) {
+      await _dataSource.upsertProgress(
+          p.levelId.value, p.completed, p.bestScore, p.bestStars);
+    }
+  }
 }

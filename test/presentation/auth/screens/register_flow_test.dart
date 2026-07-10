@@ -13,12 +13,27 @@ import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_repository.dart';
 import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_token_storage.dart';
 import 'package:flutter_arrow_maze/domain/auth/value_objects/auth_token.dart';
+import 'package:flutter_arrow_maze/domain/board/repositories/i_remote_progress_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/presentation/auth/auth_strings.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/login_screen.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/register_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
+import 'package:flutter_arrow_maze/presentation/providers/dependency_providers.dart';
 
 import 'register_flow_test.mocks.dart';
+
+// front#18: AuthGate ahora dispara el sync de progreso al pasar a Authenticated,
+// leyendo syncProgressUseCaseProvider -> remoteProgressRepositoryProvider (cuyo
+// default lanza). Un fake que no toca red satisface esa dependencia sin afectar
+// la regresión que este test reproduce.
+class _FakeRemote implements IRemoteProgressRepository {
+  @override
+  Future<List<LevelProgress>> pull() async => [];
+  @override
+  Future<List<LevelProgress>> push(List<LevelProgress> progress) async =>
+      progress;
+}
 
 /// Regresión de front#15 (revisión final): RegisterScreen se apila con
 /// Navigator.push sobre AuthGate en "/". Al registrarse con éxito, AuthGate
@@ -40,6 +55,7 @@ void main() {
           authControllerProvider.overrideWith(
             () => AuthController(storage, RestoreSessionUseCase(storage)),
           ),
+          remoteProgressRepositoryProvider.overrideWithValue(_FakeRemote()),
         ],
         child: MaterialApp(
           home: const AuthGate(),

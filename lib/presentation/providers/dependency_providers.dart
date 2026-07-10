@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/use_cases/sync_progress_use_case.dart';
 import '../../core/aspects/i_logger_service.dart';
 import '../../core/aspects/logger_service_adapter.dart';
 import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/board/repositories/i_level_progress_repository.dart';
+import '../../domain/board/repositories/i_remote_progress_repository.dart';
+import '../../domain/board/services/progress_reconciler.dart';
 import '../../infrastructure/data_sources/local/hive_level_progress_data_source.dart';
 import '../../infrastructure/generators/graph_board_generator.dart';
 import '../../infrastructure/repositories/hive_progress_repository.dart';
@@ -29,4 +32,26 @@ final levelProgressRepositoryProvider = Provider<ILevelProgressRepository>(
 
 final levelGeneratorProvider = Provider<ILevelGenerator>(
   (_) => GraphBoardGenerator(),
+);
+
+// front#18: el repo remoto necesita el Dio compuesto en main (con el token
+// interceptor); por eso su default falla y main.dart lo sobreescribe (DIP),
+// igual que authRepositoryProvider.
+final remoteProgressRepositoryProvider = Provider<IRemoteProgressRepository>(
+  (_) => throw UnimplementedError(
+    'remoteProgressRepositoryProvider must be overridden in main with composed Dio',
+  ),
+);
+
+final progressReconcilerProvider = Provider<ProgressReconciler>(
+  (_) => ProgressReconciler(),
+);
+
+final syncProgressUseCaseProvider = Provider<SyncProgressUseCase>(
+  (ref) => SyncProgressUseCase(
+    ref.watch(remoteProgressRepositoryProvider),
+    ref.watch(levelProgressRepositoryProvider),
+    ref.watch(progressReconcilerProvider),
+    ref.watch(loggerServiceProvider),
+  ),
 );

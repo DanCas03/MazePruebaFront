@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/board/value_objects/level_id.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Cuadricula de seleccion de nivel (12 niveles). Cada celda es un panel
 /// glassmorphism que navega a la partida. Pantalla de pura presentacion:
@@ -26,7 +27,7 @@ class LevelSelectionScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Level'),
+        title: Text(AppLocalizations.of(context).selectLevel),
         backgroundColor: surface,
       ),
       body: GridView.builder(

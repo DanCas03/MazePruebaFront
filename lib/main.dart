@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
+import 'l10n/app_localizations.dart';
+
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
 import 'application/commands/command_invoker.dart';
@@ -84,12 +86,21 @@ class ArrowMazeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Arrow Maze',
+      // onGenerateTitle: el título del task switcher del SO se localiza con el
+      // locale activo (front#4). `title` estático se reemplaza por esta variante
+      // reactiva al idioma.
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       // ThemeMode.system: el SO elige claro u oscuro; ambos temas estan
       // definidos en AppTheme para una experiencia coherente en ambos modos.
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
+      // i18n (front#4): delegates generados por gen-l10n (incluyen los Global*
+      // de Flutter para Material/Widgets/Cupertino). El SO elige es o en según
+      // el locale del dispositivo; español primero como idioma primario de la
+      // app (fallback para locales no soportados).
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: const [Locale('es'), Locale('en')],
       home: const AuthGate(),
       onGenerateRoute: AppRouter.onGenerateRoute,
       debugShowCheckedModeBanner: false,

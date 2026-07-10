@@ -4,14 +4,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/defeat_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
+
+/// MaterialApp localizada (front#4): locale 'en' fijo para que las aserciones
+/// en inglés del ARB sean deterministas. Reemplaza a `MaterialApp` directo en
+/// todos los hosts de este archivo.
+Widget _localizedApp({
+  required RouteFactory onGenerateRoute,
+}) =>
+    MaterialApp(
+      theme: AppTheme.dark(),
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      onGenerateRoute: onGenerateRoute,
+    );
 
 /// Monta DefeatScreen detras de una ruta que inyecta los `arguments` (levelId,
 /// movimientos y choques), tal como hace el flujo real al perder una partida.
 Widget _appWithArgs(DefeatArgs? args) {
-  return MaterialApp(
-    theme: AppTheme.dark(),
+  return _localizedApp(
     onGenerateRoute: (_) => MaterialPageRoute<void>(
       settings: RouteSettings(arguments: args),
       builder: (_) => const DefeatScreen(),
@@ -58,8 +72,7 @@ void main() {
       // Arrange — capture the arguments the game route is pushed with.
       Object? gameArgs;
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark(),
+        _localizedApp(
           onGenerateRoute: (settings) => switch (settings.name) {
             AppRouter.game => MaterialPageRoute<void>(
                 builder: (_) {
@@ -91,8 +104,7 @@ void main() {
         (tester) async {
       // Arrange
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark(),
+        _localizedApp(
           onGenerateRoute: (settings) => switch (settings.name) {
             AppRouter.levelSelection => MaterialPageRoute<void>(
                 builder: (_) => const LevelSelectionScreen(),

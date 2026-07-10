@@ -1,5 +1,19 @@
 # AI History — MazePruebaFront
 
+## Entrada 038 — front#1 (fragmento 2): script generador de candidatos + docs
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Fragmento 2 del issue front#1. CLI `tool/generate_level_candidates.dart` que corre `GraphBoardGenerator` con una tabla FIJA de 30 seeds (5 tiers × 6, 2x oversupply) y escribe un JSON wire-estricto por candidato + `manifest.md` en `tool/candidates/` (default, `--out` opcional). La reproducibilidad vive en la tabla versionada; el artefacto congelado real son los JSON commiteados (`Random(seed)` de Dart no es estable entre SDKs). Degradación con gracia: si el generador coloca menos flechas de las pedidas, se exporta igual y el manifiesto lo marca `(!)`.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8); test de determinismo delegado a subagente QA.
+**Prompt o instrucción proporcionada:** > "Ejecuta el plan del issue 1 del front (script generador de candidatos)."
+**Resultado obtenido:**
+- `tool/generate_level_candidates.dart` (nuevo): CLI fino (`dart:io`, sin arrancar Flutter) con `CandidateSpec` + `_batchSpec` (rampa 6x8→11x15, maxPathLen 4→7) y armado del manifiesto.
+- `test/infrastructure/serialization/level_generation_determinism_test.dart` (nuevo): 2 tests AAA sobre generador+encoder (misma seed → mismo JSON; seeds distintas → JSON distinto). Verde.
+- `README.md`: sección Tooling con el uso del script. `CONTEXT.md`: glosario "Producción de niveles" (Candidato / Curación / Tier).
+- Smoke run: 30 candidatos, 0 degradados. `flutter analyze` limpio; suite completa 217/217 verde.
+**Modificaciones realizadas por el equipo:**
+
+
 ## Entrada 037 — front#1 (fragmento 1): LevelJsonEncoder (formato wire arrow-path)
 
 **Fecha:** 2026-07-09

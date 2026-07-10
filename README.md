@@ -44,6 +44,20 @@ lib/
 
 The rule that keeps the boundary honest: `domain/` imports nothing from Flutter, Hive, or Riverpod, and every Riverpod provider that constructs a concrete `infrastructure/` class lives in `presentation/providers/`.
 
+## Tooling
+
+### Generador de candidatos de nivel (front#1 / E2.1)
+
+    dart run tool/generate_level_candidates.dart [--out <dir>]
+
+Corre `GraphBoardGenerator` con la tabla fija de seeds de
+`tool/generate_level_candidates.dart` y escribe en `tool/candidates/` (default)
+un JSON wire-estricto por candidato (`{levelId, cols, rows, arrows[]}`, ver
+CONTEXT-MAP raíz) más `manifest.md` con la tabla del batch. Reproducible:
+misma tabla => mismos archivos. Los candidatos commiteados son el artefacto
+congelado que consume la curación (E2.2) y el seed del back (back#10);
+cambiar el batch = editar la tabla y commitear la regeneración.
+
 ## Design Patterns
 
 | Pattern | Where | Problem it solves |

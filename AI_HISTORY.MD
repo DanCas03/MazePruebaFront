@@ -807,4 +807,22 @@
 **Herramienta de IA utilizada:** Claude Code (Fable 5, skills /triage + grilling + domain-modeling)
 **Prompt o instrucción proporcionada:** > "/triage — leer HANDOFF-random-mode-triage.md, grilling del módulo 'modo random' y crear los issues según docs/agents/issue-tracker.md con las 7 preguntas mínimas resueltas"
 **Resultado obtenido:** Issues front#36 (`feat(app): GenerateBoard use case + GeneratorConfig` — ready-for-agent, sin bloqueos) y front#37 (`feat(ui): "Generar nivel" screen` — ready-for-agent, blocked by #36 y #6), ambos con Agent Brief completo al estilo de front#32 (Context / Brief / Blocked by / Provenance). `CONTEXT.md` — nueva entrada **GeneratedBoard (Tablero generado)** en "Nivel y progreso": `ArrowBoard` creado localmente con parámetros del jugador, soluble por construcción, efímero (no es `Level`, no puntúa, no persiste `Progress`, no participa del `Leaderboard`), reproducible por (seed, parámetros) dentro de una misma versión; _Avoid_: nivel generado, nivel random, nivel de práctica, modo práctica, Candidato.
+## Entrada 042 — front#18 — LevelProgress VO
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** front#18 — sync local progress with server. Primer fragmento: implementar el VO `LevelProgress` de dominio (capa pura Dart), que encapsula el progreso reconciliable de un nivel (completado + mejor score/estrellas). Espejo de los campos opcionales del endpoint `/progress` (back#8). Usa `int?` en vez de los VOs `Score`/`Stars` de front#12 (aún no mergeados) para mantener esta feature autocontenida.
+**Herramienta de IA utilizada:** Claude Opus 4.8 (1M context) — ejecución de subagent TDD
+**Prompt o instrucción proporcionada:** > "Implementar Task 1: LevelProgress value object — TDD (RED → GREEN → analyze + AI_HISTORY + commit)."
+**Resultado obtenido:**
+- `lib/domain/board/value_objects/level_progress.dart` (nuevo): VO `LevelProgress extends Equatable` con constructor `LevelProgress({required LevelId levelId, required bool completed, int? bestScore, int? bestStars})` y campos `levelId`, `completed`, `bestScore`, `bestStars`. Valida en runtime: `bestScore >= 0` e `bestStars in 1..3` (si no null), lanzando `ArgumentError` ante violación. Dominio puro, única dependencia externa `equatable`.
+- `test/domain/board/value_objects/level_progress_test.dart` (nuevo): 5 tests AAA (patrón ARRANGE/ACT/ASSERT):
+  1. `should_hold_fields_when_constructed_with_valid_values` — VO construida con todos los campos.
+  2. `should_allow_null_score_and_stars_when_level_completed_without_score` — campos null permitidos.
+  3. `should_be_value_equal_when_all_fields_match` — igualdad por `Equatable.props`.
+  4. `should_throw_when_bestScore_is_negative` — validación en constructor.
+  5. `should_throw_when_bestStars_out_of_range` — validación en constructor (rango 1..3).
+- TDD estricto verificado:
+  - **RED (Step 2):** `flutter test` antes de la implementación → "Error: Error when reading 'level_progress.dart': No such file or directory" + 6 errores de compilación.
+  - **GREEN (Step 4):** `flutter test` tras la implementación → "All tests passed! (5/5)".
+  - **Analyze (Step 5):** `flutter analyze lib/domain/board/value_objects/level_progress.dart` → "No issues found!" (0.1s).
 **Modificaciones realizadas por el equipo:**

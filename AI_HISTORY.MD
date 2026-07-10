@@ -1,6 +1,6 @@
 # AI History — MazePruebaFront
 
-## Entrada 039 — front#1 (fragmento 3): batch v1 de 30 candidatos congelado
+## Entrada 041 — front#1 (fragmento 3): batch v1 de 30 candidatos congelado
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** Fragmento 3 (final) del issue front#1. Ejecutar el script y congelar en git el batch v1: 30 JSON de candidatos + `manifest.md` en `tool/candidates/`. Estos archivos son el artefacto congelado real que consume la curación (E2.2) y desbloquea back#10 (seed Prisma con 15 niveles).
@@ -12,7 +12,7 @@
 **Modificaciones realizadas por el equipo:**
 
 
-## Entrada 038 — front#1 (fragmento 2): script generador de candidatos + docs
+## Entrada 040 — front#1 (fragmento 2): script generador de candidatos + docs
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** Fragmento 2 del issue front#1. CLI `tool/generate_level_candidates.dart` que corre `GraphBoardGenerator` con una tabla FIJA de 30 seeds (5 tiers × 6, 2x oversupply) y escribe un JSON wire-estricto por candidato + `manifest.md` en `tool/candidates/` (default, `--out` opcional). La reproducibilidad vive en la tabla versionada; el artefacto congelado real son los JSON commiteados (`Random(seed)` de Dart no es estable entre SDKs). Degradación con gracia: si el generador coloca menos flechas de las pedidas, se exporta igual y el manifiesto lo marca `(!)`.
@@ -26,7 +26,7 @@
 **Modificaciones realizadas por el equipo:**
 
 
-## Entrada 037 — front#1 (fragmento 1): LevelJsonEncoder (formato wire arrow-path)
+## Entrada 039 — front#1 (fragmento 1): LevelJsonEncoder (formato wire arrow-path)
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** Fragmento 1 del issue front#1 (= E2.1 del backlog de cutover). Serializar un `ArrowBoard` al JSON arrow-path wire-estricto del contrato canónico (`CONTEXT-MAP.md` raíz): `{levelId, cols, rows, timeLimitSec?, arrows:[{id, headDir, cells:[[row,col],…]}]}`, con `cells` de cola→cabeza y sin claves extra (copiable tal cual al seed del back). El encoder es el inverso natural del futuro `LevelDto.fromJson` (E1.3/front#8) sin adelantarlo.

@@ -130,6 +130,40 @@ void main() {
       expect(find.byIcon(Icons.undo), findsOneWidget);
     });
 
+    testWidgets('shows the countdown for a timed level', (tester) async {
+      // Arrange — nivel cronometrado (90 s). Con el reloj por defecto (inerte)
+      // el estado conserva el límite inicial, suficiente para verificar el render.
+      final container = _container();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(_host(container));
+
+      // Act
+      await container
+          .read(gameControllerProvider.notifier)
+          .loadLevel(LevelId('6'));
+      await tester.pump();
+
+      // Assert — reloj visible con el formato m:ss (90 s → "1:30").
+      expect(find.byIcon(Icons.timer_outlined), findsOneWidget);
+      expect(find.text('1:30'), findsOneWidget);
+    });
+
+    testWidgets('hides the countdown for an untimed level', (tester) async {
+      // Arrange — nivel 1 no tiene límite de tiempo.
+      final container = _container();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(_host(container));
+
+      // Act
+      await container
+          .read(gameControllerProvider.notifier)
+          .loadLevel(LevelId('1'));
+      await tester.pump();
+
+      // Assert — sin reloj en la AppBar.
+      expect(find.byIcon(Icons.timer_outlined), findsNothing);
+    });
+
     testWidgets('navigates to VictoryScreen when the board is cleared',
         (tester) async {
       // Arrange

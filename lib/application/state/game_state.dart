@@ -20,6 +20,7 @@ class GamePlaying extends GameState {
   final Arrow? exitingArrow; // "fantasma" de la flecha recién removida
   final int exitNonce; // ++ por salida → re-dispara el slide-out
   final bool canUndo; // habilita el botón undo del top bar
+  final int? remainingSeconds; // cuenta atrás del nivel; null si no tiene límite
 
   GamePlaying({
     required this.board,
@@ -30,6 +31,7 @@ class GamePlaying extends GameState {
     this.exitingArrow,
     this.exitNonce = 0,
     this.canUndo = false,
+    this.remainingSeconds,
   });
 }
 

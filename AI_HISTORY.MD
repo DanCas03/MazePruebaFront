@@ -807,7 +807,7 @@
 **Herramienta de IA utilizada:** Claude Code (Fable 5, skills /triage + grilling + domain-modeling)
 **Prompt o instrucción proporcionada:** > "/triage — leer HANDOFF-random-mode-triage.md, grilling del módulo 'modo random' y crear los issues según docs/agents/issue-tracker.md con las 7 preguntas mínimas resueltas"
 **Resultado obtenido:** Issues front#36 (`feat(app): GenerateBoard use case + GeneratorConfig` — ready-for-agent, sin bloqueos) y front#37 (`feat(ui): "Generar nivel" screen` — ready-for-agent, blocked by #36 y #6), ambos con Agent Brief completo al estilo de front#32 (Context / Brief / Blocked by / Provenance). `CONTEXT.md` — nueva entrada **GeneratedBoard (Tablero generado)** en "Nivel y progreso": `ArrowBoard` creado localmente con parámetros del jugador, soluble por construcción, efímero (no es `Level`, no puntúa, no persiste `Progress`, no participa del `Leaderboard`), reproducible por (seed, parámetros) dentro de una misma versión; _Avoid_: nivel generado, nivel random, nivel de práctica, modo práctica, Candidato.
-## Entrada 042 — front#18 — LevelProgress VO
+## Entrada 043 — front#18 — LevelProgress VO
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** front#18 — sync local progress with server. Primer fragmento: implementar el VO `LevelProgress` de dominio (capa pura Dart), que encapsula el progreso reconciliable de un nivel (completado + mejor score/estrellas). Espejo de los campos opcionales del endpoint `/progress` (back#8). Usa `int?` en vez de los VOs `Score`/`Stars` de front#12 (aún no mergeados) para mantener esta feature autocontenida.
@@ -827,7 +827,7 @@
   - **Analyze (Step 5):** `flutter analyze lib/domain/board/value_objects/level_progress.dart` → "No issues found!" (0.1s).
 **Modificaciones realizadas por el equipo:**
 
-## Entrada 043 — front#18 — ProgressReconciler
+## Entrada 044 — front#18 — ProgressReconciler
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** front#18 — sync local progress with server. Segundo fragmento: implementar el servicio de dominio `ProgressReconciler` (capa pura Dart) que fusiona el progreso local y remoto aplicando la regla "best score wins, completed = OR": por nivel, completa si está completado en cualquiera de las dos fuentes; score/estrellas toman el máximo (tratando null como peor). Reproduce la regla de `SyncProgressUseCase` del back para poder reconciliar sin depender del orden de respuesta del server.
@@ -854,7 +854,7 @@
   - **Analyze (Step 5):** `flutter analyze lib/domain/board/services/progress_reconciler.dart` → "No issues found!" (0.1s).
 **Modificaciones realizadas por el equipo:**
 
-## Entrada 044 — front#18 — local progress getAll/upsertAll + Hive fields
+## Entrada 045 — front#18 — local progress getAll/upsertAll + Hive fields
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** front#18 — sync local progress with server. Tercer fragmento: extender el stack local (Hive model → DataSource → puerto → repositorio) para exponer todo el progreso persistido (con score/estrellas) y permitir escribirlo de vuelta ya reconciliado, sin tocar los métodos existentes (`getProgress/saveProgress/markCompleted/isCompleted`) — extensión aditiva (OCP/LSP).
@@ -877,7 +877,7 @@
   - `grep -c bestScore lib/infrastructure/models/level_progress_hive_model.g.dart` → 2 (≥ 1 esperado por el brief).
 **Modificaciones realizadas por el equipo:**
 
-## Entrada 045 — front#18 — remote progress repository (Dio)
+## Entrada 046 — front#18 — remote progress repository (Dio)
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** front#18 — sync local progress with server. Cuarto fragmento: agregar el lado remoto del sync contra los endpoints `/progress` del back (back#8, ya mergeado) — un puerto de dominio `IRemoteProgressRepository` (pull/push), un `RemoteProgressDataSource` sobre Dio (HTTP crudo, sin mapear errores) y un `RemoteProgressRepository` adaptador que mapea `LevelProgress` ↔ el shape JSON del back, espejando el patrón existente de `auth_remote_data_source.dart`.
@@ -895,7 +895,7 @@
   - **Analyze (Step 7):** `flutter analyze lib/domain/board/repositories/i_remote_progress_repository.dart lib/infrastructure/data_sources/remote/remote_progress_data_source.dart lib/infrastructure/repositories/remote_progress_repository.dart` → "No issues found!" (0.1s).
 **Modificaciones realizadas por el equipo:**
 
-## Entrada 046 — front#18 — SyncProgressUseCase
+## Entrada 047 — front#18 — SyncProgressUseCase
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** front#18 — sync local progress with server. Quinto y último fragmento del feature: el orquestador de capa `application` que ata las piezas de las Tasks 1-4 — `IRemoteProgressRepository.pull()`, `ILevelProgressRepository.getAll()`, `ProgressReconciler.reconcile()`, `IRemoteProgressRepository.push()`, `ILevelProgressRepository.upsertAll()` — y loguea el resultado vía `ILoggerService` (AOP). Si cualquier paso falla (fallo de red típico), el error se captura y loguea sin propagarse, para no romper el flujo de autenticación/UI.
@@ -911,7 +911,7 @@
   - **Analyze (Step 5):** `flutter analyze lib/application/use_cases/sync_progress_use_case.dart` → "No issues found!" (0.1s).
 **Modificaciones realizadas por el equipo:**
 
-## Entrada 047 — front#18 — wiring: providers + AuthGate sync trigger
+## Entrada 048 — front#18 — wiring: providers + AuthGate sync trigger
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** front#18 — sync local progress with server. Sexto fragmento (integración): activar las piezas de las Tasks 1-5 en el composition root y colgar el disparador. Se añaden tres providers Riverpod y se dispara `SyncProgressUseCase.execute()` una sola vez por transición hacia `Authenticated` (login o auto-login), vía `ref.listen` en el `AuthGate` — sin acoplar el trigger dentro de `AuthController.saveSession` (decisión de diseño aprobada).
@@ -934,7 +934,7 @@
   - **Full suite (Step 8):** `flutter test` → primera corrida "00:07 +269 -2" (2 tests preexistentes rotos por la nueva dependencia del AuthGate). Tras el fix aditivo de los fakes → `flutter test` → "00:08 +271: All tests passed!" (271/271, suite completa verde).
 **Modificaciones realizadas por el equipo:**
 
-## Entrada 048 — front#18 — README: document progress sync
+## Entrada 049 — front#18 — README: document progress sync
 
 **Fecha:** 2026-07-09
 **Tarea o problema abordado:** front#18 — sync local progress with server. Task 7 (solo documentación): registrar en el README el sync de progreso introducido por las Tasks 1-6, en la sección de arquitectura junto al flujo de auth. La Step 2 del brief (verificación end-to-end con back + emulador) queda fuera de alcance de este fragmento — la ejecuta el coordinador por separado.

@@ -4,10 +4,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import 'application/state/auth_controller.dart';
+import 'application/state/game_controller.dart';
+import 'application/commands/command_invoker.dart';
+import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/use_cases/restore_session_use_case.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'hive_registrar.g.dart';
+import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';

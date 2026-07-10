@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/audio/i_audio_service.dart';
+import '../../application/audio/silent_audio_service.dart';
 import '../../application/use_cases/sync_progress_use_case.dart';
 import '../../core/aspects/i_logger_service.dart';
 import '../../core/aspects/logger_service_adapter.dart';
@@ -19,6 +21,15 @@ import '../../infrastructure/repositories/hive_progress_repository.dart';
 // AOP logger — singleton para toda la app.
 final loggerServiceProvider = Provider<ILoggerService>(
   (_) => LoggerServiceAdapter(),
+);
+
+// Audio (front#5) — Facade+Singleton tras el puerto IAudioService, decorado con
+// logging (2o aspecto AOP). El default es el Null Object silencioso para que las
+// capas y los tests de widget funcionen sin componer el audio real (que necesita
+// el box Hive abierto y players nativos); `main` lo sobreescribe con el
+// AudioService real ya inicializado.
+final audioServiceProvider = Provider<IAudioService>(
+  (_) => const SilentAudioService(),
 );
 
 // Infraestructura Hive — DataSource separado del Repository (Petros pattern).

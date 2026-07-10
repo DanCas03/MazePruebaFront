@@ -15,7 +15,7 @@ A casual mobile puzzle game built with Flutter. The board is filled with multi-c
 
 Arrow Maze is the client half of a two-repository project (the [backend API](https://github.com/DanCas03/MazePruebaBack) serves levels and authentication). The interesting part is the structure: this is **Clean Mobile Architecture** (Petros Efthymiou) applied to Flutter. The `domain/` layer is pure Dart with no Flutter, Hive, or Riverpod imports; game rules live there. The UI consumes Riverpod providers from `application/` and never reaches into `infrastructure/` or `domain/` directly. Undo is a real Command pattern, the board is an Aggregate Root, and the level generator builds solvable-by-construction puzzles of bent, serpentine arrows on a tall, densely packed board.
 
-**Tech stack:** Flutter (Dart >= 3.3), Riverpod for state and DI, Hive CE for local persistence, `dartz` for `Either`/`Option`, `equatable` for value equality, `logger` behind an AOP adapter, `build_runner` for code generation, and `flutter_test` + `mockito` for tests.
+**Tech stack:** Flutter (Dart >= 3.3), Riverpod for state and DI, Hive CE for local persistence, `dartz` for `Either`/`Option`, `equatable` for value equality, `logger` behind an AOP adapter, `audioplayers` behind an audio facade, `build_runner` for code generation, and `flutter_test` + `mockito` for tests.
 
 ## Screenshots
 
@@ -79,6 +79,9 @@ On the `Unauthenticated → Authenticated` transition (login or auto-login), `Au
 | **Strategy** | [`graph_board_generator.dart`](lib/infrastructure/generators/graph_board_generator.dart) | `GraphBoardGenerator` implements `ILevelGenerator` as a swappable generation algorithm (a DAG that guarantees solvability). |
 | **Composition Root (DI)** | [`dependency_providers.dart`](lib/presentation/providers/dependency_providers.dart) | The one place concrete infrastructure is instantiated and injected as abstractions. |
 | **Custom Painter** | [`arrow_painter.dart`](lib/presentation/game/painters/arrow_painter.dart) | Procedural rendering of arrows with a 3-D glow, avoiding image assets. |
+| **Facade + Singleton** | [`audio_service.dart`](lib/infrastructure/audio/audio_service.dart) | `AudioService` is the single entry point to the audio subsystem behind the [`IAudioService`](lib/application/audio/i_audio_service.dart) port: it maps game events (`GameSound`) to asset paths and applies the **independent** mute rules (master / music / SFX), hiding players and formats. One instance for the app's lifetime (lazy Singleton + a single Riverpod provider). The concrete `audioplayers` package sits behind the [`IAudioBackend`](lib/infrastructure/audio/i_audio_backend.dart) adapter, and mute state persists via [`IAudioSettingsStore`](lib/infrastructure/audio/i_audio_settings_store.dart) (Hive). |
+| **Decorator (AOP)** | [`logging_audio_decorator.dart`](lib/infrastructure/audio/logging_audio_decorator.dart) | Wraps `IAudioService` to log every audio operation through `ILoggerService` without touching the facade — the second cross-cutting aspect, applied by composition. |
+| **Null Object** | [`silent_audio_service.dart`](lib/application/audio/silent_audio_service.dart) | `SilentAudioService` is the default `audioServiceProvider` value: a no-op `IAudioService` so widget tests and un-composed layers run without the real (Hive- and player-backed) audio. |
 
 ## SOLID Principles
 
@@ -119,6 +122,8 @@ abstract interface class ILoggerService {
 }
 ```
 
+A **second aspect** follows the same discipline for audio: [`LoggingAudioDecorator`](lib/infrastructure/audio/logging_audio_decorator.dart) wraps the `IAudioService` facade and routes every play / mute / lifecycle call through the same `ILoggerService`. Audio telemetry is added by composition at the composition root, so the facade and the presentation observer that fires sounds stay free of logging code. The observer itself keeps the dependency rule intact: the game screen reacts to existing `GameState` signals (`exitNonce`, `blockedNonce`, `GameWon`, `GameLost`) via `ref.listen` and translates them to `GameSound` events — the domain and application layers never import the concept of "sound".
+
 ## Game Mechanic
 
 - The board is a tall, densely packed grid (it grows from ~6×8 up to ~11×15 with the level) of multi-cell arrows. Each arrow is a **path** (`Arrow.cells`, tail→head) that can **bend** in several directions — a straight arrow is just the degenerate case — with a `headDirection` by which its head leaves the board.
@@ -128,6 +133,7 @@ abstract interface class ILoggerService {
 - The level is won when `ArrowBoard.isCleared` is true (`GameState` becomes `GameWon`).
 - A level is lost (`GameState` becomes `GameLost`) either after 5 collisions (tapping blocked arrows, tracked by `StrikeCount`) or, on advanced levels, when the optional time limit runs out. The limit lives on the level model ([`LevelBlueprint.timeLimitSec`](lib/domain/board/value_objects/level_blueprint.dart)) and the countdown is driven by an **injectable clock** ([`ITicker`](lib/domain/game_core/services/i_ticker.dart)) — `SystemTicker` in the app, a fake clock in tests — with the remaining seconds exposed as `GamePlaying.remainingSeconds`.
 - Moves are counted with `MoveCount` and can be undone through the `CommandInvoker`.
+- **Audio feedback:** a sound fires on each arrow exit, collision, victory, and defeat, with looping background music during play. Music and SFX have **independent** mutes (plus a master mute) that **persist** across sessions, all behind the [`IAudioService`](lib/application/audio/i_audio_service.dart) facade. The sounds are original and procedurally synthesized (no sampled or copyrighted audio); the background music is a 16 s loop that is seamless by construction (frequencies quantized to multiples of `1/T`, periodic envelopes).
 
 ## Getting Started
 

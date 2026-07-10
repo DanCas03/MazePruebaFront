@@ -26,6 +26,9 @@ dependencies:
   # Networking
   dio: ^5.7.0
 
+  # Audio (front#5) — SFX de eventos + musica de fondo (android/ios/web)
+  audioplayers: ^6.1.0
+
   # Utilities
   equatable: ^2.0.7
   dartz: ^0.10.1
@@ -46,3 +49,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/levels/
+    - assets/audio/

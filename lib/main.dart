@@ -9,11 +9,16 @@ import 'application/commands/command_invoker.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/auth_form_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
+import 'core/aspects/logger_service_adapter.dart';
 import 'core/auth/auth_gate.dart';
 import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'hive_registrar.g.dart';
+import 'infrastructure/audio/audio_service.dart';
+import 'infrastructure/audio/audioplayers_backend.dart';
+import 'infrastructure/audio/hive_audio_settings_store.dart';
+import 'infrastructure/audio/logging_audio_decorator.dart';
 import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
@@ -33,6 +38,20 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
   await Hive.openBox<LevelProgressHiveModel>('level_progress');
+  // front#5: box sin tipar para el estado de mute del audio (3 booleanos).
+  final audioSettingsBox = await Hive.openBox(HiveAudioSettingsStore.boxName);
+
+  // Composicion del subsistema de audio (front#5): Facade+Singleton tras el
+  // puerto, decorado con logging (AOP). init() carga el mute persistido antes
+  // de que la UI lo lea; el Null Object del provider queda sustituido aqui.
+  final audioService = LoggingAudioDecorator(
+    AudioService(
+      AudioplayersBackend(),
+      HiveAudioSettingsStore(audioSettingsBox),
+    ),
+    LoggerServiceAdapter(),
+  );
+  await audioService.init();
 
   // Composición del lazo de auth (front#14): el token se persiste en el
   // almacenamiento seguro del SO. Se inyecta por constructor (DIP) al
@@ -72,6 +91,9 @@ void main() async {
         remoteProgressRepositoryProvider.overrideWithValue(
           RemoteProgressRepository(RemoteProgressDataSource(dio)),
         ),
+        // front#5: audio real (Facade+Singleton decorado) sustituye al Null
+        // Object; las capas internas solo conocen el puerto IAudioService.
+        audioServiceProvider.overrideWithValue(audioService),
       ],
       child: const ArrowMazeApp(),
     ),

@@ -1,5 +1,21 @@
 # AI History — MazePruebaFront
 
+## Entrada 044 — front#5: servicio de audio (Facade/Singleton) + assets + 2º aspecto AOP (E9)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Implementar el slice E9 (audio + mute): un servicio de audio tras un puerto, con SFX en los eventos de juego (salida, choque, victoria, derrota) + música de fondo, muteos independientes (master/música/SFX) persistidos, y ganchos limpios para AOP. Cumple el mínimo de app 5.1.9. Desbloquea front#19 (pantalla de ajustes).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8), actuando como arquitecto senior. Rama `feat/#5-audio-service` desde `origin/main` (11ce944 → sincronizado a 773df5a por pull ff). Descripción del issue #5 optimizada en GitHub vía API REST antes de codificar.
+**Prompt o instrucción proporcionada:** > "Vamos a proceder con el plan. Primero haz un commit para actualizar la descripción del issue #5 en GitHub con la propuesta y luego continua con el plan" (puerto en `application/audio/`, assets generados por el asistente, requisito 5.1.9).
+**Resultado obtenido:**
+- **Puerto** `lib/application/audio/i_audio_service.dart` (`IAudioService` + enum `GameSound`) — **Facade**; el dominio/aplicación nunca conocen el sonido.
+- **Null Object** `silent_audio_service.dart` (default del provider, mantiene los tests de widget sin componer audio real).
+- **Impl** `lib/infrastructure/audio/`: `AudioService` (**Facade + Singleton** perezoso con `resetForTest`), `IAudioBackend` + `AudioplayersBackend` (**Adapter** sobre `audioplayers`), `IAudioSettingsStore` + `HiveAudioSettingsStore` (**persistencia** del mute en box Hive sin tipar `audio_settings`), y `LoggingAudioDecorator` (**Decorator/AOP**, 2º aspecto vía `ILoggerService`).
+- **Muteos independientes:** SFX suena si no hay master ni sfx muteados; música si no hay master ni music; la música se reanuda al desmutear si el usuario la pidió. Estado persistido y restaurado en `init()`.
+- **Observer de presentación** en `game_screen.dart`: `ref.listen` traduce `exitNonce`/`blockedNonce`/`GameWon`/`GameLost` a `GameSound` (regla de dependencia intacta); música arranca al entrar y para al salir. Corregido un bug propio (`ref` en `dispose()` tras destruir el widget) capturando la referencia en `initState`.
+- **Cableado** en `dependency_providers.dart` (`audioServiceProvider` = Null Object por defecto) y `main.dart` (abre el box, compone `LoggingAudioDecorator(AudioService(AudioplayersBackend(), HiveAudioSettingsStore(...)))`, `init()`, override del provider).
+- **Assets** `assets/audio/` (4 SFX + música de fondo) declarados en `pubspec.yaml`; dependencia `audioplayers: ^6.1.0`. Sonidos **sintetizados originales** (sin muestras con copyright): exit = chirp ascendente + aire, collision = "nope" grave con tremolo, victory = arpegio de campanas inarmónicas C5-E5-G5-C6, defeat = arpegio descendente con droop, y música = loop calmado de 16 s (I–vi–IV–V) **sin costura** (frecuencias cuantizadas a múltiplos de 1/T + envolventes periódicas). Validados: cabeceras PCM correctas, no-silencio, sin clipping (pico ≤0.95), costura del loop |Δv|≈0.036/|Δpendiente|≈0.004; empaquetados en el bundle (`flutter build web` OK).
+- **Tests AAA** `should_..._when_...`: `audio_service_test.dart` (13, con fakes de backend/store) y `logging_audio_decorator_test.dart` (3). Suite completo **326/326 verde**; `flutter analyze` 0 issues. README actualizado (patrones + AOP + mecánica).
+
 ## Entrada 042 — front#12 (re-land): value objects Score y Stars + fórmula, tras revert y auditoría vs back
 
 **Fecha:** 2026-07-09

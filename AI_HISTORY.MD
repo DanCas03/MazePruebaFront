@@ -1,5 +1,17 @@
 # AI History — MazePruebaFront
 
+## Entrada 042 — front#12 (re-land): value objects Score y Stars + fórmula, tras revert y auditoría vs back
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Re-introducir front#12 tras su revert (PR #34 revirtió el #31 con la nota "Necesita aún ser chequeada. Haciendo pull del backend"). No hubo bug ni fallo de CI: se sacó de `main` para verificar el alineamiento con el contrato de scoring del back, que ya está en `origin/main` del back (`ScoreEntry` + VOs `Score`/`Stars`/`MoveCount`/`ElapsedTime` + `SubmitScoreDto`). Auditado: los VOs del front son compatibles en tipos y rangos (score entero ≥0, stars 1..3, tiempo en segundos enteros, moves ≥0). Rama recreada limpia sobre `origin/main` (11ce944); la entrada anterior 039 quedó obsoleta (el número lo reusó front#1).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `feat/#12-score-stars` re-basada sobre `origin/main`, guiado por Claudia.
+**Prompt o instrucción proporcionada:** > "enfócate solo en corregir lo que haga falta del 12"
+**Resultado obtenido:**
+- `lib/domain/game_core/value_objects/score.dart`: VO `Score`, entero no negativo con invariante validada en runtime (`throw ArgumentError`, NO `assert` que se elimina en release — coherente con `AuthToken` y con el `Score` del back), igualdad por valor y factory `Score.fromRun({time, moves, optimalMoves, collisions})`. Fórmula = `base(10000) − 5/seg − 100/movimiento-extra − 250/choque`, acotada a `[0, base]`. Pesos como constantes públicas.
+- `lib/domain/game_core/value_objects/stars.dart`: VO `Stars` (1–3) con factory `Stars.rate({moves, optimalMoves, collisions})`. Umbrales: 3★ = cero choques y movimientos ≤ óptimo + `k`(=2); 2★ = ≤2 choques y ≤6 movimientos extra; 1★ en otro caso. Movimientos bajo el óptimo no dan crédito (exceso acotado a 0).
+- Tests AAA `should_..._when_...`: `score_test.dart` (9, incluye rechazo runtime de negativo) y `stars_test.dart` (9), 18 verdes; `flutter analyze` limpio.
+- Base para front#13 (pantalla de victoria con estrellas/score): esta rama debe ser el punto de partida de #13.
+
 ## Entrada 041 — front#1 (fragmento 3): batch v1 de 30 candidatos congelado
 
 **Fecha:** 2026-07-09

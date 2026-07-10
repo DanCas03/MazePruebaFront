@@ -851,8 +851,18 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ### Task 6: Wiring — providers + AuthGate listener
 
+> **Corrección post-implementación:** el composition root real es
+> `lib/presentation/providers/dependency_providers.dart` (donde ya viven
+> `loggerServiceProvider` y `levelProgressRepositoryProvider`), NO
+> `lib/application/providers/…`. Las rutas de abajo que digan
+> `application/providers/…` deben leerse como `presentation/providers/…`, y el
+> test se ubica en `test/presentation/providers/sync_progress_provider_test.dart`.
+> El import del use case desde ese archivo es
+> `'../../application/use_cases/sync_progress_use_case.dart'`. (Las rutas de
+> `application/use_cases/…` de la Task 5 sí son correctas.)
+
 **Files:**
-- Modify: `lib/application/providers/dependency_providers.dart`
+- Modify: `lib/presentation/providers/dependency_providers.dart`
 - Modify: `lib/main.dart` (override del provider remoto con el Dio compuesto)
 - Modify: `lib/core/auth/auth_gate.dart` (listener)
 - Test: `test/application/providers/sync_progress_provider_test.dart` (composición)

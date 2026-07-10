@@ -933,3 +933,17 @@
   - **Analyze (Step 7):** `flutter analyze lib/presentation/providers/dependency_providers.dart lib/main.dart lib/core/auth/auth_gate.dart` → "No issues found!" (0.7s). Extra: analyze de los 3 archivos de test tocados → "No issues found!".
   - **Full suite (Step 8):** `flutter test` → primera corrida "00:07 +269 -2" (2 tests preexistentes rotos por la nueva dependencia del AuthGate). Tras el fix aditivo de los fakes → `flutter test` → "00:08 +271: All tests passed!" (271/271, suite completa verde).
 **Modificaciones realizadas por el equipo:**
+
+## Entrada 048 — front#18 — README: document progress sync
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** front#18 — sync local progress with server. Task 7 (solo documentación): registrar en el README el sync de progreso introducido por las Tasks 1-6, en la sección de arquitectura junto al flujo de auth. La Step 2 del brief (verificación end-to-end con back + emulador) queda fuera de alcance de este fragmento — la ejecuta el coordinador por separado.
+**Herramienta de IA utilizada:** Claude Opus 4.8 (1M context) — ejecución de subagent de documentación
+**Prompt o instrucción proporcionada:** > "Implementing Task 7 (documentation only) of front#18. Read README.md first to match its existing structure and tone, then add documentation for the progress-sync feature in the appropriate existing section: remote pull/reconcile/push/persist, the key pieces (IRemoteProgressRepository/RemoteProgressRepository, ProgressReconciler, SyncProgressUseCase, AuthGate trigger), and the inherited remember:false interceptor limitation (front#16). Keep it proportional. Append AI_HISTORY entry 048 and commit."
+**Resultado obtenido:**
+- `README.md`: se añade la subsección **"Progress sync (front#18)"** justo después de "Auth flow" (misma sección `## Architecture`), describiendo el disparo en la transición `Unauthenticated → Authenticated` vía `ref.listen` en `AuthGate`, el flujo pull (`GET /progress`) → reconciliación (`ProgressReconciler`, best score gana, completado gana) → push (`POST /progress`) → persistencia local, y la nota de limitación heredada: con `remember: false` el `AuthTokenInterceptor` aún no firma desde la sesión en memoria, así que el sync solo funciona con "recordarme" marcado, pendiente de front#16.
+- Mismo archivo, árbol de `## Architecture`: se añaden a las líneas existentes `IRemoteProgressRepository`, `ProgressReconciler` (bajo `domain/board/`), `SyncProgressUseCase` (bajo `application/use_cases/`) y `RemoteProgressRepository` (bajo `infrastructure/`), sin reestructurar el árbol.
+- Tabla de **Design Patterns**: se extiende la fila existente de **Adapter** (no se crea una fila nueva) añadiendo `remote_progress_repository.dart` y la mención de `IRemoteProgressRepository`, consistente con cómo esa fila ya agrupa `RemoteAuthRepository` y el resto de adapters.
+- No se tocó ninguna otra sección del README (Getting Started, Testing, Contributing, License quedan intactas).
+- `flutter analyze` re-confirmado limpio tras el cambio (cambio de solo documentación, sin efecto esperado en el análisis estático).
+**Modificaciones realizadas por el equipo:**

@@ -638,6 +638,14 @@
 **Resultado obtenido:** Se eliminaron los 4 imports sin uso de `lib/main.dart`. Sin cambios de comportamiento ni de funcionalidad pública (no aplica actualización de README ni tests nuevos: es limpieza de imports detectada por el linter). Verificación local en la rama del PR: `flutter analyze` → No issues found!; `flutter test` → 208/208 en verde.
 **Modificaciones realizadas por el equipo:**
 
+## Entrada 029 — Triage front#32: especificación completa del hint de auto-resolución
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** front#32 estaba en `needs-triage` con decisiones abiertas (modo del hint vs partida en curso, elegibilidad, trigger UX, dependencias). Sesión de triage + grilling con el maintainer para dejarlo `ready-for-agent`.
+**Herramienta de IA utilizada:** Claude Code (Fable 5) — /triage + /grilling + /domain-modeling
+**Prompt o instrucción proporcionada:** > "Repasemos y editemos los 2 últimos issues creados (1 front y uno back), para especificarlos por completo y estén listos para un agente. Toma docs/adr/0002-backend-owns-canonical-solution.md"
+**Resultado obtenido:** Decisiones de diseño (sin código): el hint **reinicia el nivel** y reproduce la Solución canónica completa como demo no puntuada (sin CommandInvoker/MoveCount/StrikeCount/GameWon/progreso; input y undo bloqueados); al terminar, auto-reinicio a tablero jugable. Elegibilidad = política de dominio del cliente (`HintPolicy`, nivel ≥ 7, constante ajustable) — el server no gatea. Trigger: IconButton bombilla en el AppBar junto al undo. Bloqueado por back#19, front#8 y front#9 (sin niveles del server, los ArrowId no corresponden al tablero local). Cuerpo del issue reescrito como Agent Brief; glosario `CONTEXT.md` ampliado con **Solution** y **Hint**.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
 ## Entrada 029 — Password VO
 
 **Fecha:** 2026-07-09

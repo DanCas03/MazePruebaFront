@@ -1,5 +1,17 @@
 # AI History — MazePruebaFront
 
+## Entrada 039 — front#1 (fragmento 3): batch v1 de 30 candidatos congelado
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Fragmento 3 (final) del issue front#1. Ejecutar el script y congelar en git el batch v1: 30 JSON de candidatos + `manifest.md` en `tool/candidates/`. Estos archivos son el artefacto congelado real que consume la curación (E2.2) y desbloquea back#10 (seed Prisma con 15 niveles).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8).
+**Prompt o instrucción proporcionada:** > "Ejecuta el plan del issue 1 del front (script generador de candidatos)."
+**Resultado obtenido:**
+- `tool/candidates/cand-t{1..5}-s*.json` (30 nuevos) + `tool/candidates/manifest.md`: 6 candidatos por tier, dims 6x8 → 11x15, **0 degradados** (todos colocan las flechas pedidas).
+- AC de reproducibilidad verificado: re-ejecutar el script no cambia ningún byte (`git diff` vacío tras el `git add`; archivos LF estables, sin conversión CRLF). Formato wire y variedad de dims cubiertos por los tests del fragmento 1 y el manifiesto.
+**Modificaciones realizadas por el equipo:**
+
+
 ## Entrada 038 — front#1 (fragmento 2): script generador de candidatos + docs
 
 **Fecha:** 2026-07-09

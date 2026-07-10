@@ -1,0 +1,93 @@
+{
+  "levelId": "cand-t1-s103",
+  "cols": 6,
+  "rows": 8,
+  "arrows": [
+    {
+      "id": "arrow-0",
+      "headDir": "left",
+      "cells": [
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "arrow-1",
+      "headDir": "left",
+      "cells": [
+        [
+          4,
+          2
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          5,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "arrow-2",
+      "headDir": "left",
+      "cells": [
+        [
+          7,
+          2
+        ],
+        [
+          7,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "arrow-3",
+      "headDir": "right",
+      "cells": [
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          4,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "arrow-4",
+      "headDir": "right",
+      "cells": [
+        [
+          6,
+          4
+        ],
+        [
+          6,
+          5
+        ]
+      ]
+    }
+  ]
+}

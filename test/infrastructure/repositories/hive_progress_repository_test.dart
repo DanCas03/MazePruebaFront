@@ -3,6 +3,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/infrastructure/data_sources/local/hive_level_progress_data_source.dart';
 import 'package:flutter_arrow_maze/infrastructure/models/level_progress_hive_model.dart';
@@ -105,6 +106,42 @@ void main() {
 
       // Assert
       expect(result, isFalse);
+    });
+  });
+
+  group('getAll', () {
+    test('should_map_all_models_to_level_progress_when_present', () async {
+      // Arrange
+      when(mockDataSource.getAllProgress()).thenReturn([
+        LevelProgressHiveModel(
+            levelId: '1', moveCount: 5, completed: true, bestScore: 900, bestStars: 3),
+        LevelProgressHiveModel(
+            levelId: '2', moveCount: 0, completed: false),
+      ]);
+      // Act
+      final result = await repository.getAll();
+      // Assert
+      expect(result, hasLength(2));
+      expect(result.first.levelId, LevelId('1'));
+      expect(result.first.bestScore, 900);
+      expect(result.first.bestStars, 3);
+      expect(result.last.bestScore, isNull);
+    });
+  });
+
+  group('upsertAll', () {
+    test('should_upsert_each_entry_when_saving_merged_progress', () async {
+      // Arrange
+      when(mockDataSource.upsertProgress(any, any, any, any))
+          .thenAnswer((_) async {});
+      final progress = [
+        LevelProgress(
+            levelId: LevelId('1'), completed: true, bestScore: 900, bestStars: 3),
+      ];
+      // Act
+      await repository.upsertAll(progress);
+      // Assert
+      verify(mockDataSource.upsertProgress('1', true, 900, 3)).called(1);
     });
   });
 }

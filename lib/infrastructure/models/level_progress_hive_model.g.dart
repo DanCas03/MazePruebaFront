@@ -21,19 +21,25 @@ class LevelProgressHiveModelAdapter
       levelId: fields[0] as String,
       moveCount: (fields[1] as num).toInt(),
       completed: fields[2] as bool,
+      bestScore: (fields[3] as num?)?.toInt(),
+      bestStars: (fields[4] as num?)?.toInt(),
     );
   }
 
   @override
   void write(BinaryWriter writer, LevelProgressHiveModel obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.levelId)
       ..writeByte(1)
       ..write(obj.moveCount)
       ..writeByte(2)
-      ..write(obj.completed);
+      ..write(obj.completed)
+      ..writeByte(3)
+      ..write(obj.bestScore)
+      ..writeByte(4)
+      ..write(obj.bestStars);
   }
 
   @override

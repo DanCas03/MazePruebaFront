@@ -76,4 +76,34 @@ class MockHiveLocalDataSource extends _i1.Mock
         ),
         returnValue: false,
       ) as bool);
+
+  @override
+  List<_i3.LevelProgressHiveModel> getAllProgress() => (super.noSuchMethod(
+        Invocation.method(
+          #getAllProgress,
+          [],
+        ),
+        returnValue: <_i3.LevelProgressHiveModel>[],
+      ) as List<_i3.LevelProgressHiveModel>);
+
+  @override
+  _i4.Future<void> upsertProgress(
+    String? levelId,
+    bool? completed,
+    int? bestScore,
+    int? bestStars,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #upsertProgress,
+          [
+            levelId,
+            completed,
+            bestScore,
+            bestStars,
+          ],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
 }

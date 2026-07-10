@@ -43,4 +43,31 @@ class HiveLocalDataSource {
   }
 
   bool isCompleted(String levelId) => _box.get(levelId)?.completed ?? false;
+
+  List<LevelProgressHiveModel> getAllProgress() => _box.values.toList();
+
+  /// Upsert del registro completo (incluye score/estrellas). Preserva
+  /// moveCount previo si existe; usa 0 para registros nuevos (el sync no
+  /// transporta moveCount, solo completado + best score/estrellas).
+  Future<void> upsertProgress(
+      String levelId, bool completed, int? bestScore, int? bestStars) async {
+    final existing = _box.get(levelId);
+    if (existing != null) {
+      existing.completed = completed;
+      existing.bestScore = bestScore;
+      existing.bestStars = bestStars;
+      await existing.save();
+    } else {
+      await _box.put(
+        levelId,
+        LevelProgressHiveModel(
+          levelId: levelId,
+          moveCount: 0,
+          completed: completed,
+          bestScore: bestScore,
+          bestStars: bestStars,
+        ),
+      );
+    }
+  }
 }

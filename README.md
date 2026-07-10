@@ -36,10 +36,11 @@ lib/
 ├── application/     Use cases, Commands (undo), GameState (sealed), Riverpod Notifiers
 │   ├── commands/    ICommand, CommandInvoker, RemoveArrowCommand
 │   ├── state/       GameState / AuthState (sealed), GameController / AuthController (AsyncNotifier)
-│   └── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login)
-├── infrastructure/  Hive persistence, secure token storage, GraphBoardGenerator (implements the domain ports)
+│   └── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login), LoginUseCase, RegisterUseCase
+├── infrastructure/  Hive persistence, secure token storage, RemoteAuthRepository, GraphBoardGenerator (implements the domain ports)
 ├── presentation/    Screens, Widgets, Painters + providers/ (the only place infra is built)
-└── core/            Cross-cutting: aspects/ (logger), theme/, router/
+│   └── auth/        Login/register screens (LoginScreen, RegisterScreen) and shared auth widgets
+└── core/            Cross-cutting: aspects/ (logger), auth/ (AuthGate route guard), config/ (AppConfig), network/ (DioClient, AuthTokenInterceptor), theme/, router/
 ```
 
 The rule that keeps the boundary honest: `domain/` imports nothing from Flutter, Hive, or Riverpod, and every Riverpod provider that constructs a concrete `infrastructure/` class lives in `presentation/providers/`.
@@ -57,6 +58,9 @@ CONTEXT-MAP raíz) más `manifest.md` con la tabla del batch. Reproducible:
 misma tabla => mismos archivos. Los candidatos commiteados son el artefacto
 congelado que consume la curación (E2.2) y el seed del back (back#10);
 cambiar el batch = editar la tabla y commitear la regeneración.
+### Auth flow
+
+Login and registration hit the backend at `POST /auth/login` and `POST /auth/register` (base URL configurable via `--dart-define=API_BASE_URL=...`, defaulting to `http://10.0.2.2:3000` for the Android emulator). A successful call persists the returned JWT through `IAuthTokenStorage` (front#14); `AuthGate`, sitting at the `MaterialApp`'s `home`, watches `authControllerProvider` and swaps from `LoginScreen` to the game flow (`HomeScreen`) as soon as the session becomes `Authenticated` — no manual navigation call is needed after login.
 
 ## Design Patterns
 
@@ -64,7 +68,8 @@ cambiar el batch = editar la tabla y commitear la regeneración.
 |---|---|---|
 | **Command** | [`command.dart`](lib/application/commands/command.dart), [`command_invoker.dart`](lib/application/commands/command_invoker.dart), [`remove_arrow_command.dart`](lib/application/commands/remove_arrow_command.dart) | Models a move as a reversible operation. The invoker keeps history and delegates `undo` back to each command, so reversal logic lives with the operation. |
 | **Aggregate Root** | [`arrow_board.dart`](lib/domain/arrows/entities/arrow_board.dart) | `ArrowBoard` is the single entry point to the arrows; lookups are private, so no consumer iterates the arrow list outside the root. |
-| **Adapter** | [`logger_service_adapter.dart`](lib/core/aspects/logger_service_adapter.dart), [`secure_auth_token_repository.dart`](lib/infrastructure/repositories/secure_auth_token_repository.dart) | Wraps an external package behind a domain port, isolating the rest of the app from its concrete API: `logger` behind `ILoggerService`, and `flutter_secure_storage` behind `IAuthTokenStorage`. |
+| **Adapter** | [`logger_service_adapter.dart`](lib/core/aspects/logger_service_adapter.dart), [`secure_auth_token_repository.dart`](lib/infrastructure/repositories/secure_auth_token_repository.dart), [`remote_auth_repository.dart`](lib/infrastructure/repositories/remote_auth_repository.dart), [`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart) | Wraps an external package/API behind a domain port, isolating the rest of the app from its concrete shape: `logger` behind `ILoggerService`, `flutter_secure_storage` behind `IAuthTokenStorage`, Dio behind `IAuthRepository` (`RemoteAuthRepository` translates HTTP/`DioException` into `AuthToken`/`AuthFailure`), and the token header injection behind a Dio `Interceptor`. |
+| **AOP + Adapter** | [`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart) | `AuthTokenInterceptor` (a Dio `Interceptor`) injects `Authorization: Bearer <token>` on every outgoing request by reading `IAuthTokenStorage`, so authenticated calls never repeat that boilerplate in application code. |
 | **Strategy** | [`graph_board_generator.dart`](lib/infrastructure/generators/graph_board_generator.dart) | `GraphBoardGenerator` implements `ILevelGenerator` as a swappable generation algorithm (a DAG that guarantees solvability). |
 | **Composition Root (DI)** | [`dependency_providers.dart`](lib/presentation/providers/dependency_providers.dart) | The one place concrete infrastructure is instantiated and injected as abstractions. |
 | **Custom Painter** | [`arrow_painter.dart`](lib/presentation/game/painters/arrow_painter.dart) | Procedural rendering of arrows with a 3-D glow, avoiding image assets. |
@@ -115,6 +120,7 @@ abstract interface class ILoggerService {
 - If the lane is clear, the arrow leaves the board **snake-style**: the head exits first and the body retracts along its own path (rendered by `ExitingArrowWidget` + `SnakeExitPainter`). The body only retracts over cells it already occupied, so it never collides with itself. If blocked, the move is rejected.
 - Puzzles are **solvable by construction**: the generator ([`GraphBoardGenerator`](lib/infrastructure/generators/graph_board_generator.dart)) places each arrow only if it can exit given the ones already placed, so removing arrows in reverse placement order always clears the board. Difficulty — size, density, and maximum path length — is tuned in one place, [`LevelBlueprint.forLevel`](lib/domain/board/value_objects/level_blueprint.dart).
 - The level is won when `ArrowBoard.isCleared` is true (`GameState` becomes `GameWon`).
+- A level is lost (`GameState` becomes `GameLost`) either after 5 collisions (tapping blocked arrows, tracked by `StrikeCount`) or, on advanced levels, when the optional time limit runs out. The limit lives on the level model ([`LevelBlueprint.timeLimitSec`](lib/domain/board/value_objects/level_blueprint.dart)) and the countdown is driven by an **injectable clock** ([`ITicker`](lib/domain/game_core/services/i_ticker.dart)) — `SystemTicker` in the app, a fake clock in tests — with the remaining seconds exposed as `GamePlaying.remainingSeconds`.
 - Moves are counted with `MoveCount` and can be undone through the `CommandInvoker`.
 
 ## Getting Started
@@ -137,7 +143,7 @@ Re-run `build_runner` whenever you add or change files annotated with `@HiveType
 ## Running Tests
 
 ```bash
-flutter test       # unit & widget tests (AAA, mockito mocks) — 105 tests
+flutter test       # unit & widget tests (AAA, mockito mocks) — 255 tests
 flutter analyze    # static analysis — expected: 0 issues
 ```
 

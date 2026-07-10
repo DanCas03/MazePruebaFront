@@ -46,10 +46,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final primary = isDark ? AppColors.primary : AppColors.lightPrimary;
 
     ref.listen(gameControllerProvider, (_, next) {
-      if (next.valueOrNull is GameWon) {
-        final moves = (next.valueOrNull as GameWon).moves.value;
+      final state = next.valueOrNull;
+      if (state is GameWon) {
         Navigator.pushReplacementNamed(context, AppRouter.victory,
-            arguments: moves);
+            arguments: state.moves.value);
+      } else if (state is GameLost) {
+        // La derrota lleva el LevelId para que el CTA "Retry" recargue el nivel.
+        Navigator.pushReplacementNamed(
+          context,
+          AppRouter.defeat,
+          arguments: (
+            levelId: widget.levelId,
+            moves: state.moves.value,
+            strikes: state.strikes.value,
+          ),
+        );
       }
     });
 
@@ -65,6 +76,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           error: (e, _) => const Text('Error'),
         ),
         actions: [
+          // Cuenta atrás de los niveles con límite (front#11); ausente si el
+          // nivel no está cronometrado.
+          ...asyncState.maybeWhen(
+            data: (s) => s is GamePlaying && s.remainingSeconds != null
+                ? [_CountdownChip(seconds: s.remainingSeconds!, color: onSurface)]
+                : const <Widget>[],
+            orElse: () => const <Widget>[],
+          ),
           IconButton(
             icon: Icon(Icons.undo, color: accent),
             onPressed: () =>
@@ -78,6 +97,35 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           loading: () => CircularProgressIndicator(color: primary),
           error: (e, _) => Text('$e'),
         ),
+      ),
+    );
+  }
+}
+
+/// Reloj de la partida en la AppBar: muestra los segundos restantes como `m:ss`.
+class _CountdownChip extends StatelessWidget {
+  final int seconds;
+  final Color color;
+  const _CountdownChip({required this.seconds, required this.color});
+
+  String get _label {
+    final safe = seconds < 0 ? 0 : seconds;
+    final minutes = safe ~/ 60;
+    final rest = (safe % 60).toString().padLeft(2, '0');
+    return '$minutes:$rest';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_outlined, color: color, size: 18),
+          const SizedBox(width: 4),
+          Text(_label, style: TextStyle(color: color)),
+        ],
       ),
     );
   }

@@ -26,10 +26,14 @@ class AuthController extends AsyncNotifier<AuthState> {
   @override
   Future<AuthState> build() => _restore.execute();
 
-  /// Persiste el token y marca la sesión como autenticada. La invoca front#15
-  /// tras un login/registro exitoso.
-  Future<void> saveSession(AuthToken token) async {
-    await _storage.save(token);
+  /// Persiste el token (si [persist]) y marca la sesión como autenticada. La
+  /// invoca front#15 tras un login/registro exitoso. Con [persist] `false`
+  /// ("recordarme" desmarcado) la sesión vive solo en memoria: no se escribe en
+  /// el almacenamiento, así que al reabrir la app no habrá auto-login.
+  Future<void> saveSession(AuthToken token, {bool persist = true}) async {
+    if (persist) {
+      await _storage.save(token);
+    }
     state = AsyncValue.data(Authenticated(token));
   }
 

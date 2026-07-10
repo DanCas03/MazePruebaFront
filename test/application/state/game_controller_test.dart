@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dartz/dartz.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +16,7 @@ import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_blueprint.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/game_core/services/i_ticker.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
@@ -43,6 +46,33 @@ ProviderContainer _container(MockILevelGenerator gen, MockRemoveArrowUseCase uc)
   ]);
   addTearDown(c.dispose);
   return c;
+}
+
+/// Contenedor con un reloj falso inyectado, para ejercer la cuenta atrás sin
+/// depender del tiempo real (mock clock → sin fragilidad).
+ProviderContainer _containerWithTicker(
+    MockILevelGenerator gen, MockRemoveArrowUseCase uc, ITicker ticker) {
+  final c = ProviderContainer(overrides: [
+    gameControllerProvider
+        .overrideWith(() => GameController(gen, uc, CommandInvoker(), ticker)),
+  ]);
+  addTearDown(c.dispose);
+  return c;
+}
+
+/// Reloj falso controlado a mano: `emit` empuja el siguiente valor de la cuenta
+/// atrás cuando el test lo decide, sin esperar segundos reales.
+class _FakeTicker implements ITicker {
+  final _controller = StreamController<int>.broadcast();
+  int? requestedSeconds; // segundos con los que se pidió la cuenta atrás
+
+  @override
+  Stream<int> countdown({required int seconds}) {
+    requestedSeconds = seconds;
+    return _controller.stream;
+  }
+
+  void emit(int remaining) => _controller.add(remaining);
 }
 
 void _stubGenerate(MockILevelGenerator gen, ArrowBoard board) {
@@ -270,5 +300,107 @@ void main() {
     expect(s.moves.value, 0);
     expect(s.canUndo, isFalse);
     expect(s.board.arrows.length, 2);
+  });
+
+  // ── Cuenta atrás inyectable (front#11) ──────────────────────────────────────
+
+  // Nivel cronometrado según la curva de LevelBlueprint (>= timedFromLevel).
+  final timedLevel = LevelId('${LevelBlueprint.timedFromLevel}');
+  final timedLimit = LevelBlueprint.forLevel(LevelBlueprint.timedFromLevel).timeLimitSec!;
+
+  test('should_start_countdown_when_level_has_time_limit', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    final ticker = _FakeTicker();
+    final c = _containerWithTicker(gen, uc, ticker);
+    final notifier = c.read(gameControllerProvider.notifier);
+
+    // Act
+    await notifier.loadLevel(timedLevel);
+
+    // Assert — arranca el reloj con el límite del nivel y lo expone en el estado.
+    expect(ticker.requestedSeconds, timedLimit);
+    final s = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(s.remainingSeconds, timedLimit);
+  });
+
+  test('should_not_start_countdown_when_level_has_no_time_limit', () async {
+    // Arrange — nivel 1 no tiene límite
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    final ticker = _FakeTicker();
+    final c = _containerWithTicker(gen, uc, ticker);
+    final notifier = c.read(gameControllerProvider.notifier);
+
+    // Act
+    await notifier.loadLevel(LevelId('1'));
+
+    // Assert — el reloj nunca se solicitó y el estado no lleva segundos.
+    expect(ticker.requestedSeconds, isNull);
+    final s = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(s.remainingSeconds, isNull);
+  });
+
+  test('should_update_remaining_seconds_when_ticker_emits', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    final ticker = _FakeTicker();
+    final c = _containerWithTicker(gen, uc, ticker);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(timedLevel);
+
+    // Act — el reloj falso avanza a 42 s restantes
+    ticker.emit(42);
+    await pumpEventQueue();
+
+    // Assert
+    final s = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(s.remainingSeconds, 42);
+  });
+
+  test('should_lose_when_time_runs_out', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _twoArrowBoard());
+    final ticker = _FakeTicker();
+    final c = _containerWithTicker(gen, uc, ticker);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(timedLevel);
+
+    // Act — el reloj llega a 0 (timeout)
+    ticker.emit(0);
+    await pumpEventQueue();
+
+    // Assert — timeout ⇒ GameLost, conservando los movimientos hechos.
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GameLost>());
+    expect((state as GameLost).moves.value, 0);
+  });
+
+  test('should_ignore_timeout_when_level_already_won', () async {
+    // Arrange — un solo tap legal vacía el tablero → GameWon antes del timeout.
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _oneArrowBoard());
+    when(uc.execute(any, any)).thenReturn(Right(_oneArrowBoard()));
+    final ticker = _FakeTicker();
+    final c = _containerWithTicker(gen, uc, ticker);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(timedLevel);
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    expect(c.read(gameControllerProvider).valueOrNull, isA<GameWon>());
+
+    // Act — un tick tardío del reloj cancelado no debe robar la victoria.
+    ticker.emit(0);
+    await pumpEventQueue();
+
+    // Assert
+    expect(c.read(gameControllerProvider).valueOrNull, isA<GameWon>());
   });
 }

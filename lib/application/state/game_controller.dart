@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
 import '../../domain/board/value_objects/level_blueprint.dart';
 import '../../domain/board/value_objects/level_id.dart';
+import '../../domain/game_core/services/i_ticker.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
 import '../../domain/game_core/value_objects/strike_count.dart';
 import '../commands/command_invoker.dart';
@@ -26,8 +29,13 @@ class GameController extends AsyncNotifier<GameState> {
   final ILevelGenerator _generator;
   final RemoveArrowUseCase _removeArrow;
   final CommandInvoker _invoker;
+  final ITicker _ticker;
 
-  GameController(this._generator, this._removeArrow, this._invoker);
+  // El reloj es opcional: por defecto un Null Object inerte (tests que no
+  // ejercen el tiempo, niveles sin límite). El composition root inyecta el
+  // reloj real (SystemTicker) y los tests de tiempo, uno falso controlado.
+  GameController(this._generator, this._removeArrow, this._invoker,
+      [this._ticker = const NullTicker()]);
 
   // Estado con alcance de partida (no de dominio).
   LevelId? _currentLevel;
@@ -35,12 +43,22 @@ class GameController extends AsyncNotifier<GameState> {
   int _exitNonce = 0;
   StrikeCount _strikes = const StrikeCount(0);
 
+  // Cuenta atrás del nivel (front#11). _remainingSeconds es null si el nivel no
+  // tiene límite; _tickSub es la suscripción viva al reloj inyectado.
+  int? _remainingSeconds;
+  StreamSubscription<int>? _tickSub;
+
   @override
-  Future<GameState> build() async => GameLoading();
+  Future<GameState> build() async {
+    // Evita que el reloj siga corriendo si el notifier se destruye.
+    ref.onDispose(_cancelTimer);
+    return GameLoading();
+  }
 
   Future<void> loadLevel(LevelId levelId) async {
     // Aseguramos que build() haya resuelto antes de mutar el estado.
     await future;
+    _cancelTimer();
     _currentLevel = levelId;
     _blockedNonce = 0;
     _exitNonce = 0;
@@ -49,6 +67,7 @@ class GameController extends AsyncNotifier<GameState> {
 
     // La dificultad la decide LevelBlueprint (dominio); el generador solo genera.
     final bp = LevelBlueprint.forLevel(levelId.number);
+    _remainingSeconds = bp.timeLimitSec;
     final board = _generator.generate(
       cols: bp.cols,
       rows: bp.rows,
@@ -57,8 +76,17 @@ class GameController extends AsyncNotifier<GameState> {
       seed: levelId.number, // determinista: mismo nivel ⇒ mismo tablero
     );
     state = AsyncValue.data(
-      GamePlaying(board: board, moves: const MoveCount(0), canUndo: false),
+      GamePlaying(
+        board: board,
+        moves: const MoveCount(0),
+        canUndo: false,
+        remainingSeconds: _remainingSeconds,
+      ),
     );
+
+    // Niveles avanzados arrancan la cuenta atrás; al agotarse → GameLost.
+    final limit = bp.timeLimitSec;
+    if (limit != null) _startTimer(limit);
   }
 
   Future<void> tapArrow(ArrowId arrowId) async {
@@ -72,6 +100,7 @@ class GameController extends AsyncNotifier<GameState> {
         // antes, feedback de shake (sin cambiar el tablero).
         _strikes = _strikes.increment();
         if (_strikes.isFatal) {
+          _cancelTimer();
           state = AsyncValue.data(
             GameLost(moves: current.moves, strikes: _strikes),
           );
@@ -86,6 +115,7 @@ class GameController extends AsyncNotifier<GameState> {
           blockedNonce: _blockedNonce,
           exitNonce: _exitNonce,
           canUndo: _invoker.canUndo,
+          remainingSeconds: _remainingSeconds,
         ));
       },
       (_) {
@@ -97,6 +127,7 @@ class GameController extends AsyncNotifier<GameState> {
         final newMoves = current.moves.increment();
         _exitNonce++;
         if (newBoard.isCleared) {
+          _cancelTimer();
           state = AsyncValue.data(GameWon(moves: newMoves));
         } else {
           state = AsyncValue.data(GamePlaying(
@@ -107,6 +138,7 @@ class GameController extends AsyncNotifier<GameState> {
             exitNonce: _exitNonce,
             blockedNonce: _blockedNonce,
             canUndo: _invoker.canUndo,
+            remainingSeconds: _remainingSeconds,
           ));
         }
       },
@@ -141,13 +173,50 @@ class GameController extends AsyncNotifier<GameState> {
       blockedNonce: _blockedNonce,
       exitNonce: _exitNonce,
       canUndo: _invoker.canUndo,
+      remainingSeconds: _remainingSeconds,
     ));
   }
 
   Future<void> restartLevel() async {
     final level = _currentLevel;
     if (level != null) {
-      await loadLevel(level); // determinista ⇒ mismo tablero
+      await loadLevel(level); // determinista ⇒ mismo tablero (reinicia el reloj)
     }
+  }
+
+  // ── Cuenta atrás inyectable (front#11) ──────────────────────────────────────
+
+  void _startTimer(int seconds) {
+    _cancelTimer();
+    _remainingSeconds = seconds;
+    _tickSub = _ticker.countdown(seconds: seconds).listen((remaining) {
+      _remainingSeconds = remaining;
+      final current = state.valueOrNull;
+      // Si ya se ganó/perdió/salió de la partida, ignoramos el tick tardío.
+      if (current is! GamePlaying) return;
+      if (remaining <= 0) {
+        _cancelTimer();
+        state = AsyncValue.data(
+          GameLost(moves: current.moves, strikes: _strikes),
+        );
+      } else {
+        state = AsyncValue.data(GamePlaying(
+          board: current.board,
+          moves: current.moves,
+          strikes: current.strikes,
+          blockedArrow: current.blockedArrow,
+          blockedNonce: current.blockedNonce,
+          exitingArrow: current.exitingArrow,
+          exitNonce: current.exitNonce,
+          canUndo: current.canUndo,
+          remainingSeconds: remaining,
+        ));
+      }
+    });
+  }
+
+  void _cancelTimer() {
+    _tickSub?.cancel();
+    _tickSub = null;
   }
 }

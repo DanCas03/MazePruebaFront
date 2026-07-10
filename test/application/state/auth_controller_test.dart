@@ -74,6 +74,37 @@ void main() {
       expect(state, isA<Authenticated>());
       verify(mockStorage.save(token)).called(1);
     });
+
+    test('with persist:false transitions to Authenticated WITHOUT writing storage', () async {
+      // Arrange
+      when(mockStorage.read()).thenAnswer((_) async => null);
+      final token = _longLivedToken();
+      final container = makeContainer();
+      await container.read(authControllerProvider.future); // settle build()
+      // Act
+      await container
+          .read(authControllerProvider.notifier)
+          .saveSession(token, persist: false);
+      // Assert
+      final state = await container.read(authControllerProvider.future);
+      expect(state, isA<Authenticated>());
+      verifyNever(mockStorage.save(any));
+    });
+
+    test('with persist:true (default) writes storage', () async {
+      // Arrange
+      when(mockStorage.read()).thenAnswer((_) async => null);
+      final token = _longLivedToken();
+      when(mockStorage.save(token)).thenAnswer((_) async {});
+      final container = makeContainer();
+      await container.read(authControllerProvider.future);
+      // Act
+      await container
+          .read(authControllerProvider.notifier)
+          .saveSession(token, persist: true);
+      // Assert
+      verify(mockStorage.save(token)).called(1);
+    });
   });
 
   group('signOut', () {

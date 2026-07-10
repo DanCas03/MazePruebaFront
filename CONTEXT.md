@@ -75,6 +75,16 @@ sincroniza con el backend.
 **Score** (Puntaje):
 Valor numérico = f(tiempo, movimientos sobre óptimo, choques). Define el ranking.
 
+**Solution** (Solución):
+El orden de `ArrowId`, producido y servido por el **backend**, cuya remoción en secuencia
+vacía el tablero. El cliente la **anima**; nunca deriva el orden (ADR 0002).
+_Avoid_: respuesta, walkthrough, camino ganador.
+
+**Hint** (Pista):
+Demo **no puntuada** en niveles elegibles (política del cliente): reinicia el nivel y
+reproduce la Solución animada. No toca movimientos, strikes, undo ni progreso.
+_Avoid_: ayuda, auto-play, truco.
+
 ### Cuenta y ranking
 
 **Session** (Sesión):

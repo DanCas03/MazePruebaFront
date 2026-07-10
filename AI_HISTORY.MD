@@ -1,5 +1,42 @@
 # AI History — MazePruebaFront
 
+## Entrada 041 — front#1 (fragmento 3): batch v1 de 30 candidatos congelado
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Fragmento 3 (final) del issue front#1. Ejecutar el script y congelar en git el batch v1: 30 JSON de candidatos + `manifest.md` en `tool/candidates/`. Estos archivos son el artefacto congelado real que consume la curación (E2.2) y desbloquea back#10 (seed Prisma con 15 niveles).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8).
+**Prompt o instrucción proporcionada:** > "Ejecuta el plan del issue 1 del front (script generador de candidatos)."
+**Resultado obtenido:**
+- `tool/candidates/cand-t{1..5}-s*.json` (30 nuevos) + `tool/candidates/manifest.md`: 6 candidatos por tier, dims 6x8 → 11x15, **0 degradados** (todos colocan las flechas pedidas).
+- AC de reproducibilidad verificado: re-ejecutar el script no cambia ningún byte (`git diff` vacío tras el `git add`; archivos LF estables, sin conversión CRLF). Formato wire y variedad de dims cubiertos por los tests del fragmento 1 y el manifiesto.
+**Modificaciones realizadas por el equipo:**
+
+
+## Entrada 040 — front#1 (fragmento 2): script generador de candidatos + docs
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Fragmento 2 del issue front#1. CLI `tool/generate_level_candidates.dart` que corre `GraphBoardGenerator` con una tabla FIJA de 30 seeds (5 tiers × 6, 2x oversupply) y escribe un JSON wire-estricto por candidato + `manifest.md` en `tool/candidates/` (default, `--out` opcional). La reproducibilidad vive en la tabla versionada; el artefacto congelado real son los JSON commiteados (`Random(seed)` de Dart no es estable entre SDKs). Degradación con gracia: si el generador coloca menos flechas de las pedidas, se exporta igual y el manifiesto lo marca `(!)`.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8); test de determinismo delegado a subagente QA.
+**Prompt o instrucción proporcionada:** > "Ejecuta el plan del issue 1 del front (script generador de candidatos)."
+**Resultado obtenido:**
+- `tool/generate_level_candidates.dart` (nuevo): CLI fino (`dart:io`, sin arrancar Flutter) con `CandidateSpec` + `_batchSpec` (rampa 6x8→11x15, maxPathLen 4→7) y armado del manifiesto.
+- `test/infrastructure/serialization/level_generation_determinism_test.dart` (nuevo): 2 tests AAA sobre generador+encoder (misma seed → mismo JSON; seeds distintas → JSON distinto). Verde.
+- `README.md`: sección Tooling con el uso del script. `CONTEXT.md`: glosario "Producción de niveles" (Candidato / Curación / Tier).
+- Smoke run: 30 candidatos, 0 degradados. `flutter analyze` limpio; suite completa 217/217 verde.
+**Modificaciones realizadas por el equipo:**
+
+
+## Entrada 039 — front#1 (fragmento 1): LevelJsonEncoder (formato wire arrow-path)
+
+**Fecha:** 2026-07-09
+**Tarea o problema abordado:** Fragmento 1 del issue front#1 (= E2.1 del backlog de cutover). Serializar un `ArrowBoard` al JSON arrow-path wire-estricto del contrato canónico (`CONTEXT-MAP.md` raíz): `{levelId, cols, rows, timeLimitSec?, arrows:[{id, headDir, cells:[[row,col],…]}]}`, con `cells` de cola→cabeza y sin claves extra (copiable tal cual al seed del back). El encoder es el inverso natural del futuro `LevelDto.fromJson` (E1.3/front#8) sin adelantarlo.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `chore/front1-level-candidates`; tests delegados a subagente QA.
+**Prompt o instrucción proporcionada:** > "Ejecuta el plan del issue 1 del front (script generador de candidatos)."
+**Resultado obtenido:**
+- `lib/infrastructure/serialization/level_json_encoder.dart` (nuevo): `LevelJsonEncoder` con `toMap(...)` y `encode(...)`. `encode` usa `JsonEncoder.withIndent('  ')` + newline final para salida byte-estable (congelable en git). Solo importa `domain/` (capa correcta).
+- `test/infrastructure/serialization/level_json_encoder_test.dart` (nuevo): 7 tests AAA `should_..._when_...` sin mocks (claves exactas del wire, cells cola→cabeza en flecha doblada, 4 direcciones, omitir/incluir timeLimitSec, arrows vacío, indent+newline). 7/7 en verde; `flutter analyze` sin issues nuevos.
+**Modificaciones realizadas por el equipo:**
+
 ## Entrada 038 — front#11: límite de tiempo opcional con reloj inyectable
 
 **Fecha:** 2026-07-09

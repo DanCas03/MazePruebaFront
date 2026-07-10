@@ -45,6 +45,19 @@ lib/
 
 The rule that keeps the boundary honest: `domain/` imports nothing from Flutter, Hive, or Riverpod, and every Riverpod provider that constructs a concrete `infrastructure/` class lives in `presentation/providers/`.
 
+## Tooling
+
+### Generador de candidatos de nivel (front#1 / E2.1)
+
+    dart run tool/generate_level_candidates.dart [--out <dir>]
+
+Corre `GraphBoardGenerator` con la tabla fija de seeds de
+`tool/generate_level_candidates.dart` y escribe en `tool/candidates/` (default)
+un JSON wire-estricto por candidato (`{levelId, cols, rows, arrows[]}`, ver
+CONTEXT-MAP raíz) más `manifest.md` con la tabla del batch. Reproducible:
+misma tabla => mismos archivos. Los candidatos commiteados son el artefacto
+congelado que consume la curación (E2.2) y el seed del back (back#10);
+cambiar el batch = editar la tabla y commitear la regeneración.
 ### Auth flow
 
 Login and registration hit the backend at `POST /auth/login` and `POST /auth/register` (base URL configurable via `--dart-define=API_BASE_URL=...`, defaulting to `http://10.0.2.2:3000` for the Android emulator). A successful call persists the returned JWT through `IAuthTokenStorage` (front#14); `AuthGate`, sitting at the `MaterialApp`'s `home`, watches `authControllerProvider` and swaps from `LoginScreen` to the game flow (`HomeScreen`) as soon as the session becomes `Authenticated` — no manual navigation call is needed after login.

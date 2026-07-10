@@ -103,6 +103,24 @@ _Avoid_: login como estado, auth-state.
 **Leaderboard** (Ranking):
 Tabla de mejores `Score` por nivel; el cliente la **lee** y la muestra.
 
+### Producción de niveles
+
+**Candidato (de nivel)**:
+Tablero soluble generado con seed fija y exportado como JSON arrow-path, identificado de
+forma trazable por su tier y seed (`cand-t3-s302`). Es insumo de la Curación; **no** es un
+nivel jugable servido hasta ser curado y congelado en la API.
+_Avoid_: nivel provisional, nivel random, borrador jugable.
+
+**Curación**:
+Selección manual de 15 Candidatos (3 por Tier) que se congelan como los niveles oficiales
+que sirve la API. El orden y `timeLimitSec` los decide la curación, no el generador.
+_Avoid_: generación, sorteo, autogenerado.
+
+**Tier (de dificultad)**:
+Cada uno de los 5 escalones de la rampa (dimensiones, cantidad de flechas y longitud máxima
+de camino crecientes) en que se agrupan Candidatos y niveles curados.
+_Avoid_: mundo, capítulo.
+
 ### Vocabulario retirado (no usar)
 
 `ICell`, `WallCell`, `EmptyCell`, `ExitCell`, `CellType`, `CellFactory`, grilla de celdas,

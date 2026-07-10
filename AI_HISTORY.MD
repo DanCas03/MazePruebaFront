@@ -977,3 +977,12 @@
 **Prompt o instrucción proporcionada:** > "Seguir con front#16 (enviar score): resolver primero el gap del interceptor heredado de front#15."
 **Resultado obtenido:** Nuevo puerto `ISessionTokenStore` + impl `InMemorySessionTokenStore` como fuente única del token vivo. El interceptor lee la sesión en memoria (síncrono); `AuthController` publica el token SIEMPRE en el store (`persist` solo controla el keychain) en `saveSession`/`build`/`signOut`. Tests: interceptor firma con token solo-en-memoria, store set/current/clear, AuthController (persist true/false, signOut, restore), y test de integración con `HttpClientAdapter` capturador que verifica el header saliente. Verificación e2e real contra el back queda como paso manual.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 051 — front#16 — cronómetro ascendente + GameWon enriquecido (score/stars/time/level)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** El `POST /scores` exige `timeSeconds`, pero el tiempo no se trackeaba en niveles sin límite; y `GameWon` solo llevaba `moves`, sin score/estrellas.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#16: cronómetro real en todos los niveles y enriquecer GameWon con Score/Stars/time/levelId."
+**Resultado obtenido:** Nuevo `ITicker.elapsed()` (impl real en `SystemTicker`, Null Object en `NullTicker`). `GameController` corre un cronómetro ascendente por partida, captura el óptimo (nº de flechas) y, al ganar, computa `Score.fromRun`/`Stars.rate` (VOs de front#12) para emitir un `GameWon` enriquecido. Cambio aditivo: habilita también la victory screen de front#13. Tests: ambos tickers, victoria perfecta (tiempo 0 ⇒ 3★, score base) y victoria con 30 s (penalización de tiempo).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

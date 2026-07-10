@@ -1,7 +1,10 @@
 import '../../domain/arrows/entities/arrow.dart';
 import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
+import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
+import '../../domain/game_core/value_objects/score.dart';
+import '../../domain/game_core/value_objects/stars.dart';
 import '../../domain/game_core/value_objects/strike_count.dart';
 
 // State Pattern (sealed): estados mutuamente excluyentes del juego.
@@ -37,7 +40,17 @@ class GamePlaying extends GameState {
 
 class GameWon extends GameState {
   final MoveCount moves;
-  GameWon({required this.moves});
+  final Score score; // front#16: puntaje computado del run
+  final Stars stars; // front#16: estrellas del run
+  final int timeSeconds; // front#16: tiempo transcurrido, para el POST /scores
+  final LevelId levelId; // front#16: nivel al que pertenece el score
+  GameWon({
+    required this.moves,
+    required this.score,
+    required this.stars,
+    required this.timeSeconds,
+    required this.levelId,
+  });
 }
 
 class GameLost extends GameState {

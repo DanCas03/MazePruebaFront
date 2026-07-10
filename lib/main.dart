@@ -5,12 +5,15 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import 'l10n/app_localizations.dart';
 
+import 'application/providers/leaderboard_providers.dart';
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
 import 'application/commands/command_invoker.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/auth_form_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
+import 'application/use_cases/submit_score_use_case.dart';
+import 'core/aspects/logger_service_adapter.dart';
 import 'core/auth/auth_gate.dart';
 import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
@@ -19,10 +22,12 @@ import 'hive_registrar.g.dart';
 import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
+import 'infrastructure/data_sources/remote/leaderboard_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
 import 'infrastructure/repositories/in_memory_session_token_store.dart';
 import 'infrastructure/repositories/remote_auth_repository.dart';
+import 'infrastructure/repositories/remote_leaderboard_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
 import 'infrastructure/time/system_ticker.dart';
@@ -81,6 +86,14 @@ void main() async {
         // interceptor). Las capas internas solo conocen el puerto.
         remoteProgressRepositoryProvider.overrideWithValue(
           RemoteProgressRepository(RemoteProgressDataSource(dio)),
+        ),
+        // front#16: envío de score compuesto con el mismo Dio firmado. Las
+        // capas internas solo conocen el puerto ILeaderboardRepository.
+        submitScoreUseCaseProvider.overrideWithValue(
+          SubmitScoreUseCase(
+            RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
+            LoggerServiceAdapter(),
+          ),
         ),
       ],
       child: const ArrowMazeApp(),

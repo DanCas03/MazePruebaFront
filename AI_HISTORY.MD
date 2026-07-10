@@ -978,11 +978,20 @@
 **Resultado obtenido:** Nuevo puerto `ISessionTokenStore` + impl `InMemorySessionTokenStore` como fuente única del token vivo. El interceptor lee la sesión en memoria (síncrono); `AuthController` publica el token SIEMPRE en el store (`persist` solo controla el keychain) en `saveSession`/`build`/`signOut`. Tests: interceptor firma con token solo-en-memoria, store set/current/clear, AuthController (persist true/false, signOut, restore), y test de integración con `HttpClientAdapter` capturador que verifica el header saliente. Verificación e2e real contra el back queda como paso manual.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
-## Entrada 051 — front#16 — cronómetro ascendente + GameWon enriquecido (score/stars/time/level)
+## Entrada 052 — front#16 — cronómetro ascendente + GameWon enriquecido (score/stars/time/level)
 
 **Fecha:** 2026-07-10
 **Tarea o problema abordado:** El `POST /scores` exige `timeSeconds`, pero el tiempo no se trackeaba en niveles sin límite; y `GameWon` solo llevaba `moves`, sin score/estrellas.
 **Herramienta de IA utilizada:** Claude (Claude Code)
 **Prompt o instrucción proporcionada:** > "front#16: cronómetro real en todos los niveles y enriquecer GameWon con Score/Stars/time/levelId."
 **Resultado obtenido:** Nuevo `ITicker.elapsed()` (impl real en `SystemTicker`, Null Object en `NullTicker`). `GameController` corre un cronómetro ascendente por partida, captura el óptimo (nº de flechas) y, al ganar, computa `Score.fromRun`/`Stars.rate` (VOs de front#12) para emitir un `GameWon` enriquecido. Cambio aditivo: habilita también la victory screen de front#13. Tests: ambos tickers, victoria perfecta (tiempo 0 ⇒ 3★, score base) y victoria con 30 s (penalización de tiempo).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 053 — front#16 — envío del score al leaderboard (POST /scores)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Enviar el score de una partida ganada al back de forma autenticada y resiliente.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#16: enviar el ScoreEntry al ganar vía repo de leaderboard, sin romper el flujo de victoria."
+**Resultado obtenido:** Dominio `ScoreEntry` + puerto `ILeaderboardRepository`; `LeaderboardRemoteDataSource` (`POST /scores`) y `RemoteLeaderboardRepository` (mapea al contrato back#7). `SubmitScoreUseCase` traga el error de red y lo loggea (AOP). `scoreSubmissionObserverProvider` (Observer) dispara el envío en `GameWon` fire-and-forget; `GameScreen` lo activa con `ref.watch`. Compuesto en `main` con el Dio firmado. Tests: `ScoreEntry` VO, repo con datasource mockeado (JSON correcto + propaga fallo), use case (éxito / fallo tragado y logueado). README actualizado.
 **Modificaciones realizadas por el equipo:** (completar manualmente)

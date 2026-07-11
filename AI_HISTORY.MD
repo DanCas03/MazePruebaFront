@@ -1013,3 +1013,12 @@
 **Prompt o instrucción proporcionada:** > "front#17: extender el puerto con getLeaderboard y añadir el GET al datasource/repo del leaderboard, sin duplicar."
 **Resultado obtenido:** El puerto `ILeaderboardRepository` gana `getLeaderboard(LevelId, {int? limit})` (ISP: interfaz cohesiva del agregado ranking, escritura + lectura). `LeaderboardRemoteDataSource.fetchLeaderboard` hace `GET /leaderboard/:levelId` (endpoint público, con `limit` opcional) y devuelve las filas crudas; `RemoteLeaderboardRepository._fromJson` mapea el contrato back#9 (`id, userId, levelId, score, stars, moves, timeSeconds, createdAt`) a `LeaderboardEntry`, preservando el orden score desc del back (rango posicional). Adapter (GoF) reutilizado, sin repos paralelos. Tests AAA con el datasource mockeado: mapeo de filas, preservación de orden + reenvío del `limit`, y propagación del error. Mocks regenerados (build_runner) por el nuevo método del puerto/datasource.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 055 — front#17 — caso de uso y estado reactivo del leaderboard
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Orquestar la carga del ranking y exponer los estados carga/datos/error a la UI vía Riverpod, con el error propagado (a diferencia del envío fire-and-forget).
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17: use case GetLeaderboard + provider reactivo con estados de carga/error, cableado en main."
+**Resultado obtenido:** `GetLeaderboardUseCase.execute(LevelId, {limit})` delega en el puerto, loggea (AOP) el intento y, ante fallo, loggea y **relanza** para que la UI muestre estado de error. `getLeaderboardUseCaseProvider` (default que falla, compuesto en `main` con el Dio firmado, DIP) y `leaderboardProvider` = `FutureProvider.autoDispose.family<List<LeaderboardEntry>, String>` por `levelId`, que envuelve el resultado en `AsyncValue` (los tres estados del criterio de aceptación) y recarga al reabrir la pantalla. Wiring aditivo en `main` sin tocar el override de #16 (OCP). Tests AAA con puerto y logger mockeados: éxito+log, reenvío del `limit`, y relanza+loguea error.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

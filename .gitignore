@@ -46,3 +46,6 @@ app.*.map.json
 
 # Flutter DevTools
 devtools_options.yaml
+
+# Localization: AppLocalizations generado por gen-l10n (generate: true regenera en cada pub get/build).
+/lib/l10n/app_localizations*.dart

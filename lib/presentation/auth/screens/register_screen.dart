@@ -9,7 +9,7 @@ import '../../../application/state/auth_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/auth/value_objects/email.dart';
 import '../../../domain/auth/value_objects/password.dart';
-import '../auth_strings.dart';
+import '../../../l10n/app_localizations.dart';
 import '../widgets/auth_text_field.dart';
 
 /// Pantalla de registro. Igual que login pero con confirmación de contraseña y
@@ -42,19 +42,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   bool _validate() {
+    final l10n = AppLocalizations.of(context);
     String? emailErr;
     String? passErr;
     String? confirmErr;
     try {
       Email(_email.text.trim());
     } on ArgumentError {
-      emailErr = AuthStrings.emailInvalid;
+      emailErr = l10n.emailInvalid;
     }
     if (_password.text.length < Password.minLength) {
-      passErr = AuthStrings.passwordTooShort;
+      passErr = l10n.passwordTooShort;
     }
     if (_confirm.text != _password.text) {
-      confirmErr = AuthStrings.confirmMismatch;
+      confirmErr = l10n.confirmMismatch;
     }
     setState(() {
       _emailError = emailErr;
@@ -85,6 +86,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         }
       });
     });
+    final l10n = AppLocalizations.of(context);
     final formState = ref.watch(authFormControllerProvider);
     final submitting = formState is FormSubmitting;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -102,7 +104,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  AuthStrings.registerTitle,
+                  l10n.registerTitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: onBackground,
@@ -112,21 +114,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 24),
                 AuthTextField(
                   controller: _email,
-                  label: AuthStrings.emailLabel,
+                  label: l10n.emailLabel,
                   keyboardType: TextInputType.emailAddress,
                   errorText: _emailError,
                 ),
                 const SizedBox(height: 16),
                 AuthTextField(
                   controller: _password,
-                  label: AuthStrings.passwordLabel,
+                  label: l10n.passwordLabel,
                   obscureText: true,
                   errorText: _passwordError,
                 ),
                 const SizedBox(height: 16),
                 AuthTextField(
                   controller: _confirm,
-                  label: AuthStrings.confirmPasswordLabel,
+                  label: l10n.confirmPasswordLabel,
                   obscureText: true,
                   errorText: _confirmError,
                 ),
@@ -136,7 +138,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       value: _remember,
                       onChanged: (v) => setState(() => _remember = v ?? true),
                     ),
-                    Text(AuthStrings.rememberMe,
+                    Text(l10n.rememberMe,
                         style: TextStyle(color: onBackground)),
                   ],
                 ),
@@ -159,12 +161,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text(AuthStrings.registerButton),
+                      : Text(l10n.registerButton),
                 ),
                 TextButton(
                   onPressed:
                       submitting ? null : () => Navigator.of(context).pop(),
-                  child: const Text(AuthStrings.goToLogin),
+                  child: Text(l10n.goToLogin),
                 ),
               ],
             ),

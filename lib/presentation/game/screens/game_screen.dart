@@ -4,6 +4,7 @@ import '../../../application/state/game_state.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/board/value_objects/level_id.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../providers/game_provider.dart';
 import '../widgets/board_widget.dart';
 
@@ -36,6 +37,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final asyncState = ref.watch(gameControllerProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -69,11 +71,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         backgroundColor: surface,
         title: asyncState.when(
           data: (s) => s is GamePlaying
-              ? Text('Moves: ${s.moves.value}',
+              ? Text(l10n.gameMoves(s.moves.value),
                   style: TextStyle(color: onSurface))
-              : const Text('Arrow Maze'),
-          loading: () => const Text('Loading...'),
-          error: (e, _) => const Text('Error'),
+              : Text(l10n.appTitle),
+          loading: () => Text(l10n.loading),
+          error: (e, _) => Text(l10n.error),
         ),
         actions: [
           // Cuenta atrás de los niveles con límite (front#11); ausente si el

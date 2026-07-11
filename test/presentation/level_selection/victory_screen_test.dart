@@ -2,14 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
+
+/// MaterialApp localizada (front#4): locale 'en' fijo para aserciones en inglés.
+Widget _localizedApp({required RouteFactory onGenerateRoute}) => MaterialApp(
+      theme: AppTheme.dark(),
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      onGenerateRoute: onGenerateRoute,
+    );
 
 /// Monta VictoryScreen detras de una ruta que inyecta `arguments` (numero de
 /// movimientos), tal como hace el flujo real al ganar una partida.
 Widget _appWithMoves(int? moves) {
-  return MaterialApp(
-    theme: AppTheme.dark(),
+  return _localizedApp(
     onGenerateRoute: (_) => MaterialPageRoute<void>(
       settings: RouteSettings(arguments: moves),
       builder: (_) => const VictoryScreen(),
@@ -47,8 +56,7 @@ void main() {
         (tester) async {
       // Arrange
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark(),
+        _localizedApp(
           onGenerateRoute: (settings) => switch (settings.name) {
             '/levels' => MaterialPageRoute<void>(
                 builder: (_) => const LevelSelectionScreen(),

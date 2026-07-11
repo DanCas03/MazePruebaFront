@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/board/value_objects/level_id.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Argumentos de la ruta de derrota: el [levelId] permite reintentar el mismo
 /// nivel y [moves]/[strikes] son solo para mostrar el resumen de la partida.
@@ -17,6 +18,7 @@ class DefeatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final args = ModalRoute.of(context)?.settings.arguments as DefeatArgs?;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -34,14 +36,14 @@ class DefeatScreen extends StatelessWidget {
                   color: AppColors.error, size: 80),
               const SizedBox(height: 16),
               Text(
-                'Out of Moves!',
+                l10n.defeatTitle,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   color: AppColors.error,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                '${args?.moves ?? 0} moves · ${args?.strikes ?? 0} strikes',
+                l10n.defeatSummary(args?.moves ?? 0, args?.strikes ?? 0),
                 style: theme.textTheme.bodyLarge?.copyWith(color: muted),
               ),
               const SizedBox(height: 48),
@@ -58,7 +60,7 @@ class DefeatScreen extends StatelessWidget {
                   foregroundColor:
                       isDark ? AppColors.background : AppColors.lightSurface,
                 ),
-                child: const Text('Retry'),
+                child: Text(l10n.retry),
               ),
               const SizedBox(height: 8),
               TextButton(
@@ -68,7 +70,7 @@ class DefeatScreen extends StatelessWidget {
                   (_) => false,
                 ),
                 child: Text(
-                  'Back to Levels',
+                  l10n.backToLevels,
                   style: TextStyle(color: muted),
                 ),
               ),

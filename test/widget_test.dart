@@ -46,5 +46,22 @@ void main() {
       expect(materialApp.darkTheme!.brightness, Brightness.dark);
       expect(materialApp.themeMode, ThemeMode.system);
     });
+
+    testWidgets('configures i18n with es/en locales and localization delegates',
+        (WidgetTester tester) async {
+      // Arrange
+      await tester.pumpWidget(
+        const ProviderScope(child: ArrowMazeApp()),
+      );
+
+      // Act
+      final materialApp =
+          tester.widget<MaterialApp>(find.byType(MaterialApp));
+
+      // Assert — front#4: el SO elige el idioma según el locale del dispositivo.
+      expect(materialApp.localizationsDelegates, isNotNull);
+      expect(materialApp.supportedLocales, contains(const Locale('es')));
+      expect(materialApp.supportedLocales, contains(const Locale('en')));
+    });
   });
 }

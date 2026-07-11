@@ -9,6 +9,7 @@ import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 
 /// Generador falso: el GameScreen es ahora un ConsumerWidget, por lo que la
@@ -39,6 +40,9 @@ Widget _appUnderTest() {
     ],
     child: MaterialApp(
       theme: AppTheme.dark(),
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       initialRoute: AppRouter.levelSelection,
       onGenerateRoute: AppRouter.onGenerateRoute,
     ),

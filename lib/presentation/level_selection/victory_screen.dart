@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Pantalla de victoria: confirma el tablero limpiado y muestra el numero de
 /// movimientos recibido como `arguments` de la ruta. CTA regresa al selector
@@ -11,6 +12,7 @@ class VictoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final moves = ModalRoute.of(context)?.settings.arguments as int? ?? 0;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -27,14 +29,14 @@ class VictoryScreen extends StatelessWidget {
               const Icon(Icons.star, color: AppColors.success, size: 80),
               const SizedBox(height: 16),
               Text(
-                'Board Cleared!',
+                l10n.victoryTitle,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   color: AppColors.success,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                '$moves moves',
+                l10n.victoryMoves(moves),
                 style: theme.textTheme.bodyLarge?.copyWith(color: muted),
               ),
               const SizedBox(height: 48),
@@ -49,7 +51,7 @@ class VictoryScreen extends StatelessWidget {
                   foregroundColor:
                       isDark ? AppColors.background : AppColors.lightSurface,
                 ),
-                child: const Text('Back to Levels'),
+                child: Text(l10n.backToLevels),
               ),
             ],
           ),

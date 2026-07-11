@@ -1,0 +1,9 @@
+# Config de `flutter gen-l10n` (front#4). El generador lee los .arb de `arb-dir`,
+# usa `app_en.arb` como plantilla de claves y emite `AppLocalizations` bajo
+# lib/l10n/ (parte del build; no se versiona el .dart generado).
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+# `.of(context)` devuelve no-nullable: falla ruidoso si faltan los delegates.
+nullable-getter: false

@@ -14,6 +14,7 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/defeat_screen.dart';
@@ -95,6 +96,9 @@ Widget _host(ProviderContainer container) => UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         onGenerateRoute: (settings) => switch (settings.name) {
           AppRouter.victory => MaterialPageRoute<void>(
               settings: settings,
@@ -229,6 +233,9 @@ void main() {
             ],
             child: MaterialApp(
               theme: AppTheme.dark(),
+              locale: const Locale('en'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               initialRoute: AppRouter.game,
               onGenerateRoute: (settings) => MaterialPageRoute<void>(
                 settings: settings,

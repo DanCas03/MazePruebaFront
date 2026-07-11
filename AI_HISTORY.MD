@@ -1,5 +1,16 @@
 # AI History — MazePruebaFront
 
+## Entrada 047 — LevelJsonDecoder — wire JSON → Level (front#8)
+
+**Fecha:** 2026-07-11
+**Tarea o problema abordado:** Task 3 del plan front#8 (remote levels): parsear el JSON arrow-path del wire contract (CONTEXT-MAP raíz) a un `Level` de dominio, como inverso de `LevelJsonEncoder`. El decoder debe ser ESTRICTO: cualquier desviación del contrato (clave ausente, tipo incorrecto, `headDir` desconocido, `cells` vacío o celda malformada) o violación de invariante de dominio (`Level` sin flechas, `timeLimitSec <= 0`) debe fallar como `FormatException` (nunca filtrar una `DomainException`), para que el repositorio la traduzca a `LevelCorrupted`.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "Ejecuta la Task 3 del plan front#8 remote levels."
+**Resultado obtenido:**
+- `lib/infrastructure/serialization/level_json_decoder.dart`: `class LevelJsonDecoder { const LevelJsonDecoder(); Level decode(Map<String, Object?> json); }`. Decodifica en modo estricto (helpers `_string`/`_int`/`_optionalInt`/`_list`/`_position`/`_direction`) y envuelve la construcción del `Level` en un `try/catch` que traduce `DomainException` → `FormatException('domain invariant violated: ...')`. `flutter analyze` → `No issues found!` (creado por el implementador).
+- `test/infrastructure/serialization/level_json_decoder_test.dart`: 10 tests AAA (`should_..._when_...`) en `group('LevelJsonDecoder', ...)`, escritos por subagente QA (skill `arrowmaze-qa`). Cubre: (1) round-trip golden — decodear el mapa canónico y re-encodearlo con `LevelJsonEncoder.toMap` reproduce el JSON original (`equals(canonical)`); (2) aserción directa de todos los campos de dominio (id, cols, rows, nº de flechas, `headDirection`/`cells` de la primera flecha con cabeza acodada, `timeLimitSec`); (3) `timeLimitSec` ausente → `null`; y siete casos corruptos que exigen `throwsFormatException`: falta `cols`, `headDir: 'sideways'` desconocido, `cells: []` vacío, celda malformada `[1,2,3]`, coord no-int `['x', 2]`, `arrows: []` (invariante de dominio → debe emerger como `FormatException`, NO `InvalidLevelException`) y `timeLimitSec: 0` (límite inválido → `FormatException`). Los dos últimos prueban la traducción `DomainException → FormatException`. `flutter test` → 10/10 verde; `flutter analyze` sobre ambos archivos → `No issues found!`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 046 — LevelFailure sealed + ILevelRepository port (front#8)
 
 **Fecha:** 2026-07-11

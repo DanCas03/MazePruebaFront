@@ -1,5 +1,18 @@
 # AI History — MazePruebaFront
 
+## Entrada 046 — LevelFailure sealed + ILevelRepository port (front#8)
+
+**Fecha:** 2026-07-11
+**Tarea o problema abordado:** Task 2 del plan front#8 (remote levels): modelar los fallos esperados al cargar niveles remotos como jerarquía sellada (`LevelFailure`) para que la UI haga pattern matching exhaustivo, y definir el puerto `ILevelRepository` (DIP) que la capa de aplicación consumirá sin conocer la implementación remota (con caché) de infrastructure.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "Ejecuta la Task 2 del plan front#8 remote levels."
+**Resultado obtenido:**
+- `lib/domain/board/failures/level_failure.dart`: `sealed class LevelFailure extends Equatable` con getter `message` (para logging/diagnóstico; la UI mapea cada caso a copy localizada vía l10n). Tres subtipos: `LevelNotFound(LevelId id)` (404 del back — autoridad sobre existencia, no consulta caché), `LevelUnavailable()` (fallo de red/servidor sin copia en caché) y `LevelCorrupted(String reason)` (JSON que incumple el wire contract). Espejo de `AuthFailure` ya existente en el dominio.
+- `lib/domain/board/repositories/i_level_repository.dart`: `abstract interface class ILevelRepository` con `Future<Either<LevelFailure, List<LevelId>>> listLevelIds()` (GET /levels) y `Future<Either<LevelFailure, Level>> getLevel(LevelId id)` (GET /levels/:id, network-first con fallback a caché). El prefetch no es método del puerto: lo orquesta la capa de aplicación reutilizando `getLevel`.
+- `test/domain/board/failures/level_failure_test.dart`: 9 tests AAA (`should_..._when_...`) agrupados en `group('LevelFailure', ...)`, escritos por subagente QA (skill `arrowmaze-qa`): igualdad por valor de `LevelNotFound` (mismo id / id distinto), igualdad de `LevelUnavailable` (const, props vacías), igualdad de `LevelCorrupted` (mismo `reason` / `reason` distinto), el getter `message` de cada subtipo contiene el dato discriminante (`level-07`, `bad cells`), y un `switch` exhaustivo sobre `LevelFailure` (la sellada compila sin cláusula `default`) que mapea cada subtipo a `'nf'`/`'un'`/`'co'`. `flutter test` → 9/9 verde. `flutter analyze` sobre los 3 archivos → `No issues found!`.
+- `ILevelRepository` no tiene comportamiento propio (solo firmas de puerto) y no requiere test independiente; se ejercitará vía la implementación remota en la Task 5 del plan.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 045 — Level VO + InvalidLevelException (front#8)
 
 **Fecha:** 2026-07-11

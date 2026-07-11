@@ -995,3 +995,12 @@
 **Prompt o instrucción proporcionada:** > "front#16: enviar el ScoreEntry al ganar vía repo de leaderboard, sin romper el flujo de victoria."
 **Resultado obtenido:** Dominio `ScoreEntry` + puerto `ILeaderboardRepository`; `LeaderboardRemoteDataSource` (`POST /scores`) y `RemoteLeaderboardRepository` (mapea al contrato back#7). `SubmitScoreUseCase` traga el error de red y lo loggea (AOP). `scoreSubmissionObserverProvider` (Observer) dispara el envío en `GameWon` fire-and-forget; `GameScreen` lo activa con `ref.watch`. Compuesto en `main` con el Dio firmado. Tests: `ScoreEntry` VO, repo con datasource mockeado (JSON correcto + propaga fallo), use case (éxito / fallo tragado y logueado). README actualizado.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 053 — front#17 — dominio de lectura del leaderboard (LeaderboardEntry)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Modelar la fila del ranking leída de `GET /leaderboard/:levelId` (back#9) como modelo de lectura del dominio, distinto del payload de envío `ScoreEntry`.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17 (ver leaderboard): apilar sobre #16, empezar por el dominio de lectura."
+**Resultado obtenido:** Entidad `LeaderboardEntry` (Dart puro, `Equatable`) con los campos del contrato back#9: `id`, `userId`, `LevelId`, `Score`, `Stars`, `MoveCount`, `timeSeconds`, `createdAt`; el rango es posicional (orden del back score desc), no un campo del cable. Invariante `timeSeconds >= 0`. Nuevo factory `Stars.fromValue(int)` que reconstruye la calificación ya calculada por el back validando la cota `[1, 3]` (OCP: extiende `Stars` sin tocar `.rate`). Tests AAA: entidad (campos, invariante, igualdad por valor) y `Stars.fromValue` (cotas y equivalencia con el ctor nombrado). El puerto `ILeaderboardRepository` gana `getLeaderboard` en el fragmento de infraestructura (junto a su impl, para que cada commit compile).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

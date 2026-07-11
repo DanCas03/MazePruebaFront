@@ -33,5 +33,12 @@
   "leaderboardTitle": "Ranking · Nivel {level}",
   "leaderboardEmpty": "Aún no hay puntajes en este nivel.\n¡Sé el primero!",
   "leaderboardError": "No se pudo cargar el ranking.",
-  "viewLeaderboard": "Ver ranking"
+  "viewLeaderboard": "Ver ranking",
+  "settingsTitle": "Ajustes",
+  "settingsAudioSection": "Audio",
+  "settingsMusic": "Música",
+  "settingsSfx": "Efectos de sonido",
+  "settingsLanguageSection": "Idioma",
+  "languageSpanish": "Español",
+  "languageEnglish": "Inglés"
 }

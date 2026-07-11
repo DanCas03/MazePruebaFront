@@ -11,7 +11,9 @@ import 'application/state/game_controller.dart';
 import 'application/commands/command_invoker.dart';
 import 'application/use_cases/get_leaderboard_use_case.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
+import 'application/state/audio_settings_controller.dart';
 import 'application/state/auth_form_controller.dart';
+import 'application/state/locale_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
 import 'application/use_cases/submit_score_use_case.dart';
 import 'core/aspects/logger_service_adapter.dart';
@@ -35,6 +37,7 @@ import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/remote_leaderboard_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
+import 'infrastructure/settings/hive_locale_store.dart';
 import 'infrastructure/time/system_ticker.dart';
 import 'presentation/providers/dependency_providers.dart';
 
@@ -48,6 +51,8 @@ void main() async {
   await Hive.openBox<LevelProgressHiveModel>('level_progress');
   // front#5: box sin tipar para el estado de mute del audio (3 booleanos).
   final audioSettingsBox = await Hive.openBox(HiveAudioSettingsStore.boxName);
+  // front#19: box sin tipar para la preferencia de idioma (String 'es'/'en').
+  final appSettingsBox = await Hive.openBox(HiveLocaleStore.boxName);
 
   // Composicion del subsistema de audio (front#5): Facade+Singleton tras el
   // puerto, decorado con logging (AOP). init() carga el mute persistido antes
@@ -109,6 +114,16 @@ void main() async {
         // front#5: audio real (Facade+Singleton decorado) sustituye al Null
         // Object; las capas internas solo conocen el puerto IAudioService.
         audioServiceProvider.overrideWithValue(audioService),
+        // front#19: controllers de ajustes compuestos con sus dependencias
+        // reales (DIP, mismo patrón que gameControllerProvider). El
+        // AudioSettingsController comparte la MISMA instancia de audioService;
+        // el LocaleController persiste/restaura el idioma en Hive.
+        audioSettingsControllerProvider.overrideWith(
+          () => AudioSettingsController(audioService),
+        ),
+        localeControllerProvider.overrideWith(
+          () => LocaleController(HiveLocaleStore(appSettingsBox)),
+        ),
         // front#16: envío de score compuesto con el mismo Dio firmado. Las
         // capas internas solo conocen el puerto ILeaderboardRepository.
         submitScoreUseCaseProvider.overrideWithValue(
@@ -132,11 +147,15 @@ void main() async {
   );
 }
 
-class ArrowMazeApp extends StatelessWidget {
+class ArrowMazeApp extends ConsumerWidget {
   const ArrowMazeApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // front#19: idioma reactivo. Al observar el LocaleController, cambiar el
+    // idioma desde Ajustes reconstruye el MaterialApp y todos los
+    // AppLocalizations.of(context) se reevalúan EN VIVO. `null` = seguir el SO.
+    final locale = ref.watch(localeControllerProvider);
     return MaterialApp(
       // onGenerateTitle: el título del task switcher del SO se localiza con el
       // locale activo (front#4). `title` estático se reemplaza por esta variante
@@ -148,9 +167,10 @@ class ArrowMazeApp extends StatelessWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       // i18n (front#4): delegates generados por gen-l10n (incluyen los Global*
-      // de Flutter para Material/Widgets/Cupertino). El SO elige es o en según
-      // el locale del dispositivo; español primero como idioma primario de la
-      // app (fallback para locales no soportados).
+      // de Flutter para Material/Widgets/Cupertino). Sin preferencia guardada,
+      // `locale` es null y el SO elige es o en según el dispositivo; español
+      // primero como idioma primario de la app (fallback para no soportados).
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: const [Locale('es'), Locale('en')],
       home: const AuthGate(),

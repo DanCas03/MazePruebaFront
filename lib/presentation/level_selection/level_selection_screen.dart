@@ -38,30 +38,53 @@ class LevelSelectionScreen extends StatelessWidget {
           mainAxisSpacing: 12,
         ),
         itemCount: _levelCount,
-        itemBuilder: (context, i) => InkWell(
-          onTap: () => Navigator.pushNamed(
-                context,
-                AppRouter.game,
-                arguments: LevelId('${i + 1}'),
+        // Cada celda: tap en el nivel = jugar; icono de ranking (front#17) =
+        // ver el leaderboard de ese nivel. El Stack superpone el acceso al
+        // ranking sin robarle el tap de juego al panel.
+        itemBuilder: (context, i) => Stack(
+          children: [
+            Positioned.fill(
+              child: InkWell(
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  AppRouter.game,
+                  arguments: LevelId('${i + 1}'),
+                ),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    // Panel glassmorphism: relleno translucido + borde sutil.
+                    color: glassFill,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: glassBorder),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${i + 1}',
+                    style: TextStyle(
+                      color: onBackground,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            decoration: BoxDecoration(
-              // Panel glassmorphism: relleno translucido + borde sutil.
-              color: glassFill,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: glassBorder),
             ),
-            alignment: Alignment.center,
-            child: Text(
-              '${i + 1}',
-              style: TextStyle(
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                icon: const Icon(Icons.leaderboard, size: 18),
+                tooltip: 'Ver ranking',
                 color: onBackground,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  AppRouter.leaderboard,
+                  arguments: LevelId('${i + 1}'),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -1004,3 +1004,12 @@
 **Prompt o instrucción proporcionada:** > "front#17 (ver leaderboard): apilar sobre #16, empezar por el dominio de lectura."
 **Resultado obtenido:** Entidad `LeaderboardEntry` (Dart puro, `Equatable`) con los campos del contrato back#9: `id`, `userId`, `LevelId`, `Score`, `Stars`, `MoveCount`, `timeSeconds`, `createdAt`; el rango es posicional (orden del back score desc), no un campo del cable. Invariante `timeSeconds >= 0`. Nuevo factory `Stars.fromValue(int)` que reconstruye la calificación ya calculada por el back validando la cota `[1, 3]` (OCP: extiende `Stars` sin tocar `.rate`). Tests AAA: entidad (campos, invariante, igualdad por valor) y `Stars.fromValue` (cotas y equivalencia con el ctor nombrado). El puerto `ILeaderboardRepository` gana `getLeaderboard` en el fragmento de infraestructura (junto a su impl, para que cada commit compile).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 054 — front#17 — lectura remota del leaderboard (GET /leaderboard/:levelId)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Leer el ranking por nivel desde el back#9 y mapearlo al dominio, reutilizando el mismo puerto/datasource/repo de #16 (lado escritura).
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17: extender el puerto con getLeaderboard y añadir el GET al datasource/repo del leaderboard, sin duplicar."
+**Resultado obtenido:** El puerto `ILeaderboardRepository` gana `getLeaderboard(LevelId, {int? limit})` (ISP: interfaz cohesiva del agregado ranking, escritura + lectura). `LeaderboardRemoteDataSource.fetchLeaderboard` hace `GET /leaderboard/:levelId` (endpoint público, con `limit` opcional) y devuelve las filas crudas; `RemoteLeaderboardRepository._fromJson` mapea el contrato back#9 (`id, userId, levelId, score, stars, moves, timeSeconds, createdAt`) a `LeaderboardEntry`, preservando el orden score desc del back (rango posicional). Adapter (GoF) reutilizado, sin repos paralelos. Tests AAA con el datasource mockeado: mapeo de filas, preservación de orden + reenvío del `limit`, y propagación del error. Mocks regenerados (build_runner) por el nuevo método del puerto/datasource.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

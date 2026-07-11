@@ -1,5 +1,17 @@
 # AI History — MazePruebaFront
 
+## Entrada 045 — Level VO + InvalidLevelException (front#8)
+
+**Fecha:** 2026-07-11
+**Tarea o problema abordado:** Task 1 del plan front#8 (remote levels): modelar `Level`, el VO que representa el nivel oficial de campaña tal como lo sirve el back (wire contract, CONTEXT-MAP), con sus invariantes de dominio — un nivel sin flechas no es jugable y un `timeLimitSec` presente debe ser positivo. Ambas violaciones deben fallar como excepción de dominio para que las capas de infraestructura las traduzcan a datos corruptos, no a bugs silenciosos.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "Ejecuta la Task 1 del plan front#8 remote levels."
+**Resultado obtenido:**
+- `lib/domain/core/exceptions/invalid_level_exception.dart`: `InvalidLevelException extends DomainException` — señaliza invariantes de `Level` violadas.
+- `lib/domain/board/entities/level.dart`: `class Level extends Equatable` con `id` (`LevelId`), `board` (`ArrowBoard`) y `timeLimitSec` (`int?`) opcional. El constructor valida en el sitio de construcción (fail-fast): lanza `InvalidLevelException` si `board.arrows.isEmpty` o si `timeLimitSec != null && timeLimitSec <= 0`. Dart puro, sin dependencias de Flutter ni infraestructura, coherente con la capa `domain/`.
+- `test/domain/board/entities/level_test.dart`: 9 tests AAA (`should_..._when_...`) agrupados en `group('Level', ...)`: construcción válida con y sin límite de tiempo, `throwsA(isA<InvalidLevelException>())` para tablero vacío / `timeLimitSec == 0` / `timeLimitSec < 0`, e igualdad por valor de Equatable (igual cuando id+board+timeLimitSec coinciden, distinto si difiere cualquiera de los tres). `flutter test` → 9/9 verde. `flutter analyze` sobre los 3 archivos → `No issues found!`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 044 — front#5: servicio de audio (Facade/Singleton) + assets + 2º aspecto AOP (E9)
 
 **Fecha:** 2026-07-10

@@ -9,6 +9,7 @@ import 'application/providers/leaderboard_providers.dart';
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
 import 'application/commands/command_invoker.dart';
+import 'application/use_cases/get_leaderboard_use_case.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/auth_form_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
@@ -112,6 +113,15 @@ void main() async {
         // capas internas solo conocen el puerto ILeaderboardRepository.
         submitScoreUseCaseProvider.overrideWithValue(
           SubmitScoreUseCase(
+            RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
+            LoggerServiceAdapter(),
+          ),
+        ),
+        // front#17: lectura del ranking compuesta con el mismo Dio (el GET es
+        // público, pero se reutiliza el cliente HTTP). Las capas internas solo
+        // conocen el puerto ILeaderboardRepository.
+        getLeaderboardUseCaseProvider.overrideWithValue(
+          GetLeaderboardUseCase(
             RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
             LoggerServiceAdapter(),
           ),

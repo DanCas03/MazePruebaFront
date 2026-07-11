@@ -44,6 +44,17 @@ class Stars extends Equatable {
     return const Stars._(1);
   }
 
+  /// Reconstruye las estrellas desde un valor persistido o recibido por red
+  /// (leaderboard, front#17): el back ya calculó la calificación y solo envía el
+  /// entero. Valida la cota de dominio `[1, 3]` en runtime (no con `assert`, que
+  /// se elimina en release).
+  factory Stars.fromValue(int value) {
+    if (value < 1 || value > 3) {
+      throw ArgumentError('Stars value must be between 1 and 3');
+    }
+    return Stars._(value);
+  }
+
   @override
   List<Object?> get props => [value];
 }

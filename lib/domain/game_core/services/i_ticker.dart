@@ -6,6 +6,11 @@ abstract interface class ITicker {
   /// Emite los segundos restantes, de [seconds] - 1 hasta 0 inclusive, uno por
   /// segundo. El 0 final es la señal de agotamiento (timeout → `GameLost`).
   Stream<int> countdown({required int seconds});
+
+  /// Emite el tiempo transcurrido en segundos: 1, 2, 3, …, uno por segundo y
+  /// sin cota. Alimenta el `timeSeconds` del score en TODOS los niveles
+  /// (front#16), también los que no tienen límite de tiempo.
+  Stream<int> elapsed();
 }
 
 /// Null Object (GoF): reloj inerte que nunca emite. Sirve como valor por defecto
@@ -17,4 +22,7 @@ class NullTicker implements ITicker {
 
   @override
   Stream<int> countdown({required int seconds}) => const Stream.empty();
+
+  @override
+  Stream<int> elapsed() => const Stream.empty();
 }

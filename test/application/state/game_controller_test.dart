@@ -20,6 +20,7 @@ import 'package:flutter_arrow_maze/domain/game_core/services/i_ticker.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 
 import 'game_controller_test.mocks.dart';
 
@@ -60,19 +61,24 @@ ProviderContainer _containerWithTicker(
   return c;
 }
 
-/// Reloj falso controlado a mano: `emit` empuja el siguiente valor de la cuenta
-/// atrás cuando el test lo decide, sin esperar segundos reales.
+/// Reloj falso controlado a mano: `emit` empuja la cuenta atrás y `emitElapsed`
+/// el cronómetro ascendente, sin esperar segundos reales.
 class _FakeTicker implements ITicker {
-  final _controller = StreamController<int>.broadcast();
+  final _countdown = StreamController<int>.broadcast();
+  final _elapsed = StreamController<int>.broadcast();
   int? requestedSeconds; // segundos con los que se pidió la cuenta atrás
 
   @override
   Stream<int> countdown({required int seconds}) {
     requestedSeconds = seconds;
-    return _controller.stream;
+    return _countdown.stream;
   }
 
-  void emit(int remaining) => _controller.add(remaining);
+  @override
+  Stream<int> elapsed() => _elapsed.stream;
+
+  void emit(int remaining) => _countdown.add(remaining);
+  void emitElapsed(int seconds) => _elapsed.add(seconds);
 }
 
 void _stubGenerate(MockILevelGenerator gen, ArrowBoard board) {
@@ -159,20 +165,49 @@ void main() {
     expect(s.canUndo, isTrue);
   });
 
-  test('tapArrow que limpia el tablero emite GameWon', () async {
+  test('tapArrow que limpia el tablero emite GameWon con score/stars/time/level',
+      () async {
+    // Arrange
     final gen = MockILevelGenerator();
     final uc = MockRemoveArrowUseCase();
     _stubGenerate(gen, _oneArrowBoard());
     when(uc.execute(any, any)).thenReturn(Right(_oneArrowBoard()));
-    final c = _container(gen, uc);
+    final c = _container(gen, uc); // NullTicker ⇒ elapsed 0
     final notifier = c.read(gameControllerProvider.notifier);
     await notifier.loadLevel(LevelId('1'));
-
+    // Act
     await notifier.tapArrow(const ArrowId('arrow-0'));
-
+    // Assert
     final state = c.read(gameControllerProvider).valueOrNull;
     expect(state, isA<GameWon>());
-    expect((state as GameWon).moves.value, 1);
+    final won = state as GameWon;
+    expect(won.moves.value, 1);
+    expect(won.timeSeconds, 0); // sin cronómetro real
+    expect(won.levelId, LevelId('1'));
+    // óptimo = 1 flecha, 0 choques, tiempo 0 ⇒ partida perfecta.
+    expect(won.stars.value, 3);
+    expect(won.score.value, Score.base);
+  });
+
+  test('GameWon lleva timeSeconds del cronómetro y penaliza el score', () async {
+    // Arrange
+    final gen = MockILevelGenerator();
+    final uc = MockRemoveArrowUseCase();
+    _stubGenerate(gen, _oneArrowBoard());
+    when(uc.execute(any, any)).thenReturn(Right(_oneArrowBoard()));
+    final ticker = _FakeTicker();
+    final c = _containerWithTicker(gen, uc, ticker);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+    // Act — el cronómetro marca 30 s antes de ganar.
+    ticker.emitElapsed(30);
+    await Future<void>.delayed(Duration.zero); // deja fluir el evento del stream
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    // Assert
+    final won = c.read(gameControllerProvider).valueOrNull as GameWon;
+    expect(won.timeSeconds, 30);
+    // óptimo 1, 0 choques, 30 s ⇒ score = base - 30*timePenaltyPerSecond.
+    expect(won.score.value, Score.base - 30 * Score.timePenaltyPerSecond);
   });
 
   test('should_keep_playing_when_fourth_collision', () async {

@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
+import 'package:flutter_arrow_maze/application/providers/leaderboard_providers.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
+import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
+import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
@@ -14,6 +17,9 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/defeat_screen.dart';
@@ -80,6 +86,13 @@ class _BlockedArrowGenerator implements ILevelGenerator {
   }
 }
 
+/// Repo de leaderboard no-op: los widget tests activan el Observer de envío de
+/// score (front#16) pero no ejercen la red.
+class _NoopLeaderboardRepository implements ILeaderboardRepository {
+  @override
+  Future<void> submitScore(ScoreEntry entry) async {}
+}
+
 ProviderContainer _container([ILevelGenerator? generator]) =>
     ProviderContainer(overrides: [
       gameControllerProvider.overrideWith(
@@ -89,12 +102,18 @@ ProviderContainer _container([ILevelGenerator? generator]) =>
           CommandInvoker(),
         ),
       ),
+      submitScoreUseCaseProvider.overrideWithValue(
+        SubmitScoreUseCase(_NoopLeaderboardRepository(), LoggerServiceAdapter()),
+      ),
     ]);
 
 Widget _host(ProviderContainer container) => UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         onGenerateRoute: (settings) => switch (settings.name) {
           AppRouter.victory => MaterialPageRoute<void>(
               settings: settings,
@@ -226,9 +245,16 @@ void main() {
                   CommandInvoker(),
                 ),
               ),
+              submitScoreUseCaseProvider.overrideWithValue(
+                SubmitScoreUseCase(
+                    _NoopLeaderboardRepository(), LoggerServiceAdapter()),
+              ),
             ],
             child: MaterialApp(
               theme: AppTheme.dark(),
+              locale: const Locale('en'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               initialRoute: AppRouter.game,
               onGenerateRoute: (settings) => MaterialPageRoute<void>(
                 settings: settings,

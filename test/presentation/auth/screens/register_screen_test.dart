@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/application/state/auth_form_controller.dart';
 import 'package:flutter_arrow_maze/application/state/auth_form_state.dart';
-import 'package:flutter_arrow_maze/presentation/auth/auth_strings.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/register_screen.dart';
 
 class _StubFormController extends AuthFormController {
@@ -14,12 +14,18 @@ class _StubFormController extends AuthFormController {
   AuthFormState build() => _fixed;
 }
 
+// Locale 'es' (front#4): los literales esperados son las cadenas ES del ARB.
 Widget _host(AuthFormState state) => ProviderScope(
       overrides: [
         authFormControllerProvider
             .overrideWith(() => _StubFormController(state)),
       ],
-      child: const MaterialApp(home: RegisterScreen()),
+      child: MaterialApp(
+        locale: const Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const RegisterScreen(),
+      ),
     );
 
 void main() {
@@ -29,17 +35,17 @@ void main() {
     await tester.pumpWidget(_host(const FormIdle()));
     // Act — valid email, short password, non-matching confirm
     await tester.enterText(
-        find.widgetWithText(TextField, AuthStrings.emailLabel), 'a@b.com');
+        find.widgetWithText(TextField, 'Email'), 'a@b.com');
     await tester.enterText(
-        find.widgetWithText(TextField, AuthStrings.passwordLabel), 'short');
+        find.widgetWithText(TextField, 'Contraseña'), 'short');
     await tester.enterText(
-        find.widgetWithText(TextField, AuthStrings.confirmPasswordLabel), 'other');
+        find.widgetWithText(TextField, 'Confirmar contraseña'), 'other');
     await tester
-        .tap(find.widgetWithText(FilledButton, AuthStrings.registerButton));
+        .tap(find.widgetWithText(FilledButton, 'Registrarme'));
     await tester.pump();
     // Assert
-    expect(find.text(AuthStrings.passwordTooShort), findsOneWidget);
-    expect(find.text(AuthStrings.confirmMismatch), findsOneWidget);
+    expect(find.text('Mínimo 8 caracteres'), findsOneWidget);
+    expect(find.text('Las contraseñas no coinciden'), findsOneWidget);
   });
 
   testWidgets('disables submit while FormSubmitting', (tester) async {

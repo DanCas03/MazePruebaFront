@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Pantalla inicial de Arrow Maze: logo flotante, titulo, tagline y CTA.
 /// Solo presentacion: navega por nombre de ruta (AppRouter) sin conocer la
@@ -13,6 +14,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -30,7 +32,7 @@ class HomeScreen extends StatelessWidget {
                 const _LogoArrows(),
                 const SizedBox(height: 28),
                 Text(
-                  'ARROW MAZE',
+                  l10n.appTitle.toUpperCase(),
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         color: AppColors.onBackground,
                         fontWeight: FontWeight.w900,
@@ -38,9 +40,10 @@ class HomeScreen extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Despeja el tablero. Saca cada flecha.',
-                  style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 15),
+                Text(
+                  l10n.homeTagline,
+                  style: const TextStyle(
+                      color: AppColors.onSurfaceMuted, fontSize: 15),
                 ),
                 const SizedBox(height: 48),
                 FilledButton(
@@ -57,9 +60,9 @@ class HomeScreen extends StatelessWidget {
                   ),
                   onPressed: () =>
                       Navigator.pushNamed(context, AppRouter.levelSelection),
-                  child: const Text(
-                    'JUGAR',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.homePlay,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1,

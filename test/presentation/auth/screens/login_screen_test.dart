@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/application/state/auth_form_controller.dart';
 import 'package:flutter_arrow_maze/application/state/auth_form_state.dart';
 import 'package:flutter_arrow_maze/domain/auth/failures/auth_failure.dart';
-import 'package:flutter_arrow_maze/presentation/auth/auth_strings.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/login_screen.dart';
 
 /// Notifier de prueba que mantiene un estado fijo, para renderizar la pantalla
@@ -17,12 +17,19 @@ class _StubFormController extends AuthFormController {
   AuthFormState build() => _fixed;
 }
 
+// Locale 'es' (front#4): los literales esperados abajo son las cadenas ES del
+// ARB, ya que AuthStrings fue reemplazado por AppLocalizations.
 Widget _host(AuthFormState state) => ProviderScope(
       overrides: [
         authFormControllerProvider
             .overrideWith(() => _StubFormController(state)),
       ],
-      child: const MaterialApp(home: LoginScreen()),
+      child: MaterialApp(
+        locale: const Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const LoginScreen(),
+      ),
     );
 
 void main() {
@@ -31,11 +38,11 @@ void main() {
     // Arrange
     await tester.pumpWidget(_host(const FormIdle()));
     // Act — tap the login button with empty email/password
-    await tester.tap(find.widgetWithText(FilledButton, AuthStrings.loginButton));
+    await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await tester.pump();
     // Assert
-    expect(find.text(AuthStrings.emailInvalid), findsOneWidget);
-    expect(find.text(AuthStrings.passwordEmpty), findsOneWidget);
+    expect(find.text('Email inválido'), findsOneWidget);
+    expect(find.text('Ingresa tu contraseña'), findsOneWidget);
   });
 
   testWidgets('disables the submit button while FormSubmitting', (tester) async {

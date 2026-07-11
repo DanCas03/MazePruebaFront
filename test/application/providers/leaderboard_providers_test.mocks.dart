@@ -3,17 +3,24 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:dartz/dartz.dart' as _i3;
+import 'dart:async' as _i4;
+
+import 'package:dartz/dartz.dart' as _i2;
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart'
-    as _i5;
+    as _i8;
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart'
-    as _i2;
-import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart'
-    as _i4;
+    as _i10;
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart'
-    as _i7;
-import 'package:flutter_arrow_maze/domain/core/exceptions/domain_exception.dart'
+    as _i11;
+import 'package:flutter_arrow_maze/domain/board/entities/level.dart' as _i7;
+import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart'
+    as _i5;
+import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart'
+    as _i3;
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart'
     as _i6;
+import 'package:flutter_arrow_maze/domain/core/exceptions/domain_exception.dart'
+    as _i9;
 import 'package:mockito/mockito.dart' as _i1;
 
 // ignore_for_file: type=lint
@@ -30,8 +37,8 @@ import 'package:mockito/mockito.dart' as _i1;
 // ignore_for_file: camel_case_types
 // ignore_for_file: subtype_of_sealed_class
 
-class _FakeArrowBoard_0 extends _i1.SmartFake implements _i2.ArrowBoard {
-  _FakeArrowBoard_0(
+class _FakeEither_0<L, R> extends _i1.SmartFake implements _i2.Either<L, R> {
+  _FakeEither_0(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -40,74 +47,64 @@ class _FakeArrowBoard_0 extends _i1.SmartFake implements _i2.ArrowBoard {
         );
 }
 
-class _FakeEither_1<L, R> extends _i1.SmartFake implements _i3.Either<L, R> {
-  _FakeEither_1(
-    Object parent,
-    Invocation parentInvocation,
-  ) : super(
-          parent,
-          parentInvocation,
-        );
-}
-
-/// A class which mocks [ILevelGenerator].
+/// A class which mocks [ILevelRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockILevelGenerator extends _i1.Mock implements _i4.ILevelGenerator {
-  MockILevelGenerator() {
+class MockILevelRepository extends _i1.Mock implements _i3.ILevelRepository {
+  MockILevelRepository() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i2.ArrowBoard generate({
-    required int? cols,
-    required int? rows,
-    required int? arrowCount,
-    required int? maxPathLen,
-    int? seed,
-  }) =>
+  _i4.Future<_i2.Either<_i5.LevelFailure, List<_i6.LevelId>>> listLevelIds() =>
       (super.noSuchMethod(
         Invocation.method(
-          #generate,
+          #listLevelIds,
           [],
-          {
-            #cols: cols,
-            #rows: rows,
-            #arrowCount: arrowCount,
-            #maxPathLen: maxPathLen,
-            #seed: seed,
-          },
         ),
-        returnValue: _FakeArrowBoard_0(
+        returnValue:
+            _i4.Future<_i2.Either<_i5.LevelFailure, List<_i6.LevelId>>>.value(
+                _FakeEither_0<_i5.LevelFailure, List<_i6.LevelId>>(
           this,
           Invocation.method(
-            #generate,
+            #listLevelIds,
             [],
-            {
-              #cols: cols,
-              #rows: rows,
-              #arrowCount: arrowCount,
-              #maxPathLen: maxPathLen,
-              #seed: seed,
-            },
           ),
+        )),
+      ) as _i4.Future<_i2.Either<_i5.LevelFailure, List<_i6.LevelId>>>);
+
+  @override
+  _i4.Future<_i2.Either<_i5.LevelFailure, _i7.Level>> getLevel(
+          _i6.LevelId? id) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getLevel,
+          [id],
         ),
-      ) as _i2.ArrowBoard);
+        returnValue: _i4.Future<_i2.Either<_i5.LevelFailure, _i7.Level>>.value(
+            _FakeEither_0<_i5.LevelFailure, _i7.Level>(
+          this,
+          Invocation.method(
+            #getLevel,
+            [id],
+          ),
+        )),
+      ) as _i4.Future<_i2.Either<_i5.LevelFailure, _i7.Level>>);
 }
 
 /// A class which mocks [RemoveArrowUseCase].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockRemoveArrowUseCase extends _i1.Mock
-    implements _i5.RemoveArrowUseCase {
+    implements _i8.RemoveArrowUseCase {
   MockRemoveArrowUseCase() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i3.Either<_i6.DomainException, _i2.ArrowBoard> execute(
-    _i2.ArrowBoard? board,
-    _i7.ArrowId? arrowId,
+  _i2.Either<_i9.DomainException, _i10.ArrowBoard> execute(
+    _i10.ArrowBoard? board,
+    _i11.ArrowId? arrowId,
   ) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -117,7 +114,7 @@ class MockRemoveArrowUseCase extends _i1.Mock
             arrowId,
           ],
         ),
-        returnValue: _FakeEither_1<_i6.DomainException, _i2.ArrowBoard>(
+        returnValue: _FakeEither_0<_i9.DomainException, _i10.ArrowBoard>(
           this,
           Invocation.method(
             #execute,
@@ -127,5 +124,5 @@ class MockRemoveArrowUseCase extends _i1.Mock
             ],
           ),
         ),
-      ) as _i3.Either<_i6.DomainException, _i2.ArrowBoard>);
+      ) as _i2.Either<_i9.DomainException, _i10.ArrowBoard>);
 }

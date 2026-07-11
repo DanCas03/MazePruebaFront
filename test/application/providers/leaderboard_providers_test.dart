@@ -12,8 +12,9 @@ import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.d
 import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
-import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
+import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
+import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
@@ -23,7 +24,7 @@ import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard
 
 import 'leaderboard_providers_test.mocks.dart';
 
-@GenerateMocks([ILevelGenerator, RemoveArrowUseCase])
+@GenerateMocks([ILevelRepository, RemoveArrowUseCase])
 Arrow _arrow(String id, int col) => Arrow.straight(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
@@ -35,15 +36,11 @@ Arrow _arrow(String id, int col) => Arrow.straight(
 ArrowBoard _oneArrowBoard() =>
     ArrowBoard(arrows: [_arrow('arrow-0', 0)], cols: 4, rows: 4);
 
-void _stubGenerate(MockILevelGenerator gen, ArrowBoard board) {
-  when(gen.generate(
-    cols: anyNamed('cols'),
-    rows: anyNamed('rows'),
-    arrowCount: anyNamed('arrowCount'),
-    maxPathLen: anyNamed('maxPathLen'),
-    seed: anyNamed('seed'),
-  )).thenReturn(board);
-}
+/// Stub del puerto remoto (front#8): `getLevel` responde un [Level] con el
+/// [board] dado; el levelId del run lo fija loadLevel, no el id del stub.
+void _stubLevel(MockILevelRepository repo, ArrowBoard board) =>
+    when(repo.getLevel(any)).thenAnswer(
+        (_) async => Right(Level(id: LevelId('1'), board: board)));
 
 /// Espía (Test Double) del puerto del leaderboard: registra cada score
 /// enviado en vez de golpear la red, para poder aserir la forma exacta del
@@ -69,13 +66,13 @@ class _NoopLogger implements ILoggerService {
 }
 
 ProviderContainer _container(
-  MockILevelGenerator gen,
+  MockILevelRepository repo,
   MockRemoveArrowUseCase uc,
   _SpyLeaderboardRepository spyRepo,
 ) {
   final c = ProviderContainer(overrides: [
     gameControllerProvider
-        .overrideWith(() => GameController(gen, uc, CommandInvoker())),
+        .overrideWith(() => GameController(repo, uc, CommandInvoker())),
     submitScoreUseCaseProvider
         .overrideWithValue(SubmitScoreUseCase(spyRepo, _NoopLogger())),
   ]);
@@ -88,12 +85,12 @@ void main() {
       'scoreSubmissionObserverProvider envía un ScoreEntry con los campos del run al ganar',
       () async {
     // Arrange
-    final gen = MockILevelGenerator();
+    final repo = MockILevelRepository();
     final uc = MockRemoveArrowUseCase();
-    _stubGenerate(gen, _oneArrowBoard());
+    _stubLevel(repo, _oneArrowBoard());
     when(uc.execute(any, any)).thenReturn(Right(_oneArrowBoard()));
     final spyRepo = _SpyLeaderboardRepository();
-    final c = _container(gen, uc, spyRepo); // NullTicker ⇒ elapsed 0
+    final c = _container(repo, uc, spyRepo); // NullTicker ⇒ elapsed 0
     // Activa el Observer: su `ref.listen` debe registrarse ANTES de ganar.
     c.read(scoreSubmissionObserverProvider);
     final notifier = c.read(gameControllerProvider.notifier);
@@ -116,12 +113,12 @@ void main() {
 
   test('mapea el levelId correcto para un nivel distinto del default', () async {
     // Arrange
-    final gen = MockILevelGenerator();
+    final repo = MockILevelRepository();
     final uc = MockRemoveArrowUseCase();
-    _stubGenerate(gen, _oneArrowBoard());
+    _stubLevel(repo, _oneArrowBoard());
     when(uc.execute(any, any)).thenReturn(Right(_oneArrowBoard()));
     final spyRepo = _SpyLeaderboardRepository();
-    final c = _container(gen, uc, spyRepo);
+    final c = _container(repo, uc, spyRepo);
     c.read(scoreSubmissionObserverProvider);
     final notifier = c.read(gameControllerProvider.notifier);
     await notifier.loadLevel(LevelId('3'));

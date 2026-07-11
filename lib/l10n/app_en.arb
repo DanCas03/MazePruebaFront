@@ -55,5 +55,13 @@
       "moves": { "type": "int" }
     }
   },
+  "victoryScore": "Score: {score}",
+  "@victoryScore": {
+    "description": "Score shown on the victory screen.",
+    "placeholders": {
+      "score": { "type": "int" }
+    }
+  },
+  "nextLevel": "Next Level",
   "selectLevel": "Select Level"
 }

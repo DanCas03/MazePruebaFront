@@ -16,6 +16,22 @@
 - **Assets** `assets/audio/` (4 SFX + música de fondo) declarados en `pubspec.yaml`; dependencia `audioplayers: ^6.1.0`. Sonidos **sintetizados originales** (sin muestras con copyright): exit = chirp ascendente + aire, collision = "nope" grave con tremolo, victory = arpegio de campanas inarmónicas C5-E5-G5-C6, defeat = arpegio descendente con droop, y música = loop calmado de 16 s (I–vi–IV–V) **sin costura** (frecuencias cuantizadas a múltiplos de 1/T + envolventes periódicas). Validados: cabeceras PCM correctas, no-silencio, sin clipping (pico ≤0.95), costura del loop |Δv|≈0.036/|Δpendiente|≈0.004; empaquetados en el bundle (`flutter build web` OK).
 - **Tests AAA** `should_..._when_...`: `audio_service_test.dart` (13, con fakes de backend/store) y `logging_audio_decorator_test.dart` (3). Suite completo **326/326 verde**; `flutter analyze` 0 issues. README actualizado (patrones + AOP + mecánica).
 
+## Entrada 043 — front#13: pantalla de victoria muestra estrellas + score (re-scope tras #16)
+
+**Fecha:** 2026-07-11
+**Tarea o problema abordado:** Issue front#13 — la pantalla de victoria debe mostrar las estrellas (1–3) y el score obtenidos (enunciado 5.1.6). El PR #43 original (que añadía un `EvaluateVictoryUseCase` + enriquecía `GameWon`) **entró en conflicto semántico con `origin/main`**: al mergearse front#16 (submit-score, PR #45), el `GameController` YA calcula `Score.fromRun`/`Stars.rate` (con tiempo transcurrido real vía `_elapsedSeconds`/`_optimalMoves`) y `GameWon` YA lleva `{moves, score, stars, timeSeconds, levelId}`. Pero `game_screen` navegaba a victoria pasando solo `moves` y la `VictoryScreen` seguía siendo el placeholder (solo movimientos).
+**Decisión (arquitecto):** **re-scopear #13 a solo la capa de presentación**, reutilizando el `score`/`stars`/`levelId` que #16 ya computa; se **descarta** el `EvaluateVictoryUseCase` y los cambios de estado/controller del intento previo (redundantes y peores: #16 usa tiempo real, no B1). Rama reconstruida desde `origin/main` (`7df3bda`).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `feat/#13-victory-stars-score`, guiado por Claudia.
+**Prompt o instrucción proporcionada:** > "arreglemos el conflicto del PR #43 de front#13".
+**Resultado obtenido:**
+- `lib/presentation/level_selection/victory_screen.dart`: reescrita como vista pasiva con `typedef VictoryArgs = ({LevelId levelId, int moves, int score, int stars})` (primitivos, espejando `DefeatArgs`). Pinta 3 `Icons.star` dinámicas por `stars` (llena = `success`, vacía = `muted`), el score y los movimientos, y CTAs **Next Level** (`LevelId(n+1)`, deshabilitado sin args) / **Back to Levels**. Todo el texto vía i18n (front#4).
+- `lib/presentation/game/screens/game_screen.dart`: el listener de `GameWon` construye `VictoryArgs` desde `state.levelId/moves/score/stars` (antes pasaba solo `state.moves.value`). Mantiene intactos el Observer de audio (front#5, ya en main) y el de submit-score (front#16).
+- `lib/l10n/app_{en,es}.arb`: nuevas claves `victoryScore` ("Score: {score}" / "Puntaje: {score}") y `nextLevel` ("Next Level" / "Siguiente nivel"); `flutter gen-l10n` regenera los getters (los `.dart` generados están gitignored).
+- `test/presentation/level_selection/victory_screen_test.dart`: reescrito (AAA, `should_..._when_...`, MaterialApp localizada `en`): estrellas 3/1/0, score/movimientos, `Next Level`→id `n+1`, `Back to Levels`. `game_screen_test` sigue verde sin cambios (la victoria muestra "1 moves" vía l10n).
+- **Verificación:** `flutter analyze` → "No issues found!"; suite **334/334 verde**.
+- **Alcance descartado vs. plan original:** ya NO se añade `EvaluateVictoryUseCase` ni se toca `GameWon`/`GameController` (front#16 lo cubre). B1 queda obsoleto: el score de main ya incluye el tiempo real.
+- Sin cambios de API pública que requieran README; `VictoryArgs` es contrato de navegación intra-app.
+
 ## Entrada 042 — front#12 (re-land): value objects Score y Stars + fórmula, tras revert y auditoría vs back
 
 **Fecha:** 2026-07-09

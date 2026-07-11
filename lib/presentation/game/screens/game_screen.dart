@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../application/providers/leaderboard_providers.dart';
 import '../../../application/state/game_state.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -39,6 +40,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final asyncState = ref.watch(gameControllerProvider);
+
+    // Activa el Observer que envía el score al ganar (front#16). Mantiene vivo
+    // el listener mientras esta pantalla esté montada.
+    ref.watch(scoreSubmissionObserverProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;

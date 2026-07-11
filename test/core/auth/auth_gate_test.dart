@@ -15,6 +15,7 @@ import 'package:flutter_arrow_maze/domain/board/repositories/i_remote_progress_r
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
+import 'package:flutter_arrow_maze/infrastructure/repositories/in_memory_session_token_store.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/login_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
@@ -78,7 +79,8 @@ void main() {
   Widget host(MockIAuthTokenStorage storage) => ProviderScope(
         overrides: [
           authControllerProvider.overrideWith(
-            () => AuthController(storage, RestoreSessionUseCase(storage)),
+            () => AuthController(
+                storage, RestoreSessionUseCase(storage), InMemorySessionTokenStore()),
           ),
           remoteProgressRepositoryProvider.overrideWithValue(_FakeRemote()),
           levelProgressRepositoryProvider.overrideWithValue(_FakeLocal()),
@@ -131,7 +133,8 @@ void main() {
     final remote = _FakeRemote();
     final container = ProviderContainer(overrides: [
       authControllerProvider.overrideWith(
-        () => AuthController(storage, RestoreSessionUseCase(storage)),
+        () => AuthController(
+            storage, RestoreSessionUseCase(storage), InMemorySessionTokenStore()),
       ),
       remoteProgressRepositoryProvider.overrideWithValue(remote),
       levelProgressRepositoryProvider.overrideWithValue(_FakeLocal()),

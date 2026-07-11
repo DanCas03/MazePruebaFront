@@ -3,13 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
+import 'package:flutter_arrow_maze/application/providers/leaderboard_providers.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
+import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
+import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 
 /// Generador falso: el GameScreen es ahora un ConsumerWidget, por lo que la
@@ -27,6 +32,13 @@ class _EmptyBoardGenerator implements ILevelGenerator {
       const ArrowBoard(arrows: [], cols: 4, rows: 4);
 }
 
+/// Repo de leaderboard no-op: GameScreen activa el Observer de envío de score
+/// (front#16) al montarse; este test navega hasta ahí pero no ejerce la red.
+class _NoopLeaderboardRepository implements ILeaderboardRepository {
+  @override
+  Future<void> submitScore(ScoreEntry entry) async {}
+}
+
 Widget _appUnderTest() {
   return ProviderScope(
     overrides: [
@@ -36,6 +48,9 @@ Widget _appUnderTest() {
           RemoveArrowUseCase(),
           CommandInvoker(),
         ),
+      ),
+      submitScoreUseCaseProvider.overrideWithValue(
+        SubmitScoreUseCase(_NoopLeaderboardRepository(), LoggerServiceAdapter()),
       ),
     ],
     child: MaterialApp(

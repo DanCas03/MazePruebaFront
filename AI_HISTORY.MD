@@ -1,5 +1,37 @@
 # AI History — MazePruebaFront
 
+## Entrada 044 — front#5: servicio de audio (Facade/Singleton) + assets + 2º aspecto AOP (E9)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Implementar el slice E9 (audio + mute): un servicio de audio tras un puerto, con SFX en los eventos de juego (salida, choque, victoria, derrota) + música de fondo, muteos independientes (master/música/SFX) persistidos, y ganchos limpios para AOP. Cumple el mínimo de app 5.1.9. Desbloquea front#19 (pantalla de ajustes).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8), actuando como arquitecto senior. Rama `feat/#5-audio-service` desde `origin/main` (11ce944 → sincronizado a 773df5a por pull ff). Descripción del issue #5 optimizada en GitHub vía API REST antes de codificar.
+**Prompt o instrucción proporcionada:** > "Vamos a proceder con el plan. Primero haz un commit para actualizar la descripción del issue #5 en GitHub con la propuesta y luego continua con el plan" (puerto en `application/audio/`, assets generados por el asistente, requisito 5.1.9).
+**Resultado obtenido:**
+- **Puerto** `lib/application/audio/i_audio_service.dart` (`IAudioService` + enum `GameSound`) — **Facade**; el dominio/aplicación nunca conocen el sonido.
+- **Null Object** `silent_audio_service.dart` (default del provider, mantiene los tests de widget sin componer audio real).
+- **Impl** `lib/infrastructure/audio/`: `AudioService` (**Facade + Singleton** perezoso con `resetForTest`), `IAudioBackend` + `AudioplayersBackend` (**Adapter** sobre `audioplayers`), `IAudioSettingsStore` + `HiveAudioSettingsStore` (**persistencia** del mute en box Hive sin tipar `audio_settings`), y `LoggingAudioDecorator` (**Decorator/AOP**, 2º aspecto vía `ILoggerService`).
+- **Muteos independientes:** SFX suena si no hay master ni sfx muteados; música si no hay master ni music; la música se reanuda al desmutear si el usuario la pidió. Estado persistido y restaurado en `init()`.
+- **Observer de presentación** en `game_screen.dart`: `ref.listen` traduce `exitNonce`/`blockedNonce`/`GameWon`/`GameLost` a `GameSound` (regla de dependencia intacta); música arranca al entrar y para al salir. Corregido un bug propio (`ref` en `dispose()` tras destruir el widget) capturando la referencia en `initState`.
+- **Cableado** en `dependency_providers.dart` (`audioServiceProvider` = Null Object por defecto) y `main.dart` (abre el box, compone `LoggingAudioDecorator(AudioService(AudioplayersBackend(), HiveAudioSettingsStore(...)))`, `init()`, override del provider).
+- **Assets** `assets/audio/` (4 SFX + música de fondo) declarados en `pubspec.yaml`; dependencia `audioplayers: ^6.1.0`. Sonidos **sintetizados originales** (sin muestras con copyright): exit = chirp ascendente + aire, collision = "nope" grave con tremolo, victory = arpegio de campanas inarmónicas C5-E5-G5-C6, defeat = arpegio descendente con droop, y música = loop calmado de 16 s (I–vi–IV–V) **sin costura** (frecuencias cuantizadas a múltiplos de 1/T + envolventes periódicas). Validados: cabeceras PCM correctas, no-silencio, sin clipping (pico ≤0.95), costura del loop |Δv|≈0.036/|Δpendiente|≈0.004; empaquetados en el bundle (`flutter build web` OK).
+- **Tests AAA** `should_..._when_...`: `audio_service_test.dart` (13, con fakes de backend/store) y `logging_audio_decorator_test.dart` (3). Suite completo **326/326 verde**; `flutter analyze` 0 issues. README actualizado (patrones + AOP + mecánica).
+
+## Entrada 043 — front#13: pantalla de victoria muestra estrellas + score (re-scope tras #16)
+
+**Fecha:** 2026-07-11
+**Tarea o problema abordado:** Issue front#13 — la pantalla de victoria debe mostrar las estrellas (1–3) y el score obtenidos (enunciado 5.1.6). El PR #43 original (que añadía un `EvaluateVictoryUseCase` + enriquecía `GameWon`) **entró en conflicto semántico con `origin/main`**: al mergearse front#16 (submit-score, PR #45), el `GameController` YA calcula `Score.fromRun`/`Stars.rate` (con tiempo transcurrido real vía `_elapsedSeconds`/`_optimalMoves`) y `GameWon` YA lleva `{moves, score, stars, timeSeconds, levelId}`. Pero `game_screen` navegaba a victoria pasando solo `moves` y la `VictoryScreen` seguía siendo el placeholder (solo movimientos).
+**Decisión (arquitecto):** **re-scopear #13 a solo la capa de presentación**, reutilizando el `score`/`stars`/`levelId` que #16 ya computa; se **descarta** el `EvaluateVictoryUseCase` y los cambios de estado/controller del intento previo (redundantes y peores: #16 usa tiempo real, no B1). Rama reconstruida desde `origin/main` (`7df3bda`).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `feat/#13-victory-stars-score`, guiado por Claudia.
+**Prompt o instrucción proporcionada:** > "arreglemos el conflicto del PR #43 de front#13".
+**Resultado obtenido:**
+- `lib/presentation/level_selection/victory_screen.dart`: reescrita como vista pasiva con `typedef VictoryArgs = ({LevelId levelId, int moves, int score, int stars})` (primitivos, espejando `DefeatArgs`). Pinta 3 `Icons.star` dinámicas por `stars` (llena = `success`, vacía = `muted`), el score y los movimientos, y CTAs **Next Level** (`LevelId(n+1)`, deshabilitado sin args) / **Back to Levels**. Todo el texto vía i18n (front#4).
+- `lib/presentation/game/screens/game_screen.dart`: el listener de `GameWon` construye `VictoryArgs` desde `state.levelId/moves/score/stars` (antes pasaba solo `state.moves.value`). Mantiene intactos el Observer de audio (front#5, ya en main) y el de submit-score (front#16).
+- `lib/l10n/app_{en,es}.arb`: nuevas claves `victoryScore` ("Score: {score}" / "Puntaje: {score}") y `nextLevel` ("Next Level" / "Siguiente nivel"); `flutter gen-l10n` regenera los getters (los `.dart` generados están gitignored).
+- `test/presentation/level_selection/victory_screen_test.dart`: reescrito (AAA, `should_..._when_...`, MaterialApp localizada `en`): estrellas 3/1/0, score/movimientos, `Next Level`→id `n+1`, `Back to Levels`. `game_screen_test` sigue verde sin cambios (la victoria muestra "1 moves" vía l10n).
+- **Verificación:** `flutter analyze` → "No issues found!"; suite **334/334 verde**.
+- **Alcance descartado vs. plan original:** ya NO se añade `EvaluateVictoryUseCase` ni se toca `GameWon`/`GameController` (front#16 lo cubre). B1 queda obsoleto: el score de main ya incluye el tiempo real.
+- Sin cambios de API pública que requieran README; `VictoryArgs` es contrato de navegación intra-app.
+
 ## Entrada 042 — front#12 (re-land): value objects Score y Stars + fórmula, tras revert y auditoría vs back
 
 **Fecha:** 2026-07-09

@@ -27,6 +27,8 @@
   "backToLevels": "Volver a niveles",
   "victoryTitle": "¡Tablero despejado!",
   "victoryMoves": "{moves} movimientos",
+  "victoryScore": "Puntaje: {score}",
+  "nextLevel": "Siguiente nivel",
   "selectLevel": "Seleccionar nivel",
   "leaderboardTitle": "Ranking · Nivel {level}",
   "leaderboardEmpty": "Aún no hay puntajes en este nivel.\n¡Sé el primero!",

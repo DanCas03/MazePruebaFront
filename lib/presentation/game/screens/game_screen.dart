@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../application/audio/i_audio_service.dart';
 import '../../../application/providers/leaderboard_providers.dart';
 import '../../../application/state/game_state.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/board/value_objects/level_id.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../providers/dependency_providers.dart';
 import '../../providers/game_provider.dart';
 import '../widgets/board_widget.dart';
 
@@ -26,14 +28,28 @@ class GameScreen extends ConsumerStatefulWidget {
 }
 
 class _GameScreenState extends ConsumerState<GameScreen> {
+  // Referencia capturada en initState: el audio se usa en dispose(), donde `ref`
+  // ya no es accesible. El provider no es autoDispose, asi que es estable.
+  late final IAudioService _audio;
+
   @override
   void initState() {
     super.initState();
+    _audio = ref.read(audioServiceProvider);
     // Post-frame: garantiza que build() haya corrido al menos una vez y el
     // ProviderScope este activo antes de mutar el estado del notifier.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(gameControllerProvider.notifier).loadLevel(widget.levelId);
+      // front#5: arranca la musica de fondo al entrar en la partida.
+      _audio.startMusic();
     });
+  }
+
+  @override
+  void dispose() {
+    // front#5: detiene la musica de fondo al salir de la partida.
+    _audio.stopMusic();
+    super.dispose();
   }
 
   @override
@@ -52,12 +68,32 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final accent = isDark ? AppColors.secondary : AppColors.lightSecondary;
     final primary = isDark ? AppColors.primary : AppColors.lightPrimary;
 
-    ref.listen(gameControllerProvider, (_, next) {
+    ref.listen(gameControllerProvider, (prev, next) {
+      // front#5: observador de audio. El dominio/aplicacion no conocen el
+      // sonido; aqui se traducen las senales de estado a eventos sonoros.
+      final audio = _audio;
+      final prevState = prev?.valueOrNull;
       final state = next.valueOrNull;
+
+      // SFX por transicion de nonce (senales transitorias de GamePlaying):
+      // exitNonce++ = flecha que sale; blockedNonce++ = choque.
+      if (prevState is GamePlaying && state is GamePlaying) {
+        if (state.exitNonce > prevState.exitNonce) {
+          audio.play(GameSound.exit);
+        }
+        if (state.blockedNonce > prevState.blockedNonce) {
+          audio.play(GameSound.collision);
+        }
+      }
+
       if (state is GameWon) {
+        audio.play(GameSound.victory);
+        audio.stopMusic();
         Navigator.pushReplacementNamed(context, AppRouter.victory,
             arguments: state.moves.value);
       } else if (state is GameLost) {
+        audio.play(GameSound.defeat);
+        audio.stopMusic();
         // La derrota lleva el LevelId para que el CTA "Retry" recargue el nivel.
         Navigator.pushReplacementNamed(
           context,

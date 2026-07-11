@@ -5,22 +5,27 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
+import 'application/state/level_selection_controller.dart';
 import 'application/commands/command_invoker.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/auth_form_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
+import 'domain/board/services/tier_gating.dart';
 import 'core/auth/auth_gate.dart';
 import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'hive_registrar.g.dart';
 import 'infrastructure/generators/graph_board_generator.dart';
+import 'infrastructure/data_sources/local/hive_level_progress_data_source.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
+import 'infrastructure/repositories/hive_progress_repository.dart';
 import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
+import 'infrastructure/repositories/static_level_catalog.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
 import 'infrastructure/time/system_ticker.dart';
 import 'presentation/providers/dependency_providers.dart';
@@ -62,6 +67,16 @@ void main() async {
             RemoveArrowUseCase(),
             CommandInvoker(),
             const SystemTicker(),
+          ),
+        ),
+        // #20: selección de nivel compuesta con el catálogo estático curado, el
+        // repo de progreso local (mismo box Hive ya abierto) y el gating por
+        // Tier. Sin este override, abrir el selector lanzaría UnimplementedError.
+        levelSelectionControllerProvider.overrideWith(
+          () => LevelSelectionController(
+            const StaticLevelCatalog(),
+            HiveProgressRepository(HiveLocalDataSource()),
+            const TierGating(),
           ),
         ),
         // front#15: repo remoto de auth compuesto aquí (DIP); las capas

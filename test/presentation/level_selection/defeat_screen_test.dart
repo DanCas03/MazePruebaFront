@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
@@ -6,6 +7,8 @@ import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/defeat_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
+
+import '../../support/level_selection_fakes.dart';
 
 /// Monta DefeatScreen detras de una ruta que inyecta los `arguments` (levelId,
 /// movimientos y choques), tal como hace el flujo real al perder una partida.
@@ -91,19 +94,22 @@ void main() {
         (tester) async {
       // Arrange
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark(),
-          onGenerateRoute: (settings) => switch (settings.name) {
-            AppRouter.levelSelection => MaterialPageRoute<void>(
-                builder: (_) => const LevelSelectionScreen(),
-              ),
-            _ => MaterialPageRoute<void>(
-                settings: RouteSettings(
-                  arguments: (levelId: LevelId('1'), moves: 0, strikes: 5),
+        ProviderScope(
+          overrides: [levelSelectionOverride()],
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            onGenerateRoute: (settings) => switch (settings.name) {
+              AppRouter.levelSelection => MaterialPageRoute<void>(
+                  builder: (_) => const LevelSelectionScreen(),
                 ),
-                builder: (_) => const DefeatScreen(),
-              ),
-          },
+              _ => MaterialPageRoute<void>(
+                  settings: RouteSettings(
+                    arguments: (levelId: LevelId('1'), moves: 0, strikes: 5),
+                  ),
+                  builder: (_) => const DefeatScreen(),
+                ),
+            },
+          ),
         ),
       );
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
+
+import '../../support/level_selection_fakes.dart';
 
 /// Monta VictoryScreen detras de una ruta que inyecta `arguments` (numero de
 /// movimientos), tal como hace el flujo real al ganar una partida.
@@ -47,17 +50,20 @@ void main() {
         (tester) async {
       // Arrange
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark(),
-          onGenerateRoute: (settings) => switch (settings.name) {
-            '/levels' => MaterialPageRoute<void>(
-                builder: (_) => const LevelSelectionScreen(),
-              ),
-            _ => MaterialPageRoute<void>(
-                settings: const RouteSettings(arguments: 3),
-                builder: (_) => const VictoryScreen(),
-              ),
-          },
+        ProviderScope(
+          overrides: [levelSelectionOverride()],
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            onGenerateRoute: (settings) => switch (settings.name) {
+              '/levels' => MaterialPageRoute<void>(
+                  builder: (_) => const LevelSelectionScreen(),
+                ),
+              _ => MaterialPageRoute<void>(
+                  settings: const RouteSettings(arguments: 3),
+                  builder: (_) => const VictoryScreen(),
+                ),
+            },
+          ),
         ),
       );
 

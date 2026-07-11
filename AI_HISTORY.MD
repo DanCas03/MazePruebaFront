@@ -1,5 +1,19 @@
 # AI History — MazePruebaFront
 
+## Entrada 043 — front#20: selección de nivel con estrellas + bloqueo por Tier (catálogo dinámico)
+
+**Fecha:** 2026-07-11
+**Tarea o problema abordado:** Pantalla de selección de niveles que muestra las estrellas ganadas por nivel y bloquea los niveles no alcanzados con **gating por Tier** (enunciado 5.1.2). Se descartó el número fijo de niveles: el catálogo es una **lista dinámica inyectada desde el dominio** (puerto `ILevelCatalog`), de modo que escalar de 15 a 30+ niveles es ampliar la lista sin tocar la UI. La pantalla previa era un grid estático de 12 sin estrellas ni bloqueo. Decisiones de arquitecto acordadas con Claudia en sesión de brainstorming (gating por Tier; catálogo dinámico) y reflejadas en la descripción del issue #20 en GitHub.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rama `feat/#20-level-selection-tiers`, guiado por Claudia.
+**Prompt o instrucción proporcionada:** > "actúa como Arquitecto Senior para el Issue #20 … luego arranca la fase de código"
+**Resultado obtenido:**
+- **Dominio (Dart puro):** `Tier` (enum de 5 escalones, `rank`/`previous`/`forLevelNumber`), `LevelDescriptor` (VO `{LevelId, Tier}`), puerto `ILevelCatalog.getCatalog()`, y servicio puro `TierGating` (`unlockedTiers`/`isLevelUnlocked`): el primer Tier siempre abierto; un Tier se desbloquea cuando todos los niveles de los Tiers de menor rango están completados.
+- **Infraestructura:** `StaticLevelCatalog` (15 niveles = 3 por Tier × 5). Escalar = subir `levelCount` o servir el catálogo desde la API con otra impl del puerto.
+- **Aplicación:** `LevelSelectionController` (`AsyncNotifier<List<TierSection>>`) compone catálogo + progreso (`ILevelProgressRepository.getAll`) + gating en secciones por Tier con estrellas (`bestStars ?? 0`, degradación grácil cuando aún no hay ScoreEntry) y estado `locked` ya resueltos. El `AsyncValue` cubre loading/error de forma sellada (no se añadió un estado paralelo). VMs `LevelTile`/`TierSection`.
+- **UI:** `LevelSelectionScreen` reescrita a `ConsumerWidget`: secciones por Tier (encabezado = dificultad Fácil/Medio/Difícil), fila de estrellas por celda y candado en los bloqueados (no navegan). Textos centralizados como constantes (listos para i18n). Composición del provider en `main.dart` (DIP).
+- **Tests AAA `should_..._when_...`:** `tier_test`, `tier_gating_test`, `static_level_catalog_test`, `level_selection_controller_test` y el **widget test del gating** (candado en Tier bloqueado + no navega; Tier abierto navega; ★ visibles). Helper compartido `test/support/level_selection_fakes.dart`. Suite completa **332 verde**, `flutter analyze` limpio. Se actualizaron 3 tests de navegación existentes (home/victory/defeat) para inyectar el override del nuevo provider.
+- **Pendiente pre-PR:** rebase sobre `origin/main` (`7df3bda`; la rama salió de un main anterior). Ejes i18n (marco) y FSM de navegación quedaron diferidos por acuerdo; verificación visual on-device pendiente (los widget tests cubren el gating headless).
+
 ## Entrada 042 — front#12 (re-land): value objects Score y Stars + fórmula, tras revert y auditoría vs back
 
 **Fecha:** 2026-07-09

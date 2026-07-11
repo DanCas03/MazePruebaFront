@@ -89,8 +89,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       if (state is GameWon) {
         audio.play(GameSound.victory);
         audio.stopMusic();
-        Navigator.pushReplacementNamed(context, AppRouter.victory,
-            arguments: state.moves.value);
+        // La victoria viaja con el nivel (para "Next Level") y las métricas ya
+        // evaluadas por el controller (front#16). La pantalla es una vista
+        // pasiva que solo las pinta.
+        Navigator.pushReplacementNamed(
+          context,
+          AppRouter.victory,
+          arguments: (
+            levelId: state.levelId,
+            moves: state.moves.value,
+            score: state.score.value,
+            stars: state.stars.value,
+          ),
+        );
       } else if (state is GameLost) {
         audio.play(GameSound.defeat);
         audio.stopMusic();

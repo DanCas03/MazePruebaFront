@@ -27,5 +27,7 @@
   "backToLevels": "Volver a niveles",
   "victoryTitle": "¡Tablero despejado!",
   "victoryMoves": "{moves} movimientos",
+  "victoryScore": "Puntaje: {score}",
+  "nextLevel": "Siguiente nivel",
   "selectLevel": "Seleccionar nivel"
 }

@@ -1031,3 +1031,12 @@
 **Prompt o instrucción proporcionada:** > "front#17: LeaderboardScreen que consuma el provider (carga/datos/error), ruta y punto de entrada, con widget test mockeado."
 **Resultado obtenido:** `LeaderboardScreen` (`ConsumerWidget`, capa presentación pura) observa `leaderboardProvider(levelId)` y pinta los tres estados de `AsyncValue`: spinner de carga, estado de error con botón **Reintentar** (`ref.invalidate`), y la lista ordenada (rango posicional, estrellas y score por fila; estado vacío cuando el nivel no tiene puntajes). Ruta `/leaderboard` en `AppRouter` (lee `LevelId` de `arguments`, con fallback como `game`). Punto de entrada: ícono de ranking por celda en `LevelSelectionScreen` vía `Stack`/`Positioned`, sin robar el tap de juego. Widget test (mockeando la instancia del provider): carga, datos con rango, vacío y error+reintento. Además se implementó `getLeaderboard` en los tres test doubles existentes de `ILeaderboardRepository` (ripple de extender el puerto en la entrada 054) para mantener el build verde. README actualizado con la sección "Leaderboard view (front#17)". Suite completa: 346 tests verdes, `flutter analyze` limpio.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 058 — front#17 — localización (es/en) de la pantalla del leaderboard
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Tras rebasear #17 sobre main (que ya integró i18n front#4), dejar los textos de la pantalla del ranking coherentes con `AppLocalizations` en vez de literales en español.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17: cablear los textos del leaderboard vía AppLocalizations ahora que i18n está en main."
+**Resultado obtenido:** Nuevas claves ARB (es/en): `leaderboardTitle({level})`, `leaderboardEmpty`, `leaderboardError`, `viewLeaderboard`; se reutiliza `retry`. `LeaderboardScreen` (título, estados vacío/error, botón) y el tooltip del ícono de ranking en `LevelSelectionScreen` leen `AppLocalizations.of(context)`; se regeneró el delegate (`gen-l10n`). El widget test monta `MaterialApp` con `localizationsDelegates`/`supportedLocales` y `locale: es`, aserando las cadenas localizadas. `flutter analyze` limpio; tests de leaderboard y selector en verde.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

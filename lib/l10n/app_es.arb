@@ -27,5 +27,9 @@
   "backToLevels": "Volver a niveles",
   "victoryTitle": "¡Tablero despejado!",
   "victoryMoves": "{moves} movimientos",
-  "selectLevel": "Seleccionar nivel"
+  "selectLevel": "Seleccionar nivel",
+  "leaderboardTitle": "Ranking · Nivel {level}",
+  "leaderboardEmpty": "Aún no hay puntajes en este nivel.\n¡Sé el primero!",
+  "leaderboardError": "No se pudo cargar el ranking.",
+  "viewLeaderboard": "Ver ranking"
 }

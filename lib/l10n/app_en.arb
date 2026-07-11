@@ -55,5 +55,15 @@
       "moves": { "type": "int" }
     }
   },
-  "selectLevel": "Select Level"
+  "selectLevel": "Select Level",
+  "leaderboardTitle": "Ranking · Level {level}",
+  "@leaderboardTitle": {
+    "description": "Leaderboard screen AppBar title for a given level.",
+    "placeholders": {
+      "level": { "type": "String" }
+    }
+  },
+  "leaderboardEmpty": "No scores on this level yet.\nBe the first!",
+  "leaderboardError": "Couldn't load the ranking.",
+  "viewLeaderboard": "View ranking"
 }

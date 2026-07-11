@@ -10,6 +10,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dar
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/leaderboard/screens/leaderboard_screen.dart';
 
 void main() {
@@ -30,10 +31,16 @@ void main() {
       );
 
   // Monta la pantalla con la instancia del provider (levelId '3') sobreescrita
-  // para forzar cada estado de AsyncValue sin tocar la red.
+  // para forzar cada estado de AsyncValue sin tocar la red. Locale fijo en 'es'
+  // (idioma primario) para aserir las cadenas localizadas (front#4).
   Widget harness(Override override) => ProviderScope(
         overrides: [override],
-        child: MaterialApp(home: LeaderboardScreen(levelId: LevelId('3'))),
+        child: MaterialApp(
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: LeaderboardScreen(levelId: LevelId('3')),
+        ),
       );
 
   testWidgets('should_show_loading_indicator_when_provider_pending',

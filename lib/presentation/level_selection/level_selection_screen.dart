@@ -75,7 +75,7 @@ class LevelSelectionScreen extends StatelessWidget {
               right: 0,
               child: IconButton(
                 icon: const Icon(Icons.leaderboard, size: 18),
-                tooltip: 'Ver ranking',
+                tooltip: AppLocalizations.of(context).viewLeaderboard,
                 color: onBackground,
                 onPressed: () => Navigator.pushNamed(
                   context,

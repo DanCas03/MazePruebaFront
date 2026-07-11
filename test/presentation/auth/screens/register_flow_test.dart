@@ -15,7 +15,8 @@ import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_token_storage
 import 'package:flutter_arrow_maze/domain/auth/value_objects/auth_token.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_remote_progress_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
-import 'package:flutter_arrow_maze/presentation/auth/auth_strings.dart';
+import 'package:flutter_arrow_maze/infrastructure/repositories/in_memory_session_token_store.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/login_screen.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/register_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
@@ -53,11 +54,15 @@ void main() {
         overrides: [
           authRepositoryProvider.overrideWithValue(repo),
           authControllerProvider.overrideWith(
-            () => AuthController(storage, RestoreSessionUseCase(storage)),
+            () => AuthController(
+                storage, RestoreSessionUseCase(storage), InMemorySessionTokenStore()),
           ),
           remoteProgressRepositoryProvider.overrideWithValue(_FakeRemote()),
         ],
         child: MaterialApp(
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: const AuthGate(),
           onGenerateRoute: AppRouter.onGenerateRoute,
         ),
@@ -79,23 +84,23 @@ void main() {
     expect(find.byType(LoginScreen), findsOneWidget);
 
     // Act — navigate to RegisterScreen (pushed on top of "/")
-    await tester.tap(find.text(AuthStrings.goToRegister));
+    await tester.tap(find.text('¿No tienes cuenta? Regístrate'));
     await tester.pumpAndSettle();
     expect(find.byType(RegisterScreen), findsOneWidget);
 
     // Fill valid email, password (>=8) and matching confirm.
     await tester.enterText(
-        find.widgetWithText(TextField, AuthStrings.emailLabel),
+        find.widgetWithText(TextField, 'Email'),
         'newuser@example.com');
     await tester.enterText(
-        find.widgetWithText(TextField, AuthStrings.passwordLabel),
+        find.widgetWithText(TextField, 'Contraseña'),
         'password123');
     await tester.enterText(
-        find.widgetWithText(TextField, AuthStrings.confirmPasswordLabel),
+        find.widgetWithText(TextField, 'Confirmar contraseña'),
         'password123');
 
     await tester
-        .tap(find.widgetWithText(FilledButton, AuthStrings.registerButton));
+        .tap(find.widgetWithText(FilledButton, 'Registrarme'));
 
     // Bounded pumps: HomeScreen has an infinite AnimationController.repeat(),
     // so pumpAndSettle would hang here (mirrors auth_gate_test.dart /

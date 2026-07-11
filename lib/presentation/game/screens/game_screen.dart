@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../application/audio/i_audio_service.dart';
+import '../../../application/providers/leaderboard_providers.dart';
 import '../../../application/state/game_state.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/board/value_objects/level_id.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../providers/dependency_providers.dart';
 import '../../providers/game_provider.dart';
 import '../widgets/board_widget.dart';
 
@@ -24,19 +28,38 @@ class GameScreen extends ConsumerStatefulWidget {
 }
 
 class _GameScreenState extends ConsumerState<GameScreen> {
+  // Referencia capturada en initState: el audio se usa en dispose(), donde `ref`
+  // ya no es accesible. El provider no es autoDispose, asi que es estable.
+  late final IAudioService _audio;
+
   @override
   void initState() {
     super.initState();
+    _audio = ref.read(audioServiceProvider);
     // Post-frame: garantiza que build() haya corrido al menos una vez y el
     // ProviderScope este activo antes de mutar el estado del notifier.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(gameControllerProvider.notifier).loadLevel(widget.levelId);
+      // front#5: arranca la musica de fondo al entrar en la partida.
+      _audio.startMusic();
     });
   }
 
   @override
+  void dispose() {
+    // front#5: detiene la musica de fondo al salir de la partida.
+    _audio.stopMusic();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final asyncState = ref.watch(gameControllerProvider);
+
+    // Activa el Observer que envía el score al ganar (front#16). Mantiene vivo
+    // el listener mientras esta pantalla esté montada.
+    ref.watch(scoreSubmissionObserverProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;
@@ -45,12 +68,43 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final accent = isDark ? AppColors.secondary : AppColors.lightSecondary;
     final primary = isDark ? AppColors.primary : AppColors.lightPrimary;
 
-    ref.listen(gameControllerProvider, (_, next) {
+    ref.listen(gameControllerProvider, (prev, next) {
+      // front#5: observador de audio. El dominio/aplicacion no conocen el
+      // sonido; aqui se traducen las senales de estado a eventos sonoros.
+      final audio = _audio;
+      final prevState = prev?.valueOrNull;
       final state = next.valueOrNull;
+
+      // SFX por transicion de nonce (senales transitorias de GamePlaying):
+      // exitNonce++ = flecha que sale; blockedNonce++ = choque.
+      if (prevState is GamePlaying && state is GamePlaying) {
+        if (state.exitNonce > prevState.exitNonce) {
+          audio.play(GameSound.exit);
+        }
+        if (state.blockedNonce > prevState.blockedNonce) {
+          audio.play(GameSound.collision);
+        }
+      }
+
       if (state is GameWon) {
-        Navigator.pushReplacementNamed(context, AppRouter.victory,
-            arguments: state.moves.value);
+        audio.play(GameSound.victory);
+        audio.stopMusic();
+        // La victoria viaja con el nivel (para "Next Level") y las métricas ya
+        // evaluadas por el controller (front#16). La pantalla es una vista
+        // pasiva que solo las pinta.
+        Navigator.pushReplacementNamed(
+          context,
+          AppRouter.victory,
+          arguments: (
+            levelId: state.levelId,
+            moves: state.moves.value,
+            score: state.score.value,
+            stars: state.stars.value,
+          ),
+        );
       } else if (state is GameLost) {
+        audio.play(GameSound.defeat);
+        audio.stopMusic();
         // La derrota lleva el LevelId para que el CTA "Retry" recargue el nivel.
         Navigator.pushReplacementNamed(
           context,
@@ -69,11 +123,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         backgroundColor: surface,
         title: asyncState.when(
           data: (s) => s is GamePlaying
-              ? Text('Moves: ${s.moves.value}',
+              ? Text(l10n.gameMoves(s.moves.value),
                   style: TextStyle(color: onSurface))
-              : const Text('Arrow Maze'),
-          loading: () => const Text('Loading...'),
-          error: (e, _) => const Text('Error'),
+              : Text(l10n.appTitle),
+          loading: () => Text(l10n.loading),
+          error: (e, _) => Text(l10n.error),
         ),
         actions: [
           // Cuenta atrás de los niveles con límite (front#11); ausente si el

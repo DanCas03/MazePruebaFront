@@ -5,6 +5,7 @@ import '../../application/state/level_selection_state.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/board/value_objects/tier.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/level_selection_provider.dart';
 
 /// Selección de nivel: agrupa el catálogo por Tier (que es, a la vez, la
@@ -15,32 +16,27 @@ import '../providers/level_selection_provider.dart';
 class LevelSelectionScreen extends ConsumerWidget {
   const LevelSelectionScreen({super.key});
 
-  // Textos centralizados (listos para extraer a i18n en su propio issue).
-  static const String title = 'Select Level';
-  static const String errorText = 'No se pudieron cargar los niveles';
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;
+    final muted =
+        isDark ? AppColors.onSurfaceMuted : AppColors.lightOnSurfaceMuted;
     final sections = ref.watch(levelSelectionControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(title),
+        title: Text(l10n.selectLevel),
         backgroundColor: surface,
       ),
       body: sections.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => Center(
           child: Text(
-            errorText,
-            style: TextStyle(
-              color: isDark
-                  ? AppColors.onSurfaceMuted
-                  : AppColors.lightOnSurfaceMuted,
-            ),
+            l10n.levelsLoadError,
+            style: TextStyle(color: muted),
           ),
         ),
         data: (tiers) => ListView(
@@ -60,14 +56,16 @@ class _TierSectionView extends StatelessWidget {
   const _TierSectionView({required this.section});
 
   // Mapea los 5 Tiers de la rampa a las 3 etiquetas de dificultad del enunciado.
-  static String _difficultyLabel(Tier tier) => switch (tier) {
-        Tier.one || Tier.two => 'Fácil',
-        Tier.three => 'Medio',
-        Tier.four || Tier.five => 'Difícil',
+  static String _difficultyLabel(AppLocalizations l10n, Tier tier) =>
+      switch (tier) {
+        Tier.one || Tier.two => l10n.difficultyEasy,
+        Tier.three => l10n.difficultyMedium,
+        Tier.four || Tier.five => l10n.difficultyHard,
       };
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final onBackground =
@@ -83,7 +81,7 @@ class _TierSectionView extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                'Tier ${section.tier.rank}',
+                l10n.tierLabel(section.tier.rank),
                 style: TextStyle(
                   color: onBackground,
                   fontSize: 18,
@@ -92,7 +90,7 @@ class _TierSectionView extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '· ${_difficultyLabel(section.tier)}',
+                '· ${_difficultyLabel(l10n, section.tier)}',
                 style: TextStyle(color: muted, fontSize: 14),
               ),
             ],

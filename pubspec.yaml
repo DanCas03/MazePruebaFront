@@ -10,6 +10,11 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Localization (front#4): delegates de Flutter + formato de mensajes ICU.
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
   # State management & DI
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
@@ -25,6 +30,9 @@ dependencies:
 
   # Networking
   dio: ^5.7.0
+
+  # Audio (front#5) — SFX de eventos + musica de fondo (android/ios/web)
+  audioplayers: ^6.1.0
 
   # Utilities
   equatable: ^2.0.7
@@ -44,5 +52,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Genera AppLocalizations a partir de los .arb en cada build (front#4).
+  generate: true
   assets:
     - assets/levels/
+    - assets/audio/

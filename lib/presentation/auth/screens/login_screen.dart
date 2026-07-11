@@ -6,7 +6,7 @@ import '../../../application/state/auth_form_controller.dart';
 import '../../../application/state/auth_form_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/auth/value_objects/email.dart';
-import '../auth_strings.dart';
+import '../../../l10n/app_localizations.dart';
 import '../widgets/auth_text_field.dart';
 import 'register_screen.dart';
 
@@ -34,14 +34,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   bool _validate() {
+    final l10n = AppLocalizations.of(context);
     String? emailErr;
     String? passErr;
     try {
       Email(_email.text.trim());
     } on ArgumentError {
-      emailErr = AuthStrings.emailInvalid;
+      emailErr = l10n.emailInvalid;
     }
-    if (_password.text.isEmpty) passErr = AuthStrings.passwordEmpty;
+    if (_password.text.isEmpty) passErr = l10n.passwordEmpty;
     setState(() {
       _emailError = emailErr;
       _passwordError = passErr;
@@ -60,6 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final formState = ref.watch(authFormControllerProvider);
     final submitting = formState is FormSubmitting;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -76,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  AuthStrings.loginTitle,
+                  l10n.loginTitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: onBackground,
@@ -86,14 +88,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 24),
                 AuthTextField(
                   controller: _email,
-                  label: AuthStrings.emailLabel,
+                  label: l10n.emailLabel,
                   keyboardType: TextInputType.emailAddress,
                   errorText: _emailError,
                 ),
                 const SizedBox(height: 16),
                 AuthTextField(
                   controller: _password,
-                  label: AuthStrings.passwordLabel,
+                  label: l10n.passwordLabel,
                   obscureText: true,
                   errorText: _passwordError,
                 ),
@@ -103,14 +105,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       value: _remember,
                       onChanged: (v) => setState(() => _remember = v ?? true),
                     ),
-                    Text(AuthStrings.rememberMe,
+                    Text(l10n.rememberMe,
                         style: TextStyle(color: onBackground)),
                     const Spacer(),
                     // "Olvidé contraseña": sin endpoint de reset en el back
                     // (fuera de alcance de front#15); deshabilitado como placeholder.
-                    const TextButton(
+                    TextButton(
                       onPressed: null,
-                      child: Text(AuthStrings.forgotPassword),
+                      child: Text(l10n.forgotPassword),
                     ),
                   ],
                 ),
@@ -133,7 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text(AuthStrings.loginButton),
+                      : Text(l10n.loginButton),
                 ),
                 TextButton(
                   onPressed: submitting
@@ -142,7 +144,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             MaterialPageRoute(
                                 builder: (_) => const RegisterScreen()),
                           ),
-                  child: const Text(AuthStrings.goToRegister),
+                  child: Text(l10n.goToRegister),
                 ),
               ],
             ),

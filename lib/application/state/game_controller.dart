@@ -8,6 +8,8 @@ import '../../domain/board/value_objects/level_blueprint.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/services/i_ticker.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
+import '../../domain/game_core/value_objects/score.dart';
+import '../../domain/game_core/value_objects/stars.dart';
 import '../../domain/game_core/value_objects/strike_count.dart';
 import '../commands/command_invoker.dart';
 import '../commands/remove_arrow_command.dart';
@@ -48,10 +50,19 @@ class GameController extends AsyncNotifier<GameState> {
   int? _remainingSeconds;
   StreamSubscription<int>? _tickSub;
 
+  // Cronómetro ascendente (front#16): segundos transcurridos y óptimo del nivel
+  // (número de flechas) para computar Score/Stars al ganar.
+  int _elapsedSeconds = 0;
+  int _optimalMoves = 0;
+  StreamSubscription<int>? _elapsedSub;
+
   @override
   Future<GameState> build() async {
     // Evita que el reloj siga corriendo si el notifier se destruye.
-    ref.onDispose(_cancelTimer);
+    ref.onDispose(() {
+      _cancelTimer();
+      _cancelElapsed();
+    });
     return GameLoading();
   }
 
@@ -59,6 +70,7 @@ class GameController extends AsyncNotifier<GameState> {
     // Aseguramos que build() haya resuelto antes de mutar el estado.
     await future;
     _cancelTimer();
+    _cancelElapsed();
     _currentLevel = levelId;
     _blockedNonce = 0;
     _exitNonce = 0;
@@ -75,6 +87,8 @@ class GameController extends AsyncNotifier<GameState> {
       maxPathLen: bp.maxPathLen,
       seed: levelId.number, // determinista: mismo nivel ⇒ mismo tablero
     );
+    _optimalMoves = board.arrows.length; // óptimo = nº de flechas del nivel
+    _startElapsed();
     state = AsyncValue.data(
       GamePlaying(
         board: board,
@@ -101,6 +115,7 @@ class GameController extends AsyncNotifier<GameState> {
         _strikes = _strikes.increment();
         if (_strikes.isFatal) {
           _cancelTimer();
+          _cancelElapsed();
           state = AsyncValue.data(
             GameLost(moves: current.moves, strikes: _strikes),
           );
@@ -128,7 +143,26 @@ class GameController extends AsyncNotifier<GameState> {
         _exitNonce++;
         if (newBoard.isCleared) {
           _cancelTimer();
-          state = AsyncValue.data(GameWon(moves: newMoves));
+          _cancelElapsed();
+          // front#16: computa el resultado del run con los VOs de front#12.
+          final score = Score.fromRun(
+            time: Duration(seconds: _elapsedSeconds),
+            moves: newMoves.value,
+            optimalMoves: _optimalMoves,
+            collisions: _strikes.value,
+          );
+          final stars = Stars.rate(
+            moves: newMoves.value,
+            optimalMoves: _optimalMoves,
+            collisions: _strikes.value,
+          );
+          state = AsyncValue.data(GameWon(
+            moves: newMoves,
+            score: score,
+            stars: stars,
+            timeSeconds: _elapsedSeconds,
+            levelId: _currentLevel!,
+          ));
         } else {
           state = AsyncValue.data(GamePlaying(
             board: newBoard,
@@ -196,6 +230,7 @@ class GameController extends AsyncNotifier<GameState> {
       if (current is! GamePlaying) return;
       if (remaining <= 0) {
         _cancelTimer();
+        _cancelElapsed();
         state = AsyncValue.data(
           GameLost(moves: current.moves, strikes: _strikes),
         );
@@ -218,5 +253,16 @@ class GameController extends AsyncNotifier<GameState> {
   void _cancelTimer() {
     _tickSub?.cancel();
     _tickSub = null;
+  }
+
+  void _startElapsed() {
+    _cancelElapsed();
+    _elapsedSeconds = 0;
+    _elapsedSub = _ticker.elapsed().listen((s) => _elapsedSeconds = s);
+  }
+
+  void _cancelElapsed() {
+    _elapsedSub?.cancel();
+    _elapsedSub = null;
   }
 }

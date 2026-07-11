@@ -1,0 +1,81 @@
+{
+  "@@locale": "en",
+  "appTitle": "Arrow Maze",
+  "@appTitle": {
+    "description": "Application name, shown in the OS task switcher and the game AppBar."
+  },
+  "homeTagline": "Clear the board. Slide every arrow out.",
+  "@homeTagline": {
+    "description": "Subtitle under the logo on the home screen."
+  },
+  "homePlay": "PLAY",
+  "@homePlay": {
+    "description": "Primary call-to-action button on the home screen."
+  },
+  "loginTitle": "Sign in",
+  "registerTitle": "Create account",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "confirmPasswordLabel": "Confirm password",
+  "rememberMe": "Remember me",
+  "forgotPassword": "Forgot your password?",
+  "loginButton": "Log in",
+  "registerButton": "Sign up",
+  "goToRegister": "No account? Sign up",
+  "goToLogin": "Already have an account? Sign in",
+  "emailInvalid": "Invalid email",
+  "passwordTooShort": "At least 8 characters",
+  "passwordEmpty": "Enter your password",
+  "confirmMismatch": "Passwords don't match",
+  "gameMoves": "Moves: {count}",
+  "@gameMoves": {
+    "description": "Move counter shown in the game AppBar while playing.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "loading": "Loading...",
+  "error": "Error",
+  "defeatTitle": "Out of Moves!",
+  "defeatSummary": "{moves} moves · {strikes} strikes",
+  "@defeatSummary": {
+    "description": "Summary line on the defeat screen.",
+    "placeholders": {
+      "moves": { "type": "int" },
+      "strikes": { "type": "int" }
+    }
+  },
+  "retry": "Retry",
+  "backToLevels": "Back to Levels",
+  "victoryTitle": "Board Cleared!",
+  "victoryMoves": "{moves} moves",
+  "@victoryMoves": {
+    "description": "Move count shown on the victory screen.",
+    "placeholders": {
+      "moves": { "type": "int" }
+    }
+  },
+  "victoryScore": "Score: {score}",
+  "@victoryScore": {
+    "description": "Score shown on the victory screen.",
+    "placeholders": {
+      "score": { "type": "int" }
+    }
+  },
+  "nextLevel": "Next Level",
+  "selectLevel": "Select Level",
+  "levelsLoadError": "Couldn't load levels",
+  "@levelsLoadError": {
+    "description": "Shown on the level selection screen when the catalog or progress fails to load."
+  },
+  "tierLabel": "Tier {rank}",
+  "@tierLabel": {
+    "description": "Section header for a difficulty tier on the level selection screen.",
+    "placeholders": {
+      "rank": { "type": "int" }
+    }
+  },
+  "difficultyEasy": "Easy",
+  "difficultyMedium": "Medium",
+  "difficultyHard": "Hard"
+}

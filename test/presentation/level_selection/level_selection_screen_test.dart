@@ -3,6 +3,7 @@ import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/tier.dart';
+import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +34,10 @@ Widget _host(_NavCapture nav) => ProviderScope(
         levelSelectionOverride(catalog: _catalog, progress: _progress),
       ],
       child: MaterialApp(
+        // La pantalla usa AppLocalizations (#4); sin delegates crashearía.
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const LevelSelectionScreen(),
         onGenerateRoute: (settings) {
           if (settings.name == AppRouter.game) {

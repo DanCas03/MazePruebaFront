@@ -17,4 +17,8 @@ class SystemTicker implements ITicker {
       (tick) => seconds - tick - 1,
     ).take(seconds);
   }
+
+  @override
+  Stream<int> elapsed() =>
+      Stream<int>.periodic(const Duration(seconds: 1), (tick) => tick + 1);
 }

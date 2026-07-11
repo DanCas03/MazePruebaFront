@@ -1,5 +1,16 @@
 # AI History — MazePruebaFront
 
+## Entrada 048 — LevelRemoteDataSource (front#8)
+
+**Fecha:** 2026-07-11
+**Tarea o problema abordado:** Task 4 del plan front#8 (remote levels): implementar el data source remoto que traduce a `GET /levels` y `GET /levels/:id` (back#5, endpoints públicos) usando el `Dio` compuesto en `main`. Es la capa más externa e "ignorante": no mapea errores (tarea del repo adapter en una task posterior) ni parsea a dominio (tarea de `LevelJsonDecoder`, Task 3) — solo propaga el JSON crudo y deja que `DioException` suba sin envolver.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "Ejecuta la Task 4 del plan front#8 remote levels."
+**Resultado obtenido:**
+- `lib/infrastructure/data_sources/remote/level_remote_data_source.dart`: `class LevelRemoteDataSource { LevelRemoteDataSource(Dio); Future<List<dynamic>> fetchLevelIds(); Future<Map<String, dynamic>> fetchLevel(String id); }`. Sin clase DTO ni try/catch propio — el decoder (Task 3) es la única fuente de verdad del parseo y el repositorio (Task futura) la única fuente de verdad del mapeo de errores. Creado por el implementador; `flutter analyze` limpio de partida.
+- `test/infrastructure/data_sources/remote/level_remote_data_source_test.dart`: 4 tests AAA (`should_..._when_...`) escritos por subagente QA (skill `arrowmaze-qa`), mockeando `Dio` con `@GenerateMocks([Dio])` (mismo estilo que el sibling `auth_remote_data_source_test.dart`) y un helper `ok(path, data)` para construir `Response` 200. Cubre: (1) `fetchLevelIds` hace `GET /levels` y devuelve la lista cruda (`verify` de la llamada); (2) `fetchLevel` hace `GET /levels/:id` y devuelve el mapa crudo; (3)-(4) propagación de `DioException` sin envolver para ambos métodos. Mocks generados con `dart run build_runner build --delete-conflicting-outputs` → `level_remote_data_source_test.mocks.dart` (committed). `flutter test` → 4/4 verde. `flutter analyze` sobre producción + test → `No issues found!`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 047 — LevelJsonDecoder — wire JSON → Level (front#8)
 
 **Fecha:** 2026-07-11

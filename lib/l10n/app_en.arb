@@ -101,5 +101,9 @@
   "languageEnglish": "English",
   "@languageEnglish": {
     "description": "Name of the English language option in the language selector."
+  },
+  "languageSystem": "System",
+  "@languageSystem": {
+    "description": "Language option that follows the device/OS locale (no explicit preference)."
   }
 }

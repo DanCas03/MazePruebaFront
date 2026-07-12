@@ -51,12 +51,35 @@ void main() {
       // Act
       // (render only)
 
-      // Assert — dos toggles de audio y las dos opciones de idioma (en español).
+      // Assert — dos toggles de audio y las tres opciones de idioma (en español).
       expect(find.byType(SwitchListTile), findsNWidgets(2));
       expect(find.text('Música'), findsOneWidget);
       expect(find.text('Efectos de sonido'), findsOneWidget);
       expect(find.text('Español'), findsOneWidget);
       expect(find.text('Inglés'), findsOneWidget);
+      expect(find.text('Sistema'), findsOneWidget);
+    });
+
+    testWidgets('should_follow_system_when_system_segment_selected',
+        (tester) async {
+      // Arrange — arranca con preferencia explícita 'es'.
+      await tester.pumpWidget(_host());
+      final segmented = find.byType(SegmentedButton<String>);
+      expect(
+        tester.widget<SegmentedButton<String>>(segmented).selected,
+        {'es'},
+      );
+
+      // Act — elige "Sistema": vuelve a seguir el locale del SO (setLanguage(null)).
+      await tester.tap(find.text('Sistema'));
+      await tester.pumpAndSettle();
+
+      // Assert — el segmento seleccionado pasa a 'system' (locale = null),
+      // haciendo alcanzable desde la UI el estado sin preferencia.
+      expect(
+        tester.widget<SegmentedButton<String>>(segmented).selected,
+        {'system'},
+      );
     });
 
     testWidgets('should_mute_music_when_music_switch_toggled', (tester) async {

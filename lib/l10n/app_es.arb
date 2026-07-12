@@ -40,5 +40,6 @@
   "settingsSfx": "Efectos de sonido",
   "settingsLanguageSection": "Idioma",
   "languageSpanish": "Español",
-  "languageEnglish": "Inglés"
+  "languageEnglish": "Inglés",
+  "languageSystem": "Sistema"
 }

@@ -5,6 +5,11 @@ import '../../../application/state/audio_settings_controller.dart';
 import '../../../application/state/locale_controller.dart';
 import '../../../l10n/app_localizations.dart';
 
+/// Valor centinela del segmento "Sistema" del selector de idioma: representa la
+/// ausencia de preferencia (seguir el locale del SO) sin usar un `null` en el
+/// `Set` del [SegmentedButton].
+const String _systemSegment = 'system';
+
 /// Pantalla de Ajustes (front#19): controles INDEPENDIENTES de Musica (BGM) y
 /// Efectos (SFX) sobre la fachada de audio, y selector de idioma ES/EN. Todo
 /// persiste y el idioma se aplica EN VIVO (el MaterialApp observa el
@@ -18,9 +23,9 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final audio = ref.watch(audioSettingsControllerProvider);
     final locale = ref.watch(localeControllerProvider);
-    // Codigo efectivo: el elegido o, si se sigue al SO, el locale resuelto.
-    final currentCode =
-        locale?.languageCode ?? Localizations.localeOf(context).languageCode;
+    // Segmento seleccionado: refleja la ELECCION explicita del usuario.
+    // `null` (seguir al SO) => 'system'; en otro caso, el codigo del locale.
+    final selectedSegment = locale == null ? _systemSegment : locale.languageCode;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settingsTitle)),
@@ -56,11 +61,20 @@ class SettingsScreen extends ConsumerWidget {
                   value: 'en',
                   label: Text(l10n.languageEnglish),
                 ),
+                ButtonSegment<String>(
+                  value: _systemSegment,
+                  label: Text(l10n.languageSystem),
+                ),
               ],
-              selected: {currentCode == 'en' ? 'en' : 'es'},
-              onSelectionChanged: (selection) => ref
-                  .read(localeControllerProvider.notifier)
-                  .setLanguage(Locale(selection.first)),
+              selected: {selectedSegment},
+              onSelectionChanged: (selection) {
+                final choice = selection.first;
+                // 'system' vuelve a seguir el locale del SO (setLanguage(null)),
+                // haciendo alcanzable desde la UI el estado sin preferencia.
+                ref.read(localeControllerProvider.notifier).setLanguage(
+                      choice == _systemSegment ? null : Locale(choice),
+                    );
+              },
             ),
           ),
         ],

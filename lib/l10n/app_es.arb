@@ -30,5 +30,6 @@
   "victoryScore": "Puntaje: {score}",
   "nextLevel": "Siguiente nivel",
   "selectLevel": "Seleccionar nivel",
-  "catalogError": "No se pudieron cargar los niveles"
+  "catalogError": "No se pudieron cargar los niveles",
+  "campaignComplete": "¡Has completado todos los niveles!"
 }

@@ -1,108 +1,165 @@
+import 'dart:async';
+
+import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
-import 'package:flutter_arrow_maze/application/providers/leaderboard_providers.dart';
-import 'package:flutter_arrow_maze/application/state/game_controller.dart';
-import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
-import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
-import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
+import 'package:flutter_arrow_maze/application/providers/level_catalog_provider.dart';
+import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
-import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
-import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
-import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
+import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
+import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
+import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
-import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
-import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
-import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
+import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 
-/// Generador falso: el GameScreen es ahora un ConsumerWidget, por lo que la
-/// navegacion hacia el exige un ProviderScope con el provider compuesto. Para
-/// este test (solo verifica que se llega a la pantalla) basta un tablero vacio.
-class _EmptyBoardGenerator implements ILevelGenerator {
+/// Repo que nunca se invoca: [_FakeCatalog] sobreescribe `build()` y no toca el
+/// puerto, pero `LevelCatalogNotifier` exige un [ILevelRepository] en su ctor.
+class _UnusedRepo implements ILevelRepository {
   @override
-  ArrowBoard generate({
-    required int cols,
-    required int rows,
-    required int arrowCount,
-    required int maxPathLen,
-    int? seed,
-  }) =>
-      const ArrowBoard(arrows: [], cols: 4, rows: 4);
+  Future<Either<LevelFailure, List<LevelId>>> listLevelIds() =>
+      throw UnimplementedError();
+
+  @override
+  Future<Either<LevelFailure, Level>> getLevel(LevelId id) =>
+      throw UnimplementedError();
 }
 
-/// Repo de leaderboard no-op: GameScreen activa el Observer de envío de score
-/// (front#16) al montarse; este test navega hasta ahí pero no ejerce la red.
-class _NoopLeaderboardRepository implements ILeaderboardRepository {
+/// Logger no-op: [_FakeCatalog] no dispara el prefetch, así que nunca loggea.
+class _NoopLogger implements ILoggerService {
   @override
-  Future<void> submitScore(ScoreEntry entry) async {}
+  void log(String message, String context) {}
+
+  @override
+  void error(String message, String context, [Object? error]) {}
+
+  @override
+  void warn(String message, String context) {}
 }
 
-Widget _appUnderTest() {
+/// Doble de test del Notifier del Catálogo: fuerza cada `AsyncValue` (loading /
+/// data / error) según lo que devuelva o lance [_builder], sin red ni prefetch.
+/// Aísla la pantalla del comportamiento del Notifier real (ya cubierto aparte).
+class _FakeCatalog extends LevelCatalogNotifier {
+  final FutureOr<List<LevelId>> Function() _builder;
+  _FakeCatalog(this._builder) : super(_UnusedRepo(), _NoopLogger());
+
+  @override
+  Future<List<LevelId>> build() async => _builder();
+}
+
+/// Monta la pantalla real dentro de un `ProviderScope` que sobreescribe el
+/// Catálogo con [catalogFactory], y un `MaterialApp` en inglés cuyo
+/// `onGenerateRoute` registra en [pushed] cada navegación por nombre para poder
+/// aseverar el destino y sus `arguments` (el `LevelId` real).
+Widget _appUnderTest(
+  LevelCatalogNotifier Function() catalogFactory, {
+  List<RouteSettings>? pushed,
+}) {
   return ProviderScope(
     overrides: [
-      gameControllerProvider.overrideWith(
-        () => GameController(
-          _EmptyBoardGenerator(),
-          RemoveArrowUseCase(),
-          CommandInvoker(),
-        ),
-      ),
-      submitScoreUseCaseProvider.overrideWithValue(
-        SubmitScoreUseCase(_NoopLeaderboardRepository(), LoggerServiceAdapter()),
-      ),
+      levelCatalogProvider.overrideWith(catalogFactory),
     ],
     child: MaterialApp(
-      theme: AppTheme.dark(),
       locale: const Locale('en'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      initialRoute: AppRouter.levelSelection,
-      onGenerateRoute: AppRouter.onGenerateRoute,
+      supportedLocales: const [Locale('es'), Locale('en')],
+      onGenerateRoute: (settings) {
+        pushed?.add(settings);
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => const Scaffold(body: SizedBox.shrink()),
+        );
+      },
+      home: const LevelSelectionScreen(),
     ),
   );
 }
 
 void main() {
   group('LevelSelectionScreen', () {
-    testWidgets('renders a lazy grid of selectable level tiles',
+    final ids = [LevelId('level-01'), LevelId('level-02'), LevelId('level-03')];
+
+    testWidgets('should_show_spinner_when_catalog_is_loading', (tester) async {
+      // Arrange: un build() que nunca resuelve mantiene el estado en loading.
+      final pending = Completer<List<LevelId>>();
+
+      // Act: solo `pumpWidget` (nunca `pumpAndSettle`: el spinner anima siempre).
+      await tester.pumpWidget(
+        _appUnderTest(() => _FakeCatalog(() => pending.future)),
+      );
+
+      // Assert
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('should_show_error_and_retry_when_catalog_fails',
         (tester) async {
       // Arrange
-      await tester.pumpWidget(_appUnderTest());
+      LevelCatalogNotifier factory() =>
+          _FakeCatalog(() => throw const LevelUnavailable());
 
       // Act
-      // (render only)
+      await tester.pumpWidget(_appUnderTest(factory));
+      await tester.pumpAndSettle();
 
-      // Assert: GridView.builder es perezoso, asi que solo afirmamos que la
-      // cuadricula existe y que el primer nivel se renderiza como tile tocable.
+      // Assert: mensaje localizado + botón de reintentar con su etiqueta.
+      expect(find.text("Couldn't load levels"), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Retry'), findsOneWidget);
+    });
+
+    testWidgets('should_reload_catalog_when_retry_is_tapped', (tester) async {
+      // Arrange: arranca en error; al reintentar (refresh → build) hay datos.
+      var shouldFail = true;
+      LevelCatalogNotifier factory() => _FakeCatalog(() {
+            if (shouldFail) throw const LevelUnavailable();
+            return ids;
+          });
+      await tester.pumpWidget(_appUnderTest(factory));
+      await tester.pumpAndSettle();
+      expect(find.byType(GridView), findsNothing); // precondición: estado error
+      shouldFail = false; // el back ya responde
+
+      // Act: tocar reintentar dispara refresh() → re-ejecuta build().
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+
+      // Assert: el refresh recargó el Catálogo y la cuadrícula aparece.
       expect(find.byType(GridView), findsOneWidget);
-      expect(find.byType(InkWell), findsWidgets);
       expect(find.text('1'), findsOneWidget);
     });
 
-    testWidgets('scrolls to reveal the last level (12)', (tester) async {
-      // Arrange
-      await tester.pumpWidget(_appUnderTest());
-
-      // Act
-      await tester.drag(find.byType(GridView), const Offset(0, -600));
+    testWidgets('should_render_three_cells_when_catalog_has_three_ids',
+        (tester) async {
+      // Arrange & Act
+      await tester.pumpWidget(_appUnderTest(() => _FakeCatalog(() => ids)));
       await tester.pumpAndSettle();
 
-      // Assert
-      expect(find.text('12'), findsOneWidget);
+      // Assert: cada celda muestra su POSICIÓN (i+1), no el id del back.
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
     });
 
-    testWidgets('tapping a level navigates to the GameScreen', (tester) async {
+    testWidgets('should_navigate_to_game_with_real_id_when_first_cell_is_tapped',
+        (tester) async {
       // Arrange
-      await tester.pumpWidget(_appUnderTest());
+      final pushed = <RouteSettings>[];
+      await tester.pumpWidget(
+        _appUnderTest(() => _FakeCatalog(() => ids), pushed: pushed),
+      );
+      await tester.pumpAndSettle();
 
-      // Act
+      // Act: la primera celda muestra '1' pero debe navegar con el id REAL.
       await tester.tap(find.text('1'));
       await tester.pumpAndSettle();
 
-      // Assert
-      expect(find.byType(GameScreen), findsOneWidget);
+      // Assert: ruta del juego con LevelId('level-01') como argumento.
+      expect(pushed, hasLength(1));
+      expect(pushed.single.name, AppRouter.game);
+      expect(pushed.single.arguments, LevelId('level-01'));
     });
   });
 }

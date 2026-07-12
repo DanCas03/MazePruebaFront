@@ -63,5 +63,9 @@
     }
   },
   "nextLevel": "Next Level",
-  "selectLevel": "Select Level"
+  "selectLevel": "Select Level",
+  "catalogError": "Couldn't load levels",
+  "@catalogError": {
+    "description": "Shown on the level selection screen when the catalog fails to load."
+  }
 }

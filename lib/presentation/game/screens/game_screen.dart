@@ -5,6 +5,7 @@ import '../../../application/providers/leaderboard_providers.dart';
 import '../../../application/state/game_state.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../domain/board/failures/level_failure.dart';
 import '../../../domain/board/value_objects/level_id.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../providers/dependency_providers.dart';
@@ -149,7 +150,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         child: asyncState.when(
           data: (_) => const BoardWidget(),
           loading: () => CircularProgressIndicator(color: primary),
-          error: (e, _) => Text('$e'),
+          error: (e, _) => _GameError(
+            failure: e,
+            onRetry: () =>
+                ref.read(gameControllerProvider.notifier).loadLevel(widget.levelId),
+          ),
         ),
       ),
     );
@@ -181,6 +186,47 @@ class _CountdownChip extends StatelessWidget {
           Text(_label, style: TextStyle(color: color)),
         ],
       ),
+    );
+  }
+}
+
+/// Rama de error de la carga remota del nivel. Discrimina el LevelFailure:
+/// LevelUnavailable (sin conexión) ofrece reintentar; el resto (no encontrado /
+/// corrupto) es terminal y vuelve al selector. Recibe el fallo como `Object`
+/// (lo que entrega `AsyncError`) y hace el type-check aquí.
+class _GameError extends StatelessWidget {
+  final Object failure;
+  final VoidCallback onRetry;
+  const _GameError({required this.failure, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (failure is LevelUnavailable) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.levelUnavailable, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: onRetry, child: Text(l10n.retry)),
+        ],
+      );
+    }
+    // LevelNotFound / LevelCorrupted (o cualquier otro error): terminal.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(l10n.levelLoadError, textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRouter.levelSelection,
+            (_) => false,
+          ),
+          child: Text(l10n.backToLevels),
+        ),
+      ],
     );
   }
 }

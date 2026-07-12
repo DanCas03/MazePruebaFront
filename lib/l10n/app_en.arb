@@ -47,6 +47,14 @@
   },
   "retry": "Retry",
   "backToLevels": "Back to Levels",
+  "levelUnavailable": "This level isn't available offline",
+  "@levelUnavailable": {
+    "description": "Game screen: shown when the level can't be fetched and isn't cached."
+  },
+  "levelLoadError": "This level couldn't be loaded",
+  "@levelLoadError": {
+    "description": "Game screen: terminal error for a missing or corrupted level."
+  },
   "victoryTitle": "Board Cleared!",
   "victoryMoves": "{moves} moves",
   "@victoryMoves": {

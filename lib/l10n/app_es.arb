@@ -25,6 +25,8 @@
   "defeatSummary": "{moves} movimientos · {strikes} choques",
   "retry": "Reintentar",
   "backToLevels": "Volver a niveles",
+  "levelUnavailable": "Este nivel no está disponible sin conexión",
+  "levelLoadError": "No se pudo cargar este nivel",
   "victoryTitle": "¡Tablero despejado!",
   "victoryMoves": "{moves} movimientos",
   "victoryScore": "Puntaje: {score}",

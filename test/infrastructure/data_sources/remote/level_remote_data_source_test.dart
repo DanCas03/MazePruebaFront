@@ -81,4 +81,29 @@ void main() {
       throwsA(isA<DioException>()),
     );
   });
+
+  test('should_throw_FormatException_when_fetchLevelIds_body_is_not_a_list',
+      () async {
+    // Arrange — un 200 cuyo cuerpo NO es una lista (p. ej. envelope `{items:...}`
+    // de un proxy). Antes de la guarda de forma, `res.data as List` lanzaba un
+    // TypeError crudo NO capturado; ahora debe emerger como FormatException para
+    // que el repo lo mapee a LevelCorrupted (contrato de fallos).
+    when(dio.get('/levels'))
+        .thenAnswer((_) async => ok('/levels', {'items': []}));
+    // Act / Assert
+    expect(() => dataSource.fetchLevelIds(), throwsA(isA<FormatException>()));
+  });
+
+  test('should_throw_FormatException_when_fetchLevel_body_is_not_a_map',
+      () async {
+    // Arrange — un 200 cuyo cuerpo es una lista en vez de un objeto de nivel.
+    // `res.data as Map` lanzaría un TypeError crudo; ahora es FormatException.
+    when(dio.get('/levels/level-01')).thenAnswer(
+        (_) async => ok('/levels/level-01', [1, 2, 3]));
+    // Act / Assert
+    expect(
+      () => dataSource.fetchLevel('level-01'),
+      throwsA(isA<FormatException>()),
+    );
+  });
 }

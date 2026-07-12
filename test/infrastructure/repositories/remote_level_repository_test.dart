@@ -194,6 +194,54 @@ void main() {
       // Assert
       expect(result, const Left<LevelFailure, Level>(LevelUnavailable()));
     });
+
+    test('should_return_cached_level_when_server_error_non_404_and_cache_hit',
+        () async {
+      // Arrange — error de servidor no-404 (500): comparte la rama de fallback a
+      // caché con un fallo de red (network-first); solo el 404 salta la caché.
+      when(remote.fetchLevel('level-01')).thenThrow(_dioError(status: 500));
+      when(cache.readLevel('level-01')).thenReturn(rawLevelJson);
+      // Act
+      final result = await repo.getLevel(LevelId('level-01'));
+      // Assert
+      expect(result.isRight(), isTrue);
+      expect(result, Right<LevelFailure, Level>(decoder.decode(rawLevel)));
+    });
+
+    test('should_return_LevelCorrupted_when_remote_reports_shape_violation',
+        () async {
+      // Arrange — el data source detecta un cuerpo 200 con forma inesperada y
+      // lanza FormatException (ruta distinta del decoder); el repo debe mapearla
+      // igualmente a LevelCorrupted y NO escribir en caché.
+      when(remote.fetchLevel('level-01'))
+          .thenThrow(const FormatException('bad shape'));
+      // Act
+      final result = await repo.getLevel(LevelId('level-01'));
+      // Assert
+      expect(result.isLeft(), isTrue);
+      result.fold(
+        (f) => expect(f, isA<LevelCorrupted>()),
+        (_) => fail('expected Left(LevelCorrupted)'),
+      );
+      verifyNever(cache.writeLevel(any, any));
+    });
+
+    test('should_still_return_level_when_cache_write_through_fails', () async {
+      // Arrange — la red va bien pero la escritura en caché (Hive/IO) falla. El
+      // write-through es best-effort: no debe perder el nivel ya obtenido ni
+      // escapar como excepción; solo se registra un warn de diagnóstico.
+      when(remote.fetchLevel('level-01')).thenAnswer((_) async => rawLevel);
+      when(cache.writeLevel(any, any)).thenThrow(Exception('disk full'));
+      // Act
+      final result = await repo.getLevel(LevelId('level-01'));
+      // Assert — el resultado sigue siendo Right(level) pese al fallo de escritura.
+      expect(result.isRight(), isTrue);
+      expect(result, Right<LevelFailure, Level>(decoder.decode(rawLevel)));
+      verify(logger.warn(
+        argThat(contains('cache write-through failed')),
+        any,
+      )).called(1);
+    });
   });
 
   group('listLevelIds', () {
@@ -259,6 +307,7 @@ void main() {
         (f) => expect(f, isA<LevelCorrupted>()),
         (_) => fail('expected Left(LevelCorrupted)'),
       );
+      verifyNever(cache.writeCatalog(any));
     });
   });
 }

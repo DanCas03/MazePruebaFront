@@ -31,7 +31,13 @@ class RemoteLevelRepository implements ILevelRepository {
     try {
       final raw = await _remote.fetchLevelIds();
       final ids = _parseIds(raw); // FormatException si el JSON es corrupto
-      await _cache.writeCatalog([for (final id in ids) id.value]);
+      // Write-through best-effort: un fallo de Hive/IO no debe perder el catálogo
+      // ya obtenido ni escapar como excepción no mapeada (contrato de fallos).
+      try {
+        await _cache.writeCatalog([for (final id in ids) id.value]);
+      } catch (e) {
+        _logger.warn('cache write-through failed for catalog: $e', _ctx);
+      }
       return Right(ids);
     } on DioException {
       // Red/servidor: la copia en caché es el fallback (network-first).
@@ -41,7 +47,9 @@ class RemoteLevelRepository implements ILevelRepository {
         return const Left(LevelUnavailable());
       }
       try {
-        return Right([for (final v in cached) LevelId(v)]);
+        final ids = [for (final v in cached) LevelId(v)];
+        _logger.warn('serving cached catalog (offline)', _ctx);
+        return Right(ids);
       } catch (err) {
         _logger.error('cached catalog corrupted', _ctx, err);
         return Left(LevelCorrupted('cached catalog: $err'));
@@ -57,7 +65,13 @@ class RemoteLevelRepository implements ILevelRepository {
     try {
       final raw = await _remote.fetchLevel(id.value);
       final level = _decoder.decode(raw); // FormatException si corrupto
-      await _cache.writeLevel(id.value, jsonEncode(raw)); // write-through
+      // Write-through best-effort: un fallo de Hive/IO no debe perder el nivel ya
+      // obtenido ni escapar como excepción no mapeada (contrato de fallos).
+      try {
+        await _cache.writeLevel(id.value, jsonEncode(raw));
+      } catch (e) {
+        _logger.warn('cache write-through failed for ${id.value}: $e', _ctx);
+      }
       return Right(level);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
@@ -88,6 +102,7 @@ class RemoteLevelRepository implements ILevelRepository {
         throw const FormatException('cached level is not a JSON object');
       }
       final level = _decoder.decode(decoded.cast<String, Object?>());
+      _logger.warn('serving cached level ${id.value} (offline)', _ctx);
       return Right(level);
     } on FormatException catch (e) {
       _logger.error('cached level ${id.value} corrupted: ${e.message}', _ctx, e);

@@ -1,64 +1,24 @@
-import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_arrow_maze/application/providers/level_catalog_provider.dart';
-import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
-import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
-import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
-import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 
-/// Repo que nunca se invoca: [_FakeCatalog] sobreescribe `build()` y no toca el
-/// puerto, pero `LevelCatalogNotifier` exige un [ILevelRepository] en su ctor.
-class _UnusedRepo implements ILevelRepository {
-  @override
-  Future<Either<LevelFailure, List<LevelId>>> listLevelIds() =>
-      throw UnimplementedError();
-
-  @override
-  Future<Either<LevelFailure, Level>> getLevel(LevelId id) =>
-      throw UnimplementedError();
-}
-
-/// Logger no-op: [_FakeCatalog] no dispara el prefetch, así que nunca loggea.
-class _NoopLogger implements ILoggerService {
-  @override
-  void log(String message, String context) {}
-
-  @override
-  void error(String message, String context, [Object? error]) {}
-
-  @override
-  void warn(String message, String context) {}
-}
-
-/// Doble de test del Notifier del Catálogo: al navegar a LevelSelectionScreen
-/// (front#8) esta lee `levelCatalogProvider`, así que el host necesita un
-/// ProviderScope con el Catálogo sobreescrito para que la pantalla pueda montar.
-class _FakeCatalog extends LevelCatalogNotifier {
-  _FakeCatalog() : super(_UnusedRepo(), _NoopLogger());
-
-  @override
-  Future<List<LevelId>> build() async => [LevelId('level-01')];
-}
+import '../../support/level_selection_fakes.dart';
 
 /// Construye una app minima centrada en HomeScreen, con el router real para
 /// poder verificar la navegacion declarada por nombre de ruta. Locale fijado a
-/// 'es' (front#4) para que las aserciones en español sean deterministas. Va
-/// dentro de un `ProviderScope` que sobreescribe `levelCatalogProvider` porque
-/// la navegación a LevelSelectionScreen monta un ConsumerWidget que lo lee.
+/// 'es' (front#4) para aserciones en español deterministas; el
+/// LevelSelectionScreen destino exige sus providers compuestos (DIP, front#8:
+/// Catálogo remoto + controller), inyectados con overrides de fakes.
 Widget _appUnderTest() {
   return ProviderScope(
-    overrides: [
-      levelCatalogProvider.overrideWith(() => _FakeCatalog()),
-    ],
+    overrides: levelSelectionOverrides(catalogIds: [LevelId('level-01')]),
     child: MaterialApp(
       theme: AppTheme.dark(),
       locale: const Locale('es'),

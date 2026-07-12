@@ -25,11 +25,23 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const _LogoArrows(),
+          child: Stack(
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.settings,
+                      color: AppColors.onSurfaceMuted),
+                  tooltip: l10n.settingsTitle,
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRouter.settings),
+                ),
+              ),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _LogoArrows(),
                 const SizedBox(height: 28),
                 Text(
                   l10n.appTitle.toUpperCase(),
@@ -69,8 +81,10 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

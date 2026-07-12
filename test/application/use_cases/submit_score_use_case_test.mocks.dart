@@ -5,7 +5,11 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i3;
 
-import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart' as _i5;
+import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart' as _i7;
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart'
+    as _i6;
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart'
+    as _i5;
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart'
     as _i4;
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart'
@@ -44,12 +48,27 @@ class MockILeaderboardRepository extends _i1.Mock
         returnValue: _i3.Future<void>.value(),
         returnValueForMissingStub: _i3.Future<void>.value(),
       ) as _i3.Future<void>);
+
+  @override
+  _i3.Future<List<_i5.LeaderboardEntry>> getLeaderboard(
+    _i6.LevelId? levelId, {
+    int? limit,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getLeaderboard,
+          [levelId],
+          {#limit: limit},
+        ),
+        returnValue: _i3.Future<List<_i5.LeaderboardEntry>>.value(
+            <_i5.LeaderboardEntry>[]),
+      ) as _i3.Future<List<_i5.LeaderboardEntry>>);
 }
 
 /// A class which mocks [ILoggerService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockILoggerService extends _i1.Mock implements _i5.ILoggerService {
+class MockILoggerService extends _i1.Mock implements _i7.ILoggerService {
   MockILoggerService() {
     _i1.throwOnMissingStub(this);
   }

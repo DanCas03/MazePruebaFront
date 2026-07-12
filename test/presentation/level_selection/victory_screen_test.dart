@@ -1,55 +1,15 @@
-import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_arrow_maze/application/providers/level_catalog_provider.dart';
-import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_colors.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
-import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
-import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
-import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
-/// Repo que nunca se invoca: [_StubCatalog] sobreescribe `build()` y no toca el
-/// puerto, pero `LevelCatalogNotifier` exige un [ILevelRepository] en su ctor.
-class _UnusedRepo implements ILevelRepository {
-  @override
-  Future<Either<LevelFailure, List<LevelId>>> listLevelIds() =>
-      throw UnimplementedError();
-
-  @override
-  Future<Either<LevelFailure, Level>> getLevel(LevelId id) =>
-      throw UnimplementedError();
-}
-
-/// Logger no-op: [_StubCatalog] no dispara el prefetch, así que nunca loggea.
-class _NoopLogger implements ILoggerService {
-  @override
-  void log(String message, String context) {}
-
-  @override
-  void error(String message, String context, [Object? error]) {}
-
-  @override
-  void warn(String message, String context) {}
-}
-
-/// Doble de test del Notifier del Catálogo: resuelve `build()` con una lista
-/// fija de ids, sin red ni prefetch. Aísla la pantalla del Notifier real (ya
-/// cubierto aparte) y fija el "orden de juego" del que VictoryScreen deriva el
-/// siguiente nivel (next = ids[indexOf(actual) + 1]).
-class _StubCatalog extends LevelCatalogNotifier {
-  final List<LevelId> _ids;
-  _StubCatalog(this._ids) : super(_UnusedRepo(), _NoopLogger());
-
-  @override
-  Future<List<LevelId>> build() async => _ids;
-}
+import '../../support/level_selection_fakes.dart';
 
 VictoryArgs _args({
   String level = 'level-01',
@@ -78,9 +38,7 @@ Widget _appUnderTest({
   List<RouteSettings>? pushed,
 }) {
   return ProviderScope(
-    overrides: [
-      levelCatalogProvider.overrideWith(() => _StubCatalog(catalogIds)),
-    ],
+    overrides: [stubCatalogOverride(ids: catalogIds)],
     child: MaterialApp(
       theme: AppTheme.dark(),
       locale: const Locale('en'),

@@ -41,4 +41,18 @@ class MockLeaderboardRemoteDataSource extends _i1.Mock
         returnValue: _i3.Future<void>.value(),
         returnValueForMissingStub: _i3.Future<void>.value(),
       ) as _i3.Future<void>);
+
+  @override
+  _i3.Future<List<dynamic>> fetchLeaderboard(
+    String? levelId, {
+    int? limit,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #fetchLeaderboard,
+          [levelId],
+          {#limit: limit},
+        ),
+        returnValue: _i3.Future<List<dynamic>>.value(<dynamic>[]),
+      ) as _i3.Future<List<dynamic>>);
 }

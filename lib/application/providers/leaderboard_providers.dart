@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/board/value_objects/level_id.dart';
+import '../../domain/leaderboard/entities/leaderboard_entry.dart';
 import '../../domain/leaderboard/entities/score_entry.dart';
 import '../state/game_controller.dart';
 import '../state/game_state.dart';
+import '../use_cases/get_leaderboard_use_case.dart';
 import '../use_cases/submit_score_use_case.dart';
 
 /// Se compone en main (DIP); la fábrica por defecto falla para no acoplar a
@@ -39,3 +42,23 @@ final scoreSubmissionObserverProvider = Provider<void>((ref) {
     }
   });
 });
+
+/// front#17 (lado lectura). Se compone en main con el Dio firmado (DIP); el
+/// default falla para no acoplar a impls concretas antes de que existan.
+final getLeaderboardUseCaseProvider = Provider<GetLeaderboardUseCase>(
+  (ref) => throw UnimplementedError(
+    'getLeaderboardUseCaseProvider must be overridden with composed dependencies',
+  ),
+);
+
+/// Expone el ranking por nivel a la UI con los tres estados que pide el criterio
+/// de aceptación (carga/datos/error) vía `AsyncValue`. `family` por `levelId`
+/// (String, para clave estable); `autoDispose` para recargar al reabrir la
+/// pantalla y no cachear un ranking obsoleto.
+final leaderboardProvider =
+    FutureProvider.autoDispose.family<List<LeaderboardEntry>, String>(
+  (ref, levelId) {
+    final useCase = ref.watch(getLeaderboardUseCaseProvider);
+    return useCase.execute(LevelId(levelId));
+  },
+);

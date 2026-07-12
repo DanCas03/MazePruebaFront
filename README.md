@@ -31,17 +31,18 @@ lib/
 │   ├── arrows/      Arrow, ArrowBoard (aggregate root), ArrowId, ArrowLength, ILevelGenerator
 │   ├── board/       LevelId, Level, LevelFailure, ILevelRepository, ILevelProgressRepository, IRemoteProgressRepository, ProgressReconciler
 │   ├── game_core/   Position, Direction, MoveCount, Score, Stars
-│   ├── leaderboard/ ScoreEntry, ILeaderboardRepository (port)
+│   ├── leaderboard/ ScoreEntry, LeaderboardEntry, ILeaderboardRepository (port — submit + read)
 │   ├── auth/        Email, AuthToken, IAuthTokenStorage (port)
 │   └── core/        Domain exception hierarchy
 ├── application/     Use cases, Commands (undo), GameState (sealed), Riverpod Notifiers
 │   ├── commands/    ICommand, CommandInvoker, RemoveArrowCommand
 │   ├── state/       GameState / AuthState (sealed), GameController / AuthController (AsyncNotifier)
-│   ├── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login), LoginUseCase, RegisterUseCase, SyncProgressUseCase, SubmitScoreUseCase
-│   └── providers/   leaderboard_providers.dart (submitScoreUseCaseProvider, scoreSubmissionObserverProvider — Observer)
+│   ├── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login), LoginUseCase, RegisterUseCase, SyncProgressUseCase, SubmitScoreUseCase, GetLeaderboardUseCase
+│   └── providers/   leaderboard_providers.dart (submitScoreUseCaseProvider, scoreSubmissionObserverProvider — Observer, getLeaderboardUseCaseProvider, leaderboardProvider — FutureProvider.family), level_catalog_provider.dart (levelCatalogProvider — remote catalog + campaign prefetch)
 ├── infrastructure/  Hive persistence, secure token storage, RemoteAuthRepository, RemoteProgressRepository, RemoteLeaderboardRepository, RemoteLevelRepository (campaign, `levels_cache` box), GraphBoardGenerator (implements the domain ports)
 ├── presentation/    Screens, Widgets, Painters + providers/ (the only place infra is built)
-│   └── auth/        Login/register screens (LoginScreen, RegisterScreen) and shared auth widgets
+│   ├── auth/        Login/register screens (LoginScreen, RegisterScreen) and shared auth widgets
+│   └── leaderboard/ LeaderboardScreen (per-level ranking view)
 ├── core/            Cross-cutting: aspects/ (logger), auth/ (AuthGate route guard), config/ (AppConfig), network/ (DioClient, AuthTokenInterceptor), theme/, router/
 └── l10n/            i18n (front#4): app_en.arb / app_es.arb + generated AppLocalizations delegate (see Tooling → Localization)
 ```
@@ -85,9 +86,24 @@ On the `Unauthenticated → Authenticated` transition (login or auto-login), `Au
 The app ships Spanish (`es`, primary) and English (`en`), selected automatically from the device locale. Strings live in ARB files under [`lib/l10n/`](lib/l10n/) (`app_en.arb` is the key template, `app_es.arb` the Spanish translation); [`l10n.yaml`](l10n.yaml) drives `flutter gen-l10n`, which produces the `AppLocalizations` delegate. Because `flutter: generate: true` is set in `pubspec.yaml`, the delegate is regenerated on every `flutter pub get` / build, so the generated `lib/l10n/app_localizations*.dart` files are **not** committed (they are git-ignored).
 
 Screens read strings through `AppLocalizations.of(context)`; there is no static string table. To add or change a string: edit both ARB files (same key), then run `flutter gen-l10n` (or `flutter pub get`). Messages with runtime values use ICU placeholders, e.g. `gameMoves(count)` → `"Moves: 3"` / `"Movimientos: 3"`.
+
+### Settings & live language switching (front#19)
+
+The **Settings screen** (gear icon on Home, route `/settings`) exposes **independent** Music (BGM) and SFX toggles over the [`IAudioService`](lib/application/audio/i_audio_service.dart) facade, plus an **ES / EN / System** language selector — all persisted. Because the facade's mutes are plain getters (not observable), a Riverpod `Notifier` (`audioSettingsControllerProvider`) publishes a reactive `AudioSettingsState` and delegates each toggle to a thin use case (`ToggleMusicUseCase` / `ToggleSfxUseCase`). Language is driven by `localeControllerProvider` (a `Notifier<Locale?>`, `null` = follow the OS; the **System** segment sets it back to `null`): `ArrowMazeApp` watches it and sets `MaterialApp.locale`, so switching language **rebuilds the tree and re-evaluates every `AppLocalizations.of(context)` live**, with no restart. The controllers receive their dependency (`IAudioService` / `ILocaleStore`) **by constructor** — `application/` never imports `presentation/`, and `main` composes the real instances via `overrideWith` (same pattern as `gameControllerProvider`). The choice persists behind the `ILocaleStore` port (`HiveLocaleStore` over the `app_settings` box; `InMemoryLocaleStore`, in `application/settings/`, is the default null-object). `SetLanguageUseCase` performs the persistence.
+
 ### Score submission (front#16)
 
 On winning a level, `GameController` computes the run's `Score`/`Stars` and emits an enriched `GameWon` state (`{moves, score, stars, timeSeconds, levelId}`). An Observer (`scoreSubmissionObserverProvider`), activated by `GameScreen` via `ref.watch`, listens to `gameControllerProvider` and, on `GameWon`, builds a `ScoreEntry` and fires `SubmitScoreUseCase` fire-and-forget. The use case sends `POST /scores` (`{levelId, score, stars, moves, timeSeconds}`) through `RemoteLeaderboardRepository` (implements the domain port `ILeaderboardRepository`) and `LeaderboardRemoteDataSource` (Dio). The request is signed with the live session's Bearer token via `ISessionTokenStore`, which also covers `remember: false` sessions (front#16's interceptor fix). A network failure is logged (AOP) and swallowed by the use case, so the victory screen is never blocked by the submission.
+
+### Leaderboard view (front#17)
+
+The level-selection screen exposes a ranking icon per level; tapping it opens `LeaderboardScreen`, which reads the public `GET /leaderboard/:levelId` (back#9). The screen watches `leaderboardProvider` (`FutureProvider.autoDispose.family` keyed by `levelId`), which runs `GetLeaderboardUseCase` through the same `ILeaderboardRepository` port — now cohesive around submit **and** read. `RemoteLeaderboardRepository.getLeaderboard` maps the back's rows (`{id, userId, levelId, score, stars, moves, timeSeconds, createdAt}`) to `LeaderboardEntry`, preserving the server's score-desc order (rank is positional). The UI renders the three `AsyncValue` states — a loading spinner, an error state with a retry button, and the ranked list (empty state when a level has no scores yet). Unlike the fire-and-forget submit, the read use case rethrows on failure so the UI can surface the error.
+
+### Level selection (front#20 + front#8)
+
+`LevelSelectionScreen` renders the **remote catalog** grouped by **Tier** — difficulty rungs of three levels each, which also drive the difficulty labels shown to the player (Easy / Medium / Hard). Each unlocked tile shows the level's **position in the catalog** (the backend's `LevelId` is opaque and only travels in navigation/scoring) and the level's earned stars (0–3), and navigates to the game on tap (plus the per-level ranking icon from front#17); each locked tile shows a padlock and does nothing. The catalog list comes from `levelCatalogProvider` (front#8): `GET /levels` through the `ILevelRepository` port, downloaded once per session, with an opportunistic background prefetch of the whole campaign so one online visit makes it playable offline. The Tier of each level derives from its **position** in the catalog (`Tier.forLevelNumber(position)`) — never from arithmetic on the id.
+
+Gating lives in the pure domain service `TierGating`: the first Tier is always open, and a Tier unlocks once **every** level of the lower-ranked Tiers is completed. `LevelSelectionController` (`AsyncNotifier`) composes the catalog (via `ref.watch` on `levelCatalogProvider`), the local progress (`ILevelProgressRepository.getAll`, whose `bestStars` feed the star row and degrade to 0 when no score exists yet) and `TierGating` into per-Tier view models. The screen invalidates the provider on entry (`ref.invalidate` in a post-frame callback) and on reveal-by-pop (`RouteAware.didPopNext`), so returning from a won level reflects the freshly earned stars and any newly unlocked Tier — re-reading only the local progress, since the already-resolved catalog is reused. If the catalog fails (offline and no cache), the screen shows an error state with a retry button that refreshes the catalog.
 
 ## Design Patterns
 

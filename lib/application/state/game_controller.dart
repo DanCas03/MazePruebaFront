@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/arrows/entities/arrow_board.dart';
-import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
-import '../../domain/board/value_objects/level_blueprint.dart';
+import '../../domain/board/entities/level.dart';
+import '../../domain/board/repositories/i_level_repository.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/services/i_ticker.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
@@ -28,7 +28,7 @@ final gameControllerProvider =
 
 /// Fachada reactiva (Riverpod) entre la UI y los casos de uso de dominio.
 class GameController extends AsyncNotifier<GameState> {
-  final ILevelGenerator _generator;
+  final ILevelRepository _levelRepository;
   final RemoveArrowUseCase _removeArrow;
   final CommandInvoker _invoker;
   final ITicker _ticker;
@@ -36,11 +36,15 @@ class GameController extends AsyncNotifier<GameState> {
   // El reloj es opcional: por defecto un Null Object inerte (tests que no
   // ejercen el tiempo, niveles sin límite). El composition root inyecta el
   // reloj real (SystemTicker) y los tests de tiempo, uno falso controlado.
-  GameController(this._generator, this._removeArrow, this._invoker,
+  GameController(this._levelRepository, this._removeArrow, this._invoker,
       [this._ticker = const NullTicker()]);
 
   // Estado con alcance de partida (no de dominio).
   LevelId? _currentLevel;
+
+  // Datos del nivel remoto en curso (spec §5.2). Restart lo reutiliza sin
+  // refetch; undo-tras-victoria toma de aquí las dimensiones reales del tablero.
+  Level? _currentLevelData;
   int _blockedNonce = 0;
   int _exitNonce = 0;
   StrikeCount _strikes = const StrikeCount(0);
@@ -67,39 +71,51 @@ class GameController extends AsyncNotifier<GameState> {
   }
 
   Future<void> loadLevel(LevelId levelId) async {
-    // Aseguramos que build() haya resuelto antes de mutar el estado.
-    await future;
+    // build() ya resolvió, pero si una carga previa dejó el provider en
+    // AsyncError, `future` está completado con ese error: lo ignoramos (se
+    // sobrescribe con loading a continuación) para permitir el reintento.
+    try {
+      await future;
+    } catch (_) {}
     _cancelTimer();
     _cancelElapsed();
-    _currentLevel = levelId;
+    state = const AsyncValue<GameState>.loading();
+    final result = await _levelRepository.getLevel(levelId);
+    result.fold(
+      (failure) {
+        // Reutilizamos el AsyncValue que ya envuelve GameState; sin caso nuevo
+        // en el sealed. La UI discrimina el LevelFailure en la rama de error.
+        _currentLevelData = null; // sin nivel jugable: restart no reusa el previo
+        state = AsyncValue.error(failure, StackTrace.current);
+      },
+      (level) {
+        _currentLevel = levelId;
+        _currentLevelData = level;
+        _startLevel(level);
+      },
+    );
+  }
+
+  // Monta el nivel [level] en el estado de partida. Reutilizado por loadLevel
+  // (tras el fetch) y por restartLevel (sin refetch). Arranca el cronómetro y,
+  // si el nivel es cronometrado, la cuenta atrás.
+  void _startLevel(Level level) {
+    _cancelTimer();
+    _cancelElapsed();
     _blockedNonce = 0;
     _exitNonce = 0;
     _strikes = const StrikeCount(0);
     _invoker.clear();
-
-    // La dificultad la decide LevelBlueprint (dominio); el generador solo genera.
-    final bp = LevelBlueprint.forLevel(levelId.number);
-    _remainingSeconds = bp.timeLimitSec;
-    final board = _generator.generate(
-      cols: bp.cols,
-      rows: bp.rows,
-      arrowCount: bp.arrowCount,
-      maxPathLen: bp.maxPathLen,
-      seed: levelId.number, // determinista: mismo nivel ⇒ mismo tablero
-    );
-    _optimalMoves = board.arrows.length; // óptimo = nº de flechas del nivel
+    _remainingSeconds = level.timeLimitSec;
+    _optimalMoves = level.board.arrows.length; // óptimo = nº de flechas
     _startElapsed();
-    state = AsyncValue.data(
-      GamePlaying(
-        board: board,
-        moves: const MoveCount(0),
-        canUndo: false,
-        remainingSeconds: _remainingSeconds,
-      ),
-    );
-
-    // Niveles avanzados arrancan la cuenta atrás; al agotarse → GameLost.
-    final limit = bp.timeLimitSec;
+    state = AsyncValue.data(GamePlaying(
+      board: level.board,
+      moves: const MoveCount(0),
+      canUndo: false,
+      remainingSeconds: _remainingSeconds,
+    ));
+    final limit = level.timeLimitSec;
     if (limit != null) _startTimer(limit);
   }
 
@@ -189,10 +205,12 @@ class GameController extends AsyncNotifier<GameState> {
       currentBoard = current.board;
       currentMoves = current.moves.value;
     } else if (current is GameWon) {
-      // Tras la victoria el tablero quedó vacío; reconstruimos uno vacío con
-      // las dimensiones REALES del nivel (no 4x4 fijo) para reinsertar bien.
-      final bp = LevelBlueprint.forLevel((_currentLevel ?? LevelId('1')).number);
-      currentBoard = ArrowBoard(arrows: const [], cols: bp.cols, rows: bp.rows);
+      // Tras la victoria el tablero quedó vacío; reconstruimos uno vacío con las
+      // dimensiones REALES del nivel remoto para reinsertar bien.
+      final data = _currentLevelData;
+      if (data == null) return;
+      currentBoard =
+          ArrowBoard(arrows: const [], cols: data.board.cols, rows: data.board.rows);
       currentMoves = current.moves.value;
     } else {
       return;
@@ -212,10 +230,8 @@ class GameController extends AsyncNotifier<GameState> {
   }
 
   Future<void> restartLevel() async {
-    final level = _currentLevel;
-    if (level != null) {
-      await loadLevel(level); // determinista ⇒ mismo tablero (reinicia el reloj)
-    }
+    final level = _currentLevelData;
+    if (level != null) _startLevel(level); // sin refetch: mismo Level cacheado
   }
 
   // ── Cuenta atrás inyectable (front#11) ──────────────────────────────────────

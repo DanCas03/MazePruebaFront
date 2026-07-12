@@ -13,16 +13,21 @@ import '../../support/level_selection_fakes.dart';
 
 /// MaterialApp localizada (front#4): locale 'en' fijo para que las aserciones
 /// en inglés del ARB sean deterministas. Reemplaza a `MaterialApp` directo en
-/// todos los hosts de este archivo.
+/// todos los hosts de este archivo. Va dentro de un `ProviderScope` con el
+/// Catálogo remoto y el selector stubeados (front#8/#20) porque uno de los
+/// hosts navega a LevelSelectionScreen, que exige ambos providers.
 Widget _localizedApp({
   required RouteFactory onGenerateRoute,
 }) =>
-    MaterialApp(
-      theme: AppTheme.dark(),
-      locale: const Locale('en'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      onGenerateRoute: onGenerateRoute,
+    ProviderScope(
+      overrides: levelSelectionOverrides(catalogIds: [LevelId('level-01')]),
+      child: MaterialApp(
+        theme: AppTheme.dark(),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        onGenerateRoute: onGenerateRoute,
+      ),
     );
 
 /// Monta DefeatScreen detras de una ruta que inyecta los `arguments` (levelId,
@@ -107,21 +112,18 @@ void main() {
         (tester) async {
       // Arrange
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [levelSelectionOverride()],
-          child: _localizedApp(
-            onGenerateRoute: (settings) => switch (settings.name) {
-              AppRouter.levelSelection => MaterialPageRoute<void>(
-                  builder: (_) => const LevelSelectionScreen(),
+        _localizedApp(
+          onGenerateRoute: (settings) => switch (settings.name) {
+            AppRouter.levelSelection => MaterialPageRoute<void>(
+                builder: (_) => const LevelSelectionScreen(),
+              ),
+            _ => MaterialPageRoute<void>(
+                settings: RouteSettings(
+                  arguments: (levelId: LevelId('1'), moves: 0, strikes: 5),
                 ),
-              _ => MaterialPageRoute<void>(
-                  settings: RouteSettings(
-                    arguments: (levelId: LevelId('1'), moves: 0, strikes: 5),
-                  ),
-                  builder: (_) => const DefeatScreen(),
-                ),
-            },
-          ),
+                builder: (_) => const DefeatScreen(),
+              ),
+          },
         ),
       );
 

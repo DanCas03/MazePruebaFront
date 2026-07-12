@@ -9,8 +9,9 @@ import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
-import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
+import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
+import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
@@ -21,10 +22,10 @@ import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
 
 import 'board_widget_test.mocks.dart';
 
-// Genera mocks de ILevelGenerator y RemoveArrowUseCase.
+// Genera mocks de ILevelRepository y RemoveArrowUseCase.
 // El .mocks.dart co-localizado se genera con:
 //   dart run build_runner build --delete-conflicting-outputs
-@GenerateMocks([ILevelGenerator, RemoveArrowUseCase])
+@GenerateMocks([ILevelRepository, RemoveArrowUseCase])
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,21 +56,16 @@ ArrowBoard _board() => ArrowBoard(
 ///   - Las filas 1-3 no tienen flechas.
 Future<ProviderContainer> _ready(
   WidgetTester tester,
-  MockILevelGenerator gen,
+  MockILevelRepository repo,
   MockRemoveArrowUseCase uc,
 ) async {
-  // Configurar el generador: cualquier combinación de named args → _board().
-  when(gen.generate(
-    cols: anyNamed('cols'),
-    rows: anyNamed('rows'),
-    arrowCount: anyNamed('arrowCount'),
-    maxPathLen: anyNamed('maxPathLen'),
-    seed: anyNamed('seed'),
-  )).thenReturn(_board());
+  // Configurar el repo remoto: getLevel → Right(Level con _board()).
+  when(repo.getLevel(any)).thenAnswer(
+      (_) async => Right(Level(id: LevelId('1'), board: _board())));
 
   final container = ProviderContainer(overrides: [
     gameControllerProvider.overrideWith(
-      () => GameController(gen, uc, CommandInvoker()),
+      () => GameController(repo, uc, CommandInvoker()),
     ),
   ]);
   addTearDown(container.dispose);
@@ -96,12 +92,12 @@ void main() {
   // BoardWidget muestra SizedBox.shrink() cuando aún no hay GamePlaying.
   testWidgets('renders nothing while not playing', (tester) async {
     // Arrange — container sin loadLevel → estado GameLoading
-    final gen = MockILevelGenerator();
+    final repo = MockILevelRepository();
     final uc = MockRemoveArrowUseCase();
 
     final container = ProviderContainer(overrides: [
       gameControllerProvider.overrideWith(
-        () => GameController(gen, uc, CommandInvoker()),
+        () => GameController(repo, uc, CommandInvoker()),
       ),
     ]);
     addTearDown(container.dispose);
@@ -127,13 +123,13 @@ void main() {
   // resolver la flecha tocada a partir de las coordenadas del toque.
   testWidgets('un toque enruta a la flecha de ESA celda (fix del bug)', (tester) async {
     // Arrange
-    final gen = MockILevelGenerator();
+    final repo = MockILevelRepository();
     final uc = MockRemoveArrowUseCase();
     // El use case devuelve Left para no mutar el board y mantener el estado estable.
     when(uc.execute(any, any))
         .thenReturn(Left(InvalidMoveException('bloqueada en test')));
 
-    await _ready(tester, gen, uc);
+    await _ready(tester, repo, uc);
 
     // Act — tocar la celda (row:0, col:2), centro ≈ (250, 50) con cell=100.
     // Esa celda pertenece a arrow-2 (cols 2-3), NO a arrow-0 (cols 0-1).
@@ -148,12 +144,12 @@ void main() {
 
   testWidgets('tocar una celda vacía no dispara ningún execute', (tester) async {
     // Arrange
-    final gen = MockILevelGenerator();
+    final repo = MockILevelRepository();
     final uc = MockRemoveArrowUseCase();
     when(uc.execute(any, any))
         .thenReturn(Left(InvalidMoveException('bloqueada en test')));
 
-    await _ready(tester, gen, uc);
+    await _ready(tester, repo, uc);
 
     // Act — celda (row:2, col:1) → Offset(150, 250): no hay flecha allí.
     await tester.tapAt(const Offset(150, 250));

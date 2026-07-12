@@ -65,6 +65,12 @@ Definición de un nivel (dimensiones + flechas) identificada por `LevelId`, **ob
 backend**. El cliente no genera los niveles oficiales.
 _Avoid_: mapa, stage, pantalla.
 
+**Catálogo (de niveles)**:
+Lista ordenada de `LevelId` que el backend publica; su orden **es** el orden de juego de la
+campaña. "Siguiente nivel" significa el siguiente `LevelId` del Catálogo, nunca aritmética
+sobre el id. El último elemento no tiene siguiente.
+_Avoid_: lista de niveles, índice, mapa de campaña.
+
 **GeneratedBoard** (Tablero generado):
 `ArrowBoard` creado **localmente** por el generador con parámetros elegidos por el jugador
 (dimensiones, preset de dificultad, timer opcional, seed opcional); soluble por construcción.

@@ -9,7 +9,9 @@ import 'tier.dart';
 ///
 /// Mantener el catálogo como una lista de descriptores hace que la pantalla de
 /// selección sea agnóstica a la cantidad de niveles: escalar de 15 a 30+ es
-/// ampliar la lista que sirve `ILevelCatalog`, sin tocar la UI.
+/// que el back publique más ids en el Catálogo (front#8), sin tocar la UI. El
+/// Tier de cada descriptor se deriva de la POSICIÓN en el Catálogo, nunca del
+/// id (que es opaco).
 class LevelDescriptor extends Equatable {
   final LevelId levelId;
   final Tier tier;

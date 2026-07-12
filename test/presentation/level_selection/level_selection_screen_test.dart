@@ -1,12 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_arrow_maze/application/state/level_selection_controller.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/router/route_observer.dart';
+import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
-import 'package:flutter_arrow_maze/domain/board/services/tier_gating.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
-import 'package:flutter_arrow_maze/domain/board/value_objects/tier.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
@@ -70,16 +70,10 @@ class _MutableProgress implements ILevelProgressRepository {
       throw UnimplementedError();
 }
 
-// Tier 1 desbloqueado (nivel 1 completado con 2★); Tier 1 incompleto ⇒ Tier 2
+// Catálogo remoto de 6 ids: por POSICIÓN, 1-3 → Tier 1 y 4-6 → Tier 2. Con el
+// nivel 1 completado (2★) el Tier 1 está desbloqueado pero incompleto ⇒ Tier 2
 // bloqueado. Base para probar candado, estrellas y gating de navegación.
-final _catalog = [
-  levelDescriptor('1', Tier.one),
-  levelDescriptor('2', Tier.one),
-  levelDescriptor('3', Tier.one),
-  levelDescriptor('4', Tier.two),
-  levelDescriptor('5', Tier.two),
-  levelDescriptor('6', Tier.two),
-];
+final _catalogIds = [for (var n = 1; n <= 6; n++) LevelId('$n')];
 final _progress = [
   LevelProgress(levelId: LevelId('1'), completed: true, bestStars: 2),
 ];
@@ -87,7 +81,8 @@ final _progress = [
 Widget _host(_NavCapture nav, {List<Override> overrides = const []}) =>
     ProviderScope(
       overrides: overrides.isEmpty
-          ? [levelSelectionOverride(catalog: _catalog, progress: _progress)]
+          ? levelSelectionOverrides(
+              catalogIds: _catalogIds, progress: _progress)
           : overrides,
       child: MaterialApp(
         // La pantalla usa AppLocalizations (#4); sin delegates crashearía.
@@ -166,6 +161,92 @@ void main() {
   });
 
   testWidgets(
+      'should_show_position_and_navigate_with_real_id_when_ids_are_opaque',
+      (tester) async {
+    // Arrange: ids del back opacos (front#8): la celda muestra la POSICIÓN.
+    final nav = _NavCapture();
+    final opaqueIds = [
+      LevelId('level-01'),
+      LevelId('level-02'),
+      LevelId('level-03'),
+    ];
+    await _pumpScreen(
+      tester,
+      nav,
+      overrides: levelSelectionOverrides(catalogIds: opaqueIds),
+    );
+    // Assert: etiquetas por posición, no por id.
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('level-01'), findsNothing);
+
+    // Act: la primera celda muestra '1' pero debe navegar con el id REAL.
+    await tester.tap(find.byKey(const ValueKey('level-tile-level-01')));
+    await tester.pump();
+    await tester.pump();
+    // Assert
+    expect(nav.pushedLevel, LevelId('level-01'));
+  });
+
+  testWidgets('should_show_spinner_when_catalog_is_loading', (tester) async {
+    // Arrange: un build() del Catálogo que nunca resuelve mantiene el loading.
+    final pending = Completer<List<LevelId>>();
+    final overrides = [
+      stubCatalogOverride(builder: () => pending.future),
+      levelSelectionControllerOverride(),
+    ];
+
+    // Act: pumps acotados (nunca `pumpAndSettle`: el spinner anima siempre).
+    await _pumpScreen(tester, _NavCapture(), overrides: overrides);
+
+    // Assert
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('should_show_error_and_retry_when_catalog_fails',
+      (tester) async {
+    // Arrange
+    final overrides = [
+      stubCatalogOverride(builder: () => throw const LevelUnavailable()),
+      levelSelectionControllerOverride(),
+    ];
+
+    // Act
+    await _pumpScreen(tester, _NavCapture(), overrides: overrides);
+
+    // Assert: mensaje localizado + botón de reintentar con su etiqueta.
+    expect(find.text("Couldn't load levels"), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Retry'), findsOneWidget);
+  });
+
+  testWidgets('should_reload_catalog_when_retry_is_tapped', (tester) async {
+    // Arrange: arranca en error; al reintentar (refresh → build) hay datos.
+    var shouldFail = true;
+    final overrides = [
+      stubCatalogOverride(builder: () {
+        if (shouldFail) throw const LevelUnavailable();
+        return _catalogIds;
+      }),
+      levelSelectionControllerOverride(),
+    ];
+    await _pumpScreen(tester, _NavCapture(), overrides: overrides);
+    expect(find.byIcon(Icons.lock), findsNothing); // precondición: estado error
+    expect(find.widgetWithText(FilledButton, 'Retry'), findsOneWidget);
+    shouldFail = false; // el back ya responde
+
+    // Act: tocar reintentar dispara refresh() → re-ejecuta build().
+    await tester.tap(find.byType(FilledButton));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump();
+    }
+
+    // Assert: el refresh recargó el Catálogo y las secciones aparecen.
+    expect(find.text('Tier 1'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+  });
+
+  testWidgets(
       'should_refresh_gating_on_entry_so_a_newly_completed_tier_unlocks',
       (tester) async {
     // Arrange: al entrar, el progreso ya trae el Tier 1 completo (2ª lectura),
@@ -179,16 +260,13 @@ void main() {
         LevelProgress(levelId: LevelId('3'), completed: true),
       ],
     ]);
-    final override = levelSelectionControllerProvider.overrideWith(
-      () => LevelSelectionController(
-        FakeLevelCatalog(_catalog),
-        progress,
-        const TierGating(),
-      ),
+    final overrides = levelSelectionOverrides(
+      catalogIds: _catalogIds,
+      progressRepository: progress,
     );
 
     // Act
-    await _pumpScreen(tester, _NavCapture(), overrides: [override]);
+    await _pumpScreen(tester, _NavCapture(), overrides: overrides);
 
     // Assert: tras la recomposición al entrar, el Tier 2 quedó desbloqueado
     // (ya no hay candados) → el selector reflejó el progreso nuevo.
@@ -208,15 +286,10 @@ void main() {
     final navKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          levelSelectionControllerProvider.overrideWith(
-            () => LevelSelectionController(
-              FakeLevelCatalog(_catalog),
-              progress,
-              const TierGating(),
-            ),
-          ),
-        ],
+        overrides: levelSelectionOverrides(
+          catalogIds: _catalogIds,
+          progressRepository: progress,
+        ),
         child: MaterialApp(
           navigatorKey: navKey,
           locale: const Locale('en'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/providers/level_catalog_provider.dart';
 import '../../application/state/level_selection_state.dart';
 import '../../core/router/app_router.dart';
 import '../../core/router/route_observer.dart';
@@ -9,11 +10,14 @@ import '../../domain/board/value_objects/tier.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/level_selection_provider.dart';
 
-/// Selección de nivel: agrupa el catálogo por Tier (que es, a la vez, la
-/// agrupación por dificultad), muestra las estrellas ganadas por nivel y bloquea
-/// los niveles de Tiers aún no alcanzados. La lista y el estado de bloqueo los
-/// resuelve `levelSelectionControllerProvider`; esta pantalla es pura
-/// presentación.
+/// Selección de nivel: agrupa el Catálogo remoto (front#8) por Tier (que es, a
+/// la vez, la agrupación por dificultad), muestra las estrellas ganadas por
+/// nivel y bloquea los niveles de Tiers aún no alcanzados. Cada celda muestra
+/// su POSICIÓN en el Catálogo pero navega con el LevelId REAL del back,
+/// alineando juego y leaderboard con los ids oficiales. La lista y el estado de
+/// bloqueo los resuelve `levelSelectionControllerProvider`; esta pantalla es
+/// pura presentación. loading → spinner; error → mensaje + reintentar (refresh
+/// del Catálogo).
 class LevelSelectionScreen extends ConsumerStatefulWidget {
   const LevelSelectionScreen({super.key});
 
@@ -27,9 +31,18 @@ class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
   // Recompone catálogo + progreso: refleja las estrellas y los Tiers recién
   // desbloqueados al (re)entrar al selector. El provider no es autoDispose, así
   // que sin esto su `build()` correría una sola vez por sesión y quedaría
-  // desactualizado tras ganar una partida.
+  // desactualizado tras ganar una partida. El Catálogo remoto ya resuelto se
+  // reutiliza (levelCatalogProvider no se invalida aquí): solo se relee el
+  // progreso local.
   void _refresh() {
     if (mounted) ref.invalidate(levelSelectionControllerProvider);
+  }
+
+  // Retry del estado de error: refresca el Catálogo remoto (si fue él quien
+  // falló, p. ej. sin red y sin caché) y recompone el selector.
+  void _retry() {
+    ref.read(levelCatalogProvider.notifier).refresh();
+    _refresh();
   }
 
   @override
@@ -68,8 +81,6 @@ class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;
-    final muted =
-        isDark ? AppColors.onSurfaceMuted : AppColors.lightOnSurfaceMuted;
     final sections = ref.watch(levelSelectionControllerProvider);
 
     return Scaffold(
@@ -79,11 +90,10 @@ class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
       ),
       body: sections.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(
-          child: Text(
-            l10n.levelsLoadError,
-            style: TextStyle(color: muted),
-          ),
+        error: (_, __) => _CatalogError(
+          message: l10n.levelsLoadError,
+          retryLabel: l10n.retry,
+          onRetry: _retry,
         ),
         data: (tiers) => ListView(
           padding: const EdgeInsets.all(16),
@@ -91,6 +101,32 @@ class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
             for (final section in tiers) _TierSectionView(section: section),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Estado de error del Catálogo: mensaje + botón de reintentar.
+class _CatalogError extends StatelessWidget {
+  final String message;
+  final String retryLabel;
+  final VoidCallback onRetry;
+  const _CatalogError({
+    required this.message,
+    required this.retryLabel,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: onRetry, child: Text(retryLabel)),
+        ],
       ),
     );
   }
@@ -158,9 +194,10 @@ class _TierSectionView extends StatelessWidget {
   }
 }
 
-/// Celda de un nivel: número + fila de estrellas si está desbloqueado; candado
-/// si está bloqueado. Los desbloqueados navegan a la partida (tap) y ofrecen el
-/// acceso al ranking del nivel (front#17). Los bloqueados no hacen nada.
+/// Celda de un nivel: posición en el Catálogo + fila de estrellas si está
+/// desbloqueado; candado si está bloqueado. Los desbloqueados navegan a la
+/// partida (tap) con el LevelId REAL y ofrecen el acceso al ranking del nivel
+/// (front#17). Los bloqueados no hacen nada.
 class _LevelTileView extends StatelessWidget {
   final LevelTile tile;
   const _LevelTileView({required this.tile});
@@ -191,7 +228,9 @@ class _LevelTileView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  tile.levelId.value,
+                  // La celda muestra la POSICIÓN (orden de juego); el id real
+                  // del back es opaco y solo viaja en la navegación.
+                  '${tile.position}',
                   style: TextStyle(
                     color: onBackground,
                     fontSize: 22,

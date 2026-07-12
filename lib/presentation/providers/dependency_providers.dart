@@ -7,6 +7,7 @@ import '../../core/aspects/i_logger_service.dart';
 import '../../core/aspects/logger_service_adapter.dart';
 import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/board/repositories/i_level_progress_repository.dart';
+import '../../domain/board/repositories/i_level_repository.dart';
 import '../../domain/board/repositories/i_remote_progress_repository.dart';
 import '../../domain/board/services/progress_reconciler.dart';
 import '../../infrastructure/data_sources/local/hive_level_progress_data_source.dart';
@@ -51,6 +52,15 @@ final levelGeneratorProvider = Provider<ILevelGenerator>(
 final remoteProgressRepositoryProvider = Provider<IRemoteProgressRepository>(
   (_) => throw UnimplementedError(
     'remoteProgressRepositoryProvider must be overridden in main with composed Dio',
+  ),
+);
+
+// front#8: repo remoto de niveles compuesto en main con el Dio firmado + la box
+// levels_cache abierta al arranque (DIP). Las capas internas solo conocen el
+// puerto ILevelRepository. Igual patrón que remoteProgressRepositoryProvider.
+final levelRepositoryProvider = Provider<ILevelRepository>(
+  (_) => throw UnimplementedError(
+    'levelRepositoryProvider must be overridden in main with composed Dio + levels_cache box',
   ),
 );
 

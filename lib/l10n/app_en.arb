@@ -47,6 +47,14 @@
   },
   "retry": "Retry",
   "backToLevels": "Back to Levels",
+  "levelUnavailable": "This level isn't available offline",
+  "@levelUnavailable": {
+    "description": "Game screen: shown when the level can't be fetched and isn't cached."
+  },
+  "levelLoadError": "This level couldn't be loaded",
+  "@levelLoadError": {
+    "description": "Game screen: terminal error for a missing or corrupted level."
+  },
   "victoryTitle": "Board Cleared!",
   "victoryMoves": "{moves} moves",
   "@victoryMoves": {
@@ -64,6 +72,10 @@
   },
   "nextLevel": "Next Level",
   "selectLevel": "Select Level",
+  "campaignComplete": "You've completed all levels!",
+  "@campaignComplete": {
+    "description": "Shown on the victory screen after clearing the last level in the catalog."
+  },
   "levelsLoadError": "Couldn't load levels",
   "@levelsLoadError": {
     "description": "Shown on the level selection screen when the catalog or progress fails to load."

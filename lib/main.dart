@@ -6,6 +6,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'l10n/app_localizations.dart';
 
 import 'application/providers/leaderboard_providers.dart';
+import 'application/providers/level_catalog_provider.dart';
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
 import 'application/state/level_selection_controller.dart';
@@ -29,20 +30,22 @@ import 'infrastructure/audio/audio_service.dart';
 import 'infrastructure/audio/audioplayers_backend.dart';
 import 'infrastructure/audio/hive_audio_settings_store.dart';
 import 'infrastructure/audio/logging_audio_decorator.dart';
-import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/data_sources/local/hive_level_progress_data_source.dart';
+import 'infrastructure/data_sources/local/level_cache_data_source.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/leaderboard_remote_data_source.dart';
+import 'infrastructure/data_sources/remote/level_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
 import 'infrastructure/repositories/hive_progress_repository.dart';
 import 'infrastructure/repositories/in_memory_session_token_store.dart';
 import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/remote_leaderboard_repository.dart';
+import 'infrastructure/repositories/remote_level_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
-import 'infrastructure/repositories/static_level_catalog.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
+import 'infrastructure/serialization/level_json_decoder.dart';
 import 'infrastructure/settings/hive_locale_store.dart';
 import 'infrastructure/time/system_ticker.dart';
 import 'presentation/providers/dependency_providers.dart';
@@ -55,6 +58,9 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapters();
   await Hive.openBox<LevelProgressHiveModel>('level_progress');
+  // front#8: box sin tipar para el JSON crudo de los niveles remotos (catálogo
+  // + un entry por nivel). Sin TTL: online siempre refetchea (network-first).
+  await Hive.openBox(LevelCacheDataSource.boxName);
   // front#5: box sin tipar para el estado de mute del audio (3 booleanos).
   final audioSettingsBox = await Hive.openBox(HiveAudioSettingsStore.boxName);
   // front#19: box sin tipar para la preferencia de idioma (String 'es'/'en').
@@ -90,6 +96,16 @@ void main() async {
   final dio = DioClient.create(sessionTokenStore);
   final authRepository = RemoteAuthRepository(AuthRemoteDataSource(dio));
 
+  // front#8: repo remoto de niveles (network-first + caché) con el mismo Dio
+  // firmado y la box levels_cache abierta arriba. Alimenta el Catálogo y la
+  // carga de partida; DioException muere dentro del repo.
+  final levelRepository = RemoteLevelRepository(
+    LevelRemoteDataSource(dio),
+    LevelCacheDataSource(),
+    const LevelJsonDecoder(),
+    LoggerServiceAdapter(),
+  );
+
   // #20: una sola composición del repo de progreso local (mismo box Hive ya
   // abierto), compartida por el sync (front#18) y por el selector de nivel, en
   // vez de instanciar dos `HiveProgressRepository` equivalentes.
@@ -103,13 +119,13 @@ void main() async {
           () => AuthController(
               tokenStorage, RestoreSessionUseCase(tokenStorage), sessionTokenStore),
         ),
-        // GameController compuesto con sus dependencias concretas (DIP). Incluye
-        // el reloj real (SystemTicker) que dispara la cuenta atrás de los niveles
-        // con límite (front#11). Sin este override, entrar a la partida lanzaría
-        // UnimplementedError (regresión de BUG-2 al cablear auth).
+        // GameController compuesto con sus dependencias concretas (DIP). Ahora
+        // carga los niveles oficiales vía ILevelRepository (front#8) en lugar de
+        // generarlos; incluye el reloj real (SystemTicker) para los niveles con
+        // límite (front#11).
         gameControllerProvider.overrideWith(
           () => GameController(
-            GraphBoardGenerator(),
+            levelRepository,
             RemoveArrowUseCase(),
             CommandInvoker(),
             const SystemTicker(),
@@ -119,12 +135,12 @@ void main() async {
         // entre el sync y el selector; se sobreescribe el provider para que
         // ambos consumidores usen exactamente la misma composición.
         levelProgressRepositoryProvider.overrideWithValue(levelProgressRepository),
-        // #20: selección de nivel compuesta con el catálogo estático curado, el
-        // repo de progreso local compartido y el gating por Tier. Sin este
+        // #20/front#8: selección de nivel compuesta con el repo de progreso
+        // local compartido y el gating por Tier; el Catálogo lo lee del
+        // levelCatalogProvider remoto (una sola descarga + prefetch). Sin este
         // override, abrir el selector lanzaría UnimplementedError.
         levelSelectionControllerProvider.overrideWith(
           () => LevelSelectionController(
-            const StaticLevelCatalog(),
             levelProgressRepository,
             const TierGating(),
           ),
@@ -136,6 +152,12 @@ void main() async {
         // interceptor). Las capas internas solo conocen el puerto.
         remoteProgressRepositoryProvider.overrideWithValue(
           RemoteProgressRepository(RemoteProgressDataSource(dio)),
+        ),
+        // front#8: el puerto de niveles y el Catálogo comparten la misma
+        // instancia del repo remoto compuesta arriba.
+        levelRepositoryProvider.overrideWithValue(levelRepository),
+        levelCatalogProvider.overrideWith(
+          () => LevelCatalogNotifier(levelRepository, LoggerServiceAdapter()),
         ),
         // front#5: audio real (Facade+Singleton decorado) sustituye al Null
         // Object; las capas internas solo conocen el puerto IAudioService.

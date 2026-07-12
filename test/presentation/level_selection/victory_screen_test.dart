@@ -7,31 +7,12 @@ import 'package:flutter_arrow_maze/core/theme/app_colors.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
-import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
 import '../../support/level_selection_fakes.dart';
 
-/// MaterialApp localizada (front#4): locale 'en' fijo para aserciones en inglés.
-Widget _localizedApp({required RouteFactory onGenerateRoute}) => MaterialApp(
-      theme: AppTheme.dark(),
-      locale: const Locale('en'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      onGenerateRoute: onGenerateRoute,
-    );
-
-/// Monta VictoryScreen detras de una ruta que inyecta [VictoryArgs], tal como
-/// hace el flujo real al ganar una partida.
-Widget _appWith(VictoryArgs? args) => _localizedApp(
-      onGenerateRoute: (_) => MaterialPageRoute<void>(
-        settings: RouteSettings(arguments: args),
-        builder: (_) => const VictoryScreen(),
-      ),
-    );
-
 VictoryArgs _args({
-  String level = '3',
+  String level = 'level-01',
   int moves = 5,
   int score = 10000,
   int stars = 3,
@@ -39,119 +20,146 @@ VictoryArgs _args({
     (levelId: LevelId(level), moves: moves, score: score, stars: stars);
 
 /// Cuenta las estrellas "llenas" (pintadas con el color de logro) entre los 3
-/// iconos, que es como la pantalla representa `stars` dinamicamente.
+/// iconos, que es como la pantalla representa `stars` dinámicamente.
 int _filledStars(WidgetTester tester) => tester
     .widgetList<Icon>(find.byIcon(Icons.star))
     .where((icon) => icon.color == AppColors.success)
     .length;
 
+/// Monta la `VictoryScreen` real detrás de la ruta por defecto, que le inyecta
+/// los [VictoryArgs] via `settings.arguments` (tal como hace el flujo real al
+/// ganar). El Catálogo se fija en [catalogIds] mediante un `ProviderScope`. Cada
+/// navegación posterior (game / levelSelection) se registra en [pushed] para
+/// aseverar destino y `arguments` (el `LevelId` real) sin montar pantallas
+/// reales.
+Widget _appUnderTest({
+  required VictoryArgs? args,
+  required List<LevelId> catalogIds,
+  List<RouteSettings>? pushed,
+}) {
+  return ProviderScope(
+    overrides: [stubCatalogOverride(ids: catalogIds)],
+    child: MaterialApp(
+      theme: AppTheme.dark(),
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: const [Locale('es'), Locale('en')],
+      onGenerateRoute: (settings) {
+        // Navegaciones de salida: se registran y se sirven con un placeholder.
+        if (settings.name == AppRouter.game ||
+            settings.name == AppRouter.levelSelection) {
+          pushed?.add(settings);
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const Scaffold(body: SizedBox.shrink()),
+          );
+        }
+        // Ruta por defecto ('/'): la VictoryScreen real con sus VictoryArgs.
+        return MaterialPageRoute<void>(
+          settings: RouteSettings(name: settings.name, arguments: args),
+          builder: (_) => const VictoryScreen(),
+        );
+      },
+    ),
+  );
+}
+
 void main() {
   group('VictoryScreen', () {
+    final ids = [LevelId('level-01'), LevelId('level-02'), LevelId('level-03')];
+
     testWidgets(
-        'should_render_three_filled_stars_and_score_when_won_with_three_stars',
+        'should_show_next_level_and_hide_campaign_complete_when_on_a_middle_level',
         (tester) async {
-      // Arrange
-      await tester
-          .pumpWidget(_appWith(_args(moves: 5, score: 10000, stars: 3)));
-
-      // Act
-      // (render only)
-
-      // Assert
-      expect(find.text('Board Cleared!'), findsOneWidget);
-      expect(find.byIcon(Icons.star), findsNWidgets(3));
-      expect(_filledStars(tester), 3);
-      expect(find.text('Score: 10000'), findsOneWidget);
-      expect(find.text('5 moves'), findsOneWidget);
-    });
-
-    testWidgets('should_render_one_filled_star_when_won_with_one_star',
-        (tester) async {
-      // Arrange
-      await tester.pumpWidget(_appWith(_args(stars: 1)));
-
-      // Act
-      // (render only)
-
-      // Assert: siempre 3 iconos, solo 1 lleno.
-      expect(find.byIcon(Icons.star), findsNWidgets(3));
-      expect(_filledStars(tester), 1);
-    });
-
-    testWidgets('should_fall_back_to_zero_and_disable_next_when_no_arguments',
-        (tester) async {
-      // Arrange
-      await tester.pumpWidget(_appWith(null));
-
-      // Act
-      // (render only)
-
-      // Assert
-      expect(_filledStars(tester), 0);
-      expect(find.text('Score: 0'), findsOneWidget);
-      expect(find.text('0 moves'), findsOneWidget);
-      final nextBtn = tester.widget<FilledButton>(
-          find.widgetWithText(FilledButton, 'Next Level'));
-      expect(nextBtn.onPressed, isNull);
-    });
-
-    testWidgets('should_navigate_to_next_level_id_when_next_level_tapped',
-        (tester) async {
-      // Arrange: nivel 3 en curso ⇒ el siguiente debe ser el 4.
-      LevelId? pushedLevel;
+      // Arrange & Act: nivel intermedio (level-01) con el Catálogo cargado.
       await tester.pumpWidget(
-        _localizedApp(
-          onGenerateRoute: (settings) => switch (settings.name) {
-            AppRouter.game => MaterialPageRoute<void>(
-                builder: (_) {
-                  pushedLevel = settings.arguments as LevelId?;
-                  return const Scaffold(body: Text('GAME'));
-                },
-              ),
-            _ => MaterialPageRoute<void>(
-                settings: RouteSettings(arguments: _args(level: '3')),
-                builder: (_) => const VictoryScreen(),
-              ),
-          },
+        _appUnderTest(args: _args(level: 'level-01'), catalogIds: ids),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert: hay CTA "Next Level" y NO aparece la felicitación de campaña.
+      expect(find.widgetWithText(FilledButton, 'Next Level'), findsOneWidget);
+      expect(find.text("You've completed all levels!"), findsNothing);
+    });
+
+    testWidgets(
+        'should_navigate_to_the_next_catalog_id_when_next_level_is_tapped',
+        (tester) async {
+      // Arrange: level-01 en curso ⇒ el siguiente del Catálogo es level-02.
+      final pushed = <RouteSettings>[];
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-01'),
+          catalogIds: ids,
+          pushed: pushed,
         ),
       );
+      await tester.pumpAndSettle();
 
       // Act
       await tester.tap(find.widgetWithText(FilledButton, 'Next Level'));
       await tester.pumpAndSettle();
 
-      // Assert
-      expect(find.text('GAME'), findsOneWidget);
-      expect(pushedLevel?.value, '4');
+      // Assert: pushReplacementNamed(game) con el SIGUIENTE id (level-02).
+      expect(pushed, hasLength(1));
+      expect(pushed.single.name, AppRouter.game);
+      expect(pushed.single.arguments, LevelId('level-02'));
     });
 
-    testWidgets('should_return_to_level_selection_when_back_to_levels_tapped',
+    testWidgets(
+        'should_hide_next_level_and_show_campaign_complete_when_on_the_last_level',
         (tester) async {
-      // Arrange: el destino es mi LevelSelectionScreen (#20), que exige su
-      // provider compuesto (DIP) → override con fakes.
+      // Arrange & Act: último nivel del Catálogo (level-03).
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [levelSelectionOverride()],
-          child: _localizedApp(
-            onGenerateRoute: (settings) => switch (settings.name) {
-              AppRouter.levelSelection => MaterialPageRoute<void>(
-                  builder: (_) => const LevelSelectionScreen(),
-                ),
-              _ => MaterialPageRoute<void>(
-                  settings: RouteSettings(arguments: _args()),
-                  builder: (_) => const VictoryScreen(),
-                ),
-            },
-          ),
+        _appUnderTest(args: _args(level: 'level-03'), catalogIds: ids),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert: sin CTA "Next Level"; se muestra la felicitación de campaña.
+      expect(find.text('Next Level'), findsNothing);
+      expect(find.text("You've completed all levels!"), findsOneWidget);
+    });
+
+    testWidgets(
+        'should_navigate_to_level_selection_when_back_to_levels_is_tapped',
+        (tester) async {
+      // Arrange: el botón "Back to Levels" está siempre presente.
+      final pushed = <RouteSettings>[];
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-01'),
+          catalogIds: ids,
+          pushed: pushed,
         ),
       );
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextButton, 'Back to Levels'), findsOneWidget);
 
       // Act
       await tester.tap(find.widgetWithText(TextButton, 'Back to Levels'));
       await tester.pumpAndSettle();
 
-      // Assert
-      expect(find.byType(LevelSelectionScreen), findsOneWidget);
+      // Assert: navega a la selección de niveles.
+      expect(pushed, hasLength(1));
+      expect(pushed.single.name, AppRouter.levelSelection);
+    });
+
+    testWidgets('should_render_score_moves_and_matching_filled_stars_when_won',
+        (tester) async {
+      // Arrange & Act: victoria con 2 de 3 estrellas, score y moves conocidos.
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-01', moves: 7, score: 1234, stars: 2),
+          catalogIds: ids,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert: textos de score/moves y exactamente 2 de 3 estrellas llenas.
+      expect(find.text('Score: 1234'), findsOneWidget);
+      expect(find.text('7 moves'), findsOneWidget);
+      expect(find.byIcon(Icons.star), findsNWidgets(3));
+      expect(_filledStars(tester), 2);
     });
   });
 }

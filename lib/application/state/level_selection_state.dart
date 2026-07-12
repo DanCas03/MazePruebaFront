@@ -9,6 +9,11 @@ import '../../domain/board/value_objects/tier.dart';
 class LevelTile extends Equatable {
   final LevelId levelId;
 
+  /// Posición 1-based del nivel en el Catálogo (su orden de juego). Es lo que
+  /// la celda MUESTRA: el id real del back es opaco (p. ej. "level-01") y solo
+  /// se usa para navegar/puntuar, nunca como etiqueta ni para aritmética.
+  final int position;
+
   /// Estrellas ganadas, 0..3. 0 cubre el caso "completado pero sin ★ aún" y el
   /// "no jugado": la UI muestra 0 estrellas llenas sin romperse.
   final int stars;
@@ -18,12 +23,13 @@ class LevelTile extends Equatable {
 
   const LevelTile({
     required this.levelId,
+    required this.position,
     required this.stars,
     required this.locked,
   });
 
   @override
-  List<Object?> get props => [levelId, stars, locked];
+  List<Object?> get props => [levelId, position, stars, locked];
 }
 
 /// View model de una sección de la pantalla: un Tier con sus celdas. Las

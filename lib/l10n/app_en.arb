@@ -64,6 +64,20 @@
   },
   "nextLevel": "Next Level",
   "selectLevel": "Select Level",
+  "levelsLoadError": "Couldn't load levels",
+  "@levelsLoadError": {
+    "description": "Shown on the level selection screen when the catalog or progress fails to load."
+  },
+  "tierLabel": "Tier {rank}",
+  "@tierLabel": {
+    "description": "Section header for a difficulty tier on the level selection screen.",
+    "placeholders": {
+      "rank": { "type": "int" }
+    }
+  },
+  "difficultyEasy": "Easy",
+  "difficultyMedium": "Medium",
+  "difficultyHard": "Hard",
   "leaderboardTitle": "Ranking · Level {level}",
   "@leaderboardTitle": {
     "description": "Leaderboard screen AppBar title for a given level.",

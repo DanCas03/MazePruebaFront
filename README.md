@@ -90,6 +90,12 @@ On winning a level, `GameController` computes the run's `Score`/`Stars` and emit
 
 The level-selection screen exposes a ranking icon per level; tapping it opens `LeaderboardScreen`, which reads the public `GET /leaderboard/:levelId` (back#9). The screen watches `leaderboardProvider` (`FutureProvider.autoDispose.family` keyed by `levelId`), which runs `GetLeaderboardUseCase` through the same `ILeaderboardRepository` port — now cohesive around submit **and** read. `RemoteLeaderboardRepository.getLeaderboard` maps the back's rows (`{id, userId, levelId, score, stars, moves, timeSeconds, createdAt}`) to `LeaderboardEntry`, preserving the server's score-desc order (rank is positional). The UI renders the three `AsyncValue` states — a loading spinner, an error state with a retry button, and the ranked list (empty state when a level has no scores yet). Unlike the fire-and-forget submit, the read use case rethrows on failure so the UI can surface the error.
 
+### Level selection (front#20)
+
+`LevelSelectionScreen` renders the curated catalog grouped by **Tier** — five difficulty rungs of three levels each, which also drive the difficulty labels shown to the player (Easy / Medium / Hard). Each unlocked tile shows the level's earned stars (0–3) and navigates to the game on tap (plus the per-level ranking icon from front#17); each locked tile shows a padlock and does nothing. The catalog is a **domain-injected list** behind the `ILevelCatalog` port — `StaticLevelCatalog` serves today's 15 curated levels (3 × 5 Tiers), and a `GET /levels` implementation can replace it without touching the UI, so scaling to 30+ levels is just extending the list.
+
+Gating lives in the pure domain service `TierGating`: the first Tier is always open, and a Tier unlocks once **every** level of the lower-ranked Tiers is completed. `LevelSelectionController` (`AsyncNotifier`) composes the catalog, the local progress (`ILevelProgressRepository.getAll`, whose `bestStars` feed the star row and degrade to 0 when no score exists yet) and `TierGating` into per-Tier view models. The screen invalidates the provider on entry (`ref.invalidate` in a post-frame callback), so returning from a won level reflects the freshly earned stars and any newly unlocked Tier.
+
 ## Design Patterns
 
 | Pattern | Where | Problem it solves |

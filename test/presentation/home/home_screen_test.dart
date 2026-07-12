@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
@@ -7,17 +8,24 @@ import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 
+import '../../support/level_selection_fakes.dart';
+
 /// Construye una app minima centrada en HomeScreen, con el router real para
 /// poder verificar la navegacion declarada por nombre de ruta. Locale fijado a
-/// 'es' (front#4) para que las aserciones en español sean deterministas.
+/// 'es' (front#4) para aserciones en español deterministas; el
+/// LevelSelectionScreen destino exige su provider compuesto (DIP), inyectado con
+/// un override de fakes.
 Widget _appUnderTest() {
-  return MaterialApp(
-    theme: AppTheme.dark(),
-    locale: const Locale('es'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    initialRoute: AppRouter.home,
-    onGenerateRoute: AppRouter.onGenerateRoute,
+  return ProviderScope(
+    overrides: [levelSelectionOverride()],
+    child: MaterialApp(
+      theme: AppTheme.dark(),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      initialRoute: AppRouter.home,
+      onGenerateRoute: AppRouter.onGenerateRoute,
+    ),
   );
 }
 

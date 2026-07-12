@@ -8,6 +8,7 @@ import 'l10n/app_localizations.dart';
 import 'application/providers/leaderboard_providers.dart';
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
+import 'application/state/level_selection_controller.dart';
 import 'application/commands/command_invoker.dart';
 import 'application/use_cases/get_leaderboard_use_case.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
@@ -17,9 +18,11 @@ import 'application/state/locale_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
 import 'application/use_cases/submit_score_use_case.dart';
 import 'core/aspects/logger_service_adapter.dart';
+import 'domain/board/services/tier_gating.dart';
 import 'core/auth/auth_gate.dart';
 import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
+import 'core/router/route_observer.dart';
 import 'core/theme/app_theme.dart';
 import 'hive_registrar.g.dart';
 import 'infrastructure/audio/audio_service.dart';
@@ -27,15 +30,18 @@ import 'infrastructure/audio/audioplayers_backend.dart';
 import 'infrastructure/audio/hive_audio_settings_store.dart';
 import 'infrastructure/audio/logging_audio_decorator.dart';
 import 'infrastructure/generators/graph_board_generator.dart';
+import 'infrastructure/data_sources/local/hive_level_progress_data_source.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/leaderboard_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
+import 'infrastructure/repositories/hive_progress_repository.dart';
 import 'infrastructure/repositories/in_memory_session_token_store.dart';
 import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/remote_leaderboard_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
+import 'infrastructure/repositories/static_level_catalog.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
 import 'infrastructure/settings/hive_locale_store.dart';
 import 'infrastructure/time/system_ticker.dart';
@@ -84,6 +90,12 @@ void main() async {
   final dio = DioClient.create(sessionTokenStore);
   final authRepository = RemoteAuthRepository(AuthRemoteDataSource(dio));
 
+  // #20: una sola composición del repo de progreso local (mismo box Hive ya
+  // abierto), compartida por el sync (front#18) y por el selector de nivel, en
+  // vez de instanciar dos `HiveProgressRepository` equivalentes.
+  final levelProgressRepository =
+      HiveProgressRepository(HiveLocalDataSource());
+
   runApp(
     ProviderScope(
       overrides: [
@@ -101,6 +113,20 @@ void main() async {
             RemoveArrowUseCase(),
             CommandInvoker(),
             const SystemTicker(),
+          ),
+        ),
+        // #18/#20: el repo de progreso local se comparte (una sola instancia)
+        // entre el sync y el selector; se sobreescribe el provider para que
+        // ambos consumidores usen exactamente la misma composición.
+        levelProgressRepositoryProvider.overrideWithValue(levelProgressRepository),
+        // #20: selección de nivel compuesta con el catálogo estático curado, el
+        // repo de progreso local compartido y el gating por Tier. Sin este
+        // override, abrir el selector lanzaría UnimplementedError.
+        levelSelectionControllerProvider.overrideWith(
+          () => LevelSelectionController(
+            const StaticLevelCatalog(),
+            levelProgressRepository,
+            const TierGating(),
           ),
         ),
         // front#15: repo remoto de auth compuesto aquí (DIP); las capas
@@ -175,6 +201,9 @@ class ArrowMazeApp extends ConsumerWidget {
       supportedLocales: const [Locale('es'), Locale('en')],
       home: const AuthGate(),
       onGenerateRoute: AppRouter.onGenerateRoute,
+      // #20: el selector de nivel usa `RouteAware` para recomponer su progreso
+      // al ser revelado tras un `pop` (volver de una partida).
+      navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
@@ -7,6 +8,8 @@ import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/defeat_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
+
+import '../../support/level_selection_fakes.dart';
 
 /// MaterialApp localizada (front#4): locale 'en' fijo para que las aserciones
 /// en inglés del ARB sean deterministas. Reemplaza a `MaterialApp` directo en
@@ -104,18 +107,21 @@ void main() {
         (tester) async {
       // Arrange
       await tester.pumpWidget(
-        _localizedApp(
-          onGenerateRoute: (settings) => switch (settings.name) {
-            AppRouter.levelSelection => MaterialPageRoute<void>(
-                builder: (_) => const LevelSelectionScreen(),
-              ),
-            _ => MaterialPageRoute<void>(
-                settings: RouteSettings(
-                  arguments: (levelId: LevelId('1'), moves: 0, strikes: 5),
+        ProviderScope(
+          overrides: [levelSelectionOverride()],
+          child: _localizedApp(
+            onGenerateRoute: (settings) => switch (settings.name) {
+              AppRouter.levelSelection => MaterialPageRoute<void>(
+                  builder: (_) => const LevelSelectionScreen(),
                 ),
-                builder: (_) => const DefeatScreen(),
-              ),
-          },
+              _ => MaterialPageRoute<void>(
+                  settings: RouteSettings(
+                    arguments: (levelId: LevelId('1'), moves: 0, strikes: 5),
+                  ),
+                  builder: (_) => const DefeatScreen(),
+                ),
+            },
+          ),
         ),
       );
 

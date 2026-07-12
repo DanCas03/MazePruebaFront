@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_arrow_maze/application/state/level_selection_controller.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
+import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/services/tier_gating.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/tier.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +17,34 @@ import '../../support/level_selection_fakes.dart';
 /// Captura el LevelId con el que se navega a la partida (o null si no se navegó).
 class _NavCapture {
   LevelId? pushedLevel;
+}
+
+/// Repo de progreso que devuelve una instantánea distinta por llamada a
+/// `getAll` (para simular que el progreso cambió entre entrada y entrada a la
+/// pantalla). Al agotarse, repite la última.
+class _SequencedProgress implements ILevelProgressRepository {
+  final List<List<LevelProgress>> _snapshots;
+  int _call = 0;
+  _SequencedProgress(this._snapshots);
+  @override
+  Future<List<LevelProgress>> getAll() async {
+    final i = _call < _snapshots.length ? _call : _snapshots.length - 1;
+    _call++;
+    return _snapshots[i];
+  }
+
+  @override
+  Future<MoveCount?> getProgress(LevelId levelId) => throw UnimplementedError();
+  @override
+  Future<void> saveProgress(LevelId levelId, MoveCount moves) =>
+      throw UnimplementedError();
+  @override
+  Future<void> markCompleted(LevelId levelId) => throw UnimplementedError();
+  @override
+  Future<bool> isCompleted(LevelId levelId) => throw UnimplementedError();
+  @override
+  Future<void> upsertAll(List<LevelProgress> progress) =>
+      throw UnimplementedError();
 }
 
 // Tier 1 desbloqueado (nivel 1 completado con 2★); Tier 1 incompleto ⇒ Tier 2
@@ -29,10 +61,11 @@ final _progress = [
   LevelProgress(levelId: LevelId('1'), completed: true, bestStars: 2),
 ];
 
-Widget _host(_NavCapture nav) => ProviderScope(
-      overrides: [
-        levelSelectionOverride(catalog: _catalog, progress: _progress),
-      ],
+Widget _host(_NavCapture nav, {List<Override> overrides = const []}) =>
+    ProviderScope(
+      overrides: overrides.isEmpty
+          ? [levelSelectionOverride(catalog: _catalog, progress: _progress)]
+          : overrides,
       child: MaterialApp(
         // La pantalla usa AppLocalizations (#4); sin delegates crashearía.
         locale: const Locale('en'),
@@ -51,15 +84,21 @@ Widget _host(_NavCapture nav) => ProviderScope(
       ),
     );
 
-/// Monta la pantalla y deja resolver el catálogo+progreso (evita `pumpAndSettle`,
-/// que colgaría con el spinner de carga infinito). Fija una superficie alta para
-/// que ambos Tiers quepan sin scroll (tap directo).
-Future<void> _pumpScreen(WidgetTester tester, _NavCapture nav) async {
+/// Monta la pantalla y deja resolver el catálogo+progreso. La pantalla invalida
+/// el provider tras el primer frame (recomposición al entrar), por lo que se
+/// bombean varios frames acotados (evita `pumpAndSettle`, que colgaría con el
+/// spinner). Fija una superficie alta para que ambos Tiers quepan sin scroll.
+Future<void> _pumpScreen(
+  WidgetTester tester,
+  _NavCapture nav, {
+  List<Override> overrides = const [],
+}) async {
   await tester.binding.setSurfaceSize(const Size(500, 1600));
   addTearDown(() => tester.binding.setSurfaceSize(null));
-  await tester.pumpWidget(_host(nav));
-  await tester.pump(); // resuelve getCatalog
-  await tester.pump(); // resuelve getAll y reconstruye con data
+  await tester.pumpWidget(_host(nav, overrides: overrides));
+  for (var i = 0; i < 6; i++) {
+    await tester.pump();
+  }
 }
 
 void main() {
@@ -101,5 +140,35 @@ void main() {
     // Assert: ni navegó ni montó la página de juego.
     expect(nav.pushedLevel, isNull);
     expect(find.byKey(const Key('game-page')), findsNothing);
+  });
+
+  testWidgets(
+      'should_refresh_gating_on_entry_so_a_newly_completed_tier_unlocks',
+      (tester) async {
+    // Arrange: al entrar, el progreso ya trae el Tier 1 completo (2ª lectura),
+    // simulando el regreso de una partida ganada. La pantalla invalida el
+    // provider al montarse, así que la 2ª lectura de `getAll` debe reflejarse.
+    final progress = _SequencedProgress([
+      const [], // 1ª lectura: sin progreso ⇒ Tier 2 bloqueado
+      [
+        LevelProgress(levelId: LevelId('1'), completed: true),
+        LevelProgress(levelId: LevelId('2'), completed: true),
+        LevelProgress(levelId: LevelId('3'), completed: true),
+      ],
+    ]);
+    final override = levelSelectionControllerProvider.overrideWith(
+      () => LevelSelectionController(
+        FakeLevelCatalog(_catalog),
+        progress,
+        const TierGating(),
+      ),
+    );
+
+    // Act
+    await _pumpScreen(tester, _NavCapture(), overrides: [override]);
+
+    // Assert: tras la recomposición al entrar, el Tier 2 quedó desbloqueado
+    // (ya no hay candados) → el selector reflejó el progreso nuevo.
+    expect(find.byIcon(Icons.lock), findsNothing);
   });
 }

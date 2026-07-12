@@ -13,11 +13,29 @@ import '../providers/level_selection_provider.dart';
 /// los niveles de Tiers aún no alcanzados. La lista y el estado de bloqueo los
 /// resuelve `levelSelectionControllerProvider`; esta pantalla es pura
 /// presentación.
-class LevelSelectionScreen extends ConsumerWidget {
+class LevelSelectionScreen extends ConsumerStatefulWidget {
   const LevelSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LevelSelectionScreen> createState() =>
+      _LevelSelectionScreenState();
+}
+
+class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Recompone catálogo + progreso en cada entrada a la pantalla, para reflejar
+    // las estrellas y los Tiers recién desbloqueados al volver de una partida
+    // ganada. El provider no es autoDispose: sin esta invalidación su `build()`
+    // correría una sola vez por sesión y el selector quedaría desactualizado.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(levelSelectionControllerProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -113,7 +131,8 @@ class _TierSectionView extends StatelessWidget {
 }
 
 /// Celda de un nivel: número + fila de estrellas si está desbloqueado; candado
-/// si está bloqueado. Solo los desbloqueados navegan a la partida.
+/// si está bloqueado. Los desbloqueados navegan a la partida (tap) y ofrecen el
+/// acceso al ranking del nivel (front#17). Los bloqueados no hacen nada.
 class _LevelTileView extends StatelessWidget {
   final LevelTile tile;
   const _LevelTileView({required this.tile});
@@ -159,14 +178,36 @@ class _LevelTileView extends StatelessWidget {
 
     if (tile.locked) return panel; // bloqueado: no navega, sin ripple.
 
-    return InkWell(
-      onTap: () => Navigator.pushNamed(
-        context,
-        AppRouter.game,
-        arguments: tile.levelId,
-      ),
-      borderRadius: BorderRadius.circular(12),
-      child: panel,
+    // Desbloqueado: el tap juega el nivel; el icono de ranking (front#17)
+    // superpuesto arriba a la derecha lleva a su leaderboard sin robar el tap.
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: InkWell(
+            onTap: () => Navigator.pushNamed(
+              context,
+              AppRouter.game,
+              arguments: tile.levelId,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            child: panel,
+          ),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: IconButton(
+            icon: const Icon(Icons.leaderboard, size: 18),
+            tooltip: AppLocalizations.of(context).viewLeaderboard,
+            color: onBackground,
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRouter.leaderboard,
+              arguments: tile.levelId,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

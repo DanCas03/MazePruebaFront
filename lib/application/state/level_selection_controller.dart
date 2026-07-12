@@ -36,12 +36,10 @@ class LevelSelectionController extends AsyncNotifier<List<TierSection>> {
     return _sectionsFrom(catalog, progress);
   }
 
-  /// Recarga el progreso y reconstruye las secciones (p. ej. al regresar de una
-  /// partida ganada, para reflejar nuevas estrellas o Tiers recién abiertos).
-  Future<void> refresh() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(build);
-  }
+  // La pantalla fuerza la recomposición al entrar con
+  // `ref.invalidate(levelSelectionControllerProvider)` (ver
+  // `LevelSelectionScreen`), de modo que `build()` vuelve a leer catálogo +
+  // progreso en cada visita sin necesidad de un método de refresh propio.
 
   List<TierSection> _sectionsFrom(
     List<LevelDescriptor> catalog,

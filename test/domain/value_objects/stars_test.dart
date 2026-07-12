@@ -75,6 +75,30 @@ void main() {
     });
   });
 
+  group('Stars.fromValue — reconstrucción desde valor persistido', () {
+    test('should_build_stars_when_value_within_bounds', () {
+      // Arrange / Act
+      final stars = Stars.fromValue(2);
+      // Assert
+      expect(stars.value, 2);
+    });
+
+    test('should_equal_named_constructor_when_same_value', () {
+      // Arrange / Act / Assert — igualdad por valor con el ctor nombrado
+      expect(Stars.fromValue(3), const Stars.three());
+    });
+
+    test('should_throw_when_value_below_one', () {
+      // Arrange / Act / Assert
+      expect(() => Stars.fromValue(0), throwsArgumentError);
+    });
+
+    test('should_throw_when_value_above_three', () {
+      // Arrange / Act / Assert
+      expect(() => Stars.fromValue(4), throwsArgumentError);
+    });
+  });
+
   group('Stars — igualdad por valor', () {
     test('should_be_equal_when_same_value', () {
       // Arrange / Act / Assert

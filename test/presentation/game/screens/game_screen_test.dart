@@ -18,6 +18,7 @@ import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
@@ -91,6 +92,13 @@ class _BlockedArrowGenerator implements ILevelGenerator {
 class _NoopLeaderboardRepository implements ILeaderboardRepository {
   @override
   Future<void> submitScore(ScoreEntry entry) async {}
+
+  @override
+  Future<List<LeaderboardEntry>> getLeaderboard(
+    LevelId levelId, {
+    int? limit,
+  }) async =>
+      const [];
 }
 
 ProviderContainer _container([ILevelGenerator? generator]) =>

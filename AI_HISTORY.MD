@@ -12,7 +12,8 @@
 - **Aplicación:** `LevelSelectionController` (`AsyncNotifier<List<TierSection>>`) compone catálogo + progreso (`ILevelProgressRepository.getAll`) + gating en secciones por Tier con estrellas (`bestStars ?? 0`, degradación grácil cuando aún no hay ScoreEntry) y estado `locked` ya resueltos. El `AsyncValue` cubre loading/error de forma sellada (no se añadió un estado paralelo). VMs `LevelTile`/`TierSection`.
 - **UI:** `LevelSelectionScreen` reescrita a `ConsumerWidget`: secciones por Tier (encabezado = dificultad Fácil/Medio/Difícil), fila de estrellas por celda y candado en los bloqueados (no navegan). Textos vía i18n (`AppLocalizations`, front#4): claves nuevas `selectLevel` (reusada), `levelsLoadError`, `tierLabel` y `difficultyEasy/Medium/Hard`. Composición del provider en `main.dart` (DIP).
 - **Tests AAA `should_..._when_...`:** `tier_test`, `tier_gating_test`, `static_level_catalog_test`, `level_selection_controller_test` y el **widget test del gating** (candado en Tier bloqueado + no navega; Tier abierto navega; ★ visibles). Helper compartido `test/support/level_selection_fakes.dart`. Se actualizaron 4 tests de navegación existentes (home/victory/defeat/router) para inyectar el override del nuevo provider y los delegates de i18n.
-- **Integración con `main`:** la rama salió de un main anterior; se fusionó `origin/main` (`9399bd9`, ya con #13 victoria+estrellas, #4 i18n, #16 submit-score y #5 audio). Conflictos resueltos en `main.dart` (imports+overrides, se conservan ambos lados), la pantalla (i18n) y los 4 tests. `flutter analyze` limpio, suite completa verde. Ejes FSM de navegación diferido por acuerdo; verificación visual on-device pendiente (los widget tests cubren el gating headless).
+- **Integración con `main`:** la rama salió de un main anterior; se fusionó `origin/main` (`9399bd9`, ya con #13 victoria+estrellas, #4 i18n, #16 submit-score y #5 audio). Conflictos resueltos en `main.dart` (imports+overrides, se conservan ambos lados), la pantalla (i18n) y los 4 tests. Ejes FSM de navegación diferido por acuerdo; verificación visual on-device pendiente (los widget tests cubren el gating headless).
+- **Ronda de review (DanCas03, `CHANGES_REQUESTED` en PR #48):** (1) **Datos obsoletos al volver de una partida** — el provider no es autoDispose y `build()` corría una sola vez; `LevelSelectionScreen` pasa a `ConsumerStatefulWidget` y **invalida el provider al entrar** (`ref.invalidate` en `addPostFrameCallback`) para reflejar estrellas/Tiers recién desbloqueados; se eliminó el `refresh()` sin llamador. Nuevo widget test `should_refresh_gating_on_entry_so_a_newly_completed_tier_unlocks` con repo de progreso secuenciado. (2) **`main.dart`** deja de instanciar `HiveProgressRepository` dos veces: una sola composición compartida por el sync (#18) y el selector (override de `levelProgressRepositoryProvider`). (3) **README** actualizado con la sección de selección de nivel. (4) Segundo merge de `origin/main` (`77cb84a`, ya con **#17 leaderboard**): la reescritura **integra el acceso al ranking por celda** (icono `Icons.leaderboard` de #17 en las celdas desbloqueadas → `AppRouter.leaderboard`), y se conservan las claves i18n de #17. `flutter analyze` limpio, suite completa verde.
 
 ## Entrada 044 — front#5: servicio de audio (Facade/Singleton) + assets + 2º aspecto AOP (E9)
 
@@ -1040,4 +1041,49 @@
 **Herramienta de IA utilizada:** Claude (Claude Code)
 **Prompt o instrucción proporcionada:** > "front#16: enviar el ScoreEntry al ganar vía repo de leaderboard, sin romper el flujo de victoria."
 **Resultado obtenido:** Dominio `ScoreEntry` + puerto `ILeaderboardRepository`; `LeaderboardRemoteDataSource` (`POST /scores`) y `RemoteLeaderboardRepository` (mapea al contrato back#7). `SubmitScoreUseCase` traga el error de red y lo loggea (AOP). `scoreSubmissionObserverProvider` (Observer) dispara el envío en `GameWon` fire-and-forget; `GameScreen` lo activa con `ref.watch`. Compuesto en `main` con el Dio firmado. Tests: `ScoreEntry` VO, repo con datasource mockeado (JSON correcto + propaga fallo), use case (éxito / fallo tragado y logueado). README actualizado.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 054 — front#17 — dominio de lectura del leaderboard (LeaderboardEntry)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Modelar la fila del ranking leída de `GET /leaderboard/:levelId` (back#9) como modelo de lectura del dominio, distinto del payload de envío `ScoreEntry`.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17 (ver leaderboard): apilar sobre #16, empezar por el dominio de lectura."
+**Resultado obtenido:** Entidad `LeaderboardEntry` (Dart puro, `Equatable`) con los campos del contrato back#9: `id`, `userId`, `LevelId`, `Score`, `Stars`, `MoveCount`, `timeSeconds`, `createdAt`; el rango es posicional (orden del back score desc), no un campo del cable. Invariante `timeSeconds >= 0`. Nuevo factory `Stars.fromValue(int)` que reconstruye la calificación ya calculada por el back validando la cota `[1, 3]` (OCP: extiende `Stars` sin tocar `.rate`). Tests AAA: entidad (campos, invariante, igualdad por valor) y `Stars.fromValue` (cotas y equivalencia con el ctor nombrado). El puerto `ILeaderboardRepository` gana `getLeaderboard` en el fragmento de infraestructura (junto a su impl, para que cada commit compile).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 055 — front#17 — lectura remota del leaderboard (GET /leaderboard/:levelId)
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Leer el ranking por nivel desde el back#9 y mapearlo al dominio, reutilizando el mismo puerto/datasource/repo de #16 (lado escritura).
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17: extender el puerto con getLeaderboard y añadir el GET al datasource/repo del leaderboard, sin duplicar."
+**Resultado obtenido:** El puerto `ILeaderboardRepository` gana `getLeaderboard(LevelId, {int? limit})` (ISP: interfaz cohesiva del agregado ranking, escritura + lectura). `LeaderboardRemoteDataSource.fetchLeaderboard` hace `GET /leaderboard/:levelId` (endpoint público, con `limit` opcional) y devuelve las filas crudas; `RemoteLeaderboardRepository._fromJson` mapea el contrato back#9 (`id, userId, levelId, score, stars, moves, timeSeconds, createdAt`) a `LeaderboardEntry`, preservando el orden score desc del back (rango posicional). Adapter (GoF) reutilizado, sin repos paralelos. Tests AAA con el datasource mockeado: mapeo de filas, preservación de orden + reenvío del `limit`, y propagación del error. Mocks regenerados (build_runner) por el nuevo método del puerto/datasource.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 056 — front#17 — caso de uso y estado reactivo del leaderboard
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Orquestar la carga del ranking y exponer los estados carga/datos/error a la UI vía Riverpod, con el error propagado (a diferencia del envío fire-and-forget).
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17: use case GetLeaderboard + provider reactivo con estados de carga/error, cableado en main."
+**Resultado obtenido:** `GetLeaderboardUseCase.execute(LevelId, {limit})` delega en el puerto, loggea (AOP) el intento y, ante fallo, loggea y **relanza** para que la UI muestre estado de error. `getLeaderboardUseCaseProvider` (default que falla, compuesto en `main` con el Dio firmado, DIP) y `leaderboardProvider` = `FutureProvider.autoDispose.family<List<LeaderboardEntry>, String>` por `levelId`, que envuelve el resultado en `AsyncValue` (los tres estados del criterio de aceptación) y recarga al reabrir la pantalla. Wiring aditivo en `main` sin tocar el override de #16 (OCP). Tests AAA con puerto y logger mockeados: éxito+log, reenvío del `limit`, y relanza+loguea error.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 057 — front#17 — pantalla del leaderboard + acceso desde el selector
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Pintar el ranking por nivel con estados de carga/error y hacerlo alcanzable desde la UI, cerrando el criterio de aceptación de front#17.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17: LeaderboardScreen que consuma el provider (carga/datos/error), ruta y punto de entrada, con widget test mockeado."
+**Resultado obtenido:** `LeaderboardScreen` (`ConsumerWidget`, capa presentación pura) observa `leaderboardProvider(levelId)` y pinta los tres estados de `AsyncValue`: spinner de carga, estado de error con botón **Reintentar** (`ref.invalidate`), y la lista ordenada (rango posicional, estrellas y score por fila; estado vacío cuando el nivel no tiene puntajes). Ruta `/leaderboard` en `AppRouter` (lee `LevelId` de `arguments`, con fallback como `game`). Punto de entrada: ícono de ranking por celda en `LevelSelectionScreen` vía `Stack`/`Positioned`, sin robar el tap de juego. Widget test (mockeando la instancia del provider): carga, datos con rango, vacío y error+reintento. Además se implementó `getLeaderboard` en los tres test doubles existentes de `ILeaderboardRepository` (ripple de extender el puerto en la entrada 054) para mantener el build verde. README actualizado con la sección "Leaderboard view (front#17)". Suite completa: 346 tests verdes, `flutter analyze` limpio.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 058 — front#17 — localización (es/en) de la pantalla del leaderboard
+
+**Fecha:** 2026-07-10
+**Tarea o problema abordado:** Tras rebasear #17 sobre main (que ya integró i18n front#4), dejar los textos de la pantalla del ranking coherentes con `AppLocalizations` en vez de literales en español.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#17: cablear los textos del leaderboard vía AppLocalizations ahora que i18n está en main."
+**Resultado obtenido:** Nuevas claves ARB (es/en): `leaderboardTitle({level})`, `leaderboardEmpty`, `leaderboardError`, `viewLeaderboard`; se reutiliza `retry`. `LeaderboardScreen` (título, estados vacío/error, botón) y el tooltip del ícono de ranking en `LevelSelectionScreen` leen `AppLocalizations.of(context)`; se regeneró el delegate (`gen-l10n`). El widget test monta `MaterialApp` con `localizationsDelegates`/`supportedLocales` y `locale: es`, aserando las cadenas localizadas. `flutter analyze` limpio; tests de leaderboard y selector en verde.
 **Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -10,6 +10,7 @@ import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
 import 'application/state/level_selection_controller.dart';
 import 'application/commands/command_invoker.dart';
+import 'application/use_cases/get_leaderboard_use_case.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/auth_form_controller.dart';
 import 'application/use_cases/restore_session_use_case.dart';
@@ -83,6 +84,12 @@ void main() async {
   final dio = DioClient.create(sessionTokenStore);
   final authRepository = RemoteAuthRepository(AuthRemoteDataSource(dio));
 
+  // #20: una sola composición del repo de progreso local (mismo box Hive ya
+  // abierto), compartida por el sync (front#18) y por el selector de nivel, en
+  // vez de instanciar dos `HiveProgressRepository` equivalentes.
+  final levelProgressRepository =
+      HiveProgressRepository(HiveLocalDataSource());
+
   runApp(
     ProviderScope(
       overrides: [
@@ -102,13 +109,17 @@ void main() async {
             const SystemTicker(),
           ),
         ),
+        // #18/#20: el repo de progreso local se comparte (una sola instancia)
+        // entre el sync y el selector; se sobreescribe el provider para que
+        // ambos consumidores usen exactamente la misma composición.
+        levelProgressRepositoryProvider.overrideWithValue(levelProgressRepository),
         // #20: selección de nivel compuesta con el catálogo estático curado, el
-        // repo de progreso local (mismo box Hive ya abierto) y el gating por
-        // Tier. Sin este override, abrir el selector lanzaría UnimplementedError.
+        // repo de progreso local compartido y el gating por Tier. Sin este
+        // override, abrir el selector lanzaría UnimplementedError.
         levelSelectionControllerProvider.overrideWith(
           () => LevelSelectionController(
             const StaticLevelCatalog(),
-            HiveProgressRepository(HiveLocalDataSource()),
+            levelProgressRepository,
             const TierGating(),
           ),
         ),
@@ -127,6 +138,15 @@ void main() async {
         // capas internas solo conocen el puerto ILeaderboardRepository.
         submitScoreUseCaseProvider.overrideWithValue(
           SubmitScoreUseCase(
+            RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
+            LoggerServiceAdapter(),
+          ),
+        ),
+        // front#17: lectura del ranking compuesta con el mismo Dio (el GET es
+        // público, pero se reutiliza el cliente HTTP). Las capas internas solo
+        // conocen el puerto ILeaderboardRepository.
+        getLeaderboardUseCaseProvider.overrideWithValue(
+          GetLeaderboardUseCase(
             RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
             LoggerServiceAdapter(),
           ),

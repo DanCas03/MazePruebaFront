@@ -20,6 +20,7 @@ import 'domain/board/services/tier_gating.dart';
 import 'core/auth/auth_gate.dart';
 import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
+import 'core/router/route_observer.dart';
 import 'core/theme/app_theme.dart';
 import 'hive_registrar.g.dart';
 import 'infrastructure/audio/audio_service.dart';
@@ -180,6 +181,9 @@ class ArrowMazeApp extends StatelessWidget {
       supportedLocales: const [Locale('es'), Locale('en')],
       home: const AuthGate(),
       onGenerateRoute: AppRouter.onGenerateRoute,
+      // #20: el selector de nivel usa `RouteAware` para recomponer su progreso
+      // al ser revelado tras un `pop` (volver de una partida).
+      navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
     );
   }

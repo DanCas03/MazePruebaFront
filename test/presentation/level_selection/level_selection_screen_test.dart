@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_arrow_maze/application/state/level_selection_controller.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
+import 'package:flutter_arrow_maze/core/router/route_observer.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/services/tier_gating.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
@@ -33,6 +34,28 @@ class _SequencedProgress implements ILevelProgressRepository {
     return _snapshots[i];
   }
 
+  @override
+  Future<MoveCount?> getProgress(LevelId levelId) => throw UnimplementedError();
+  @override
+  Future<void> saveProgress(LevelId levelId, MoveCount moves) =>
+      throw UnimplementedError();
+  @override
+  Future<void> markCompleted(LevelId levelId) => throw UnimplementedError();
+  @override
+  Future<bool> isCompleted(LevelId levelId) => throw UnimplementedError();
+  @override
+  Future<void> upsertAll(List<LevelProgress> progress) =>
+      throw UnimplementedError();
+}
+
+/// Repo de progreso mutable: `getAll` refleja lo que haya en `data` en el
+/// momento de la llamada (para simular que el progreso cambió mientras se jugaba
+/// "encima" del selector).
+class _MutableProgress implements ILevelProgressRepository {
+  List<LevelProgress> data;
+  _MutableProgress(this.data);
+  @override
+  Future<List<LevelProgress>> getAll() async => data;
   @override
   Future<MoveCount?> getProgress(LevelId levelId) => throw UnimplementedError();
   @override
@@ -169,6 +192,69 @@ void main() {
 
     // Assert: tras la recomposición al entrar, el Tier 2 quedó desbloqueado
     // (ya no hay candados) → el selector reflejó el progreso nuevo.
+    expect(find.byIcon(Icons.lock), findsNothing);
+  });
+
+  testWidgets('should_refresh_gating_when_revealed_after_pop_from_a_game',
+      (tester) async {
+    // Arrange: el selector permanece montado al fondo mientras se juega
+    // "encima" (caso "Next Level" → back del dispositivo). El progreso cambia
+    // durante la partida; al revelarse por `pop` debe recomponerse (RouteAware).
+    await tester.binding.setSurfaceSize(const Size(500, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final progress =
+        _MutableProgress(const []); // sin progreso ⇒ Tier 2 bloqueado
+    final navKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          levelSelectionControllerProvider.overrideWith(
+            () => LevelSelectionController(
+              FakeLevelCatalog(_catalog),
+              progress,
+              const TierGating(),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          navigatorKey: navKey,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          navigatorObservers: [routeObserver],
+          home: const LevelSelectionScreen(),
+        ),
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      await tester.pump();
+    }
+    // Sanity: al entrar, el Tier 2 está bloqueado.
+    expect(find.byIcon(Icons.lock), findsNWidgets(3));
+
+    // Act: se "gana" el Tier 1 (cambia el progreso) mientras una ruta está
+    // encima; luego se hace `pop` para revelar el selector.
+    progress.data = [
+      LevelProgress(levelId: LevelId('1'), completed: true),
+      LevelProgress(levelId: LevelId('2'), completed: true),
+      LevelProgress(levelId: LevelId('3'), completed: true),
+    ];
+    navKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('GAME')),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400)); // fin push
+    navKey.currentState!.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400)); // fin pop (reveal)
+    for (var i = 0; i < 4; i++) {
+      await tester.pump();
+    }
+
+    // Assert: el reveal por `pop` recompuso el selector → Tier 2 desbloqueado.
     expect(find.byIcon(Icons.lock), findsNothing);
   });
 }

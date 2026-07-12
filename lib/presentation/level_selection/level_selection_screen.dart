@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/state/level_selection_state.dart';
 import '../../core/router/app_router.dart';
+import '../../core/router/route_observer.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/board/value_objects/tier.dart';
 import '../../l10n/app_localizations.dart';
@@ -21,17 +22,44 @@ class LevelSelectionScreen extends ConsumerStatefulWidget {
       _LevelSelectionScreenState();
 }
 
-class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen> {
+class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
+    with RouteAware {
+  // Recompone catálogo + progreso: refleja las estrellas y los Tiers recién
+  // desbloqueados al (re)entrar al selector. El provider no es autoDispose, así
+  // que sin esto su `build()` correría una sola vez por sesión y quedaría
+  // desactualizado tras ganar una partida.
+  void _refresh() {
+    if (mounted) ref.invalidate(levelSelectionControllerProvider);
+  }
+
   @override
   void initState() {
     super.initState();
-    // Recompone catálogo + progreso en cada entrada a la pantalla, para reflejar
-    // las estrellas y los Tiers recién desbloqueados al volver de una partida
-    // ganada. El provider no es autoDispose: sin esta invalidación su `build()`
-    // correría una sola vez por sesión y el selector quedaría desactualizado.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.invalidate(levelSelectionControllerProvider);
-    });
+    // Entrada por montaje: Home→Play, o "Back to Levels" (que recrea la
+    // pantalla con `pushNamedAndRemoveUntil`).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Se suscribe al observador para enterarse de los `pop` de rutas encima.
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) routeObserver.subscribe(this, route);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // La pantalla se revela al hacer `pop` de la de encima (p. ej. volver de una
+    // partida sin recrear el selector: "Next Level" y luego back del
+    // dispositivo). Recomponer para reflejar el progreso nuevo.
+    _refresh();
   }
 
   @override

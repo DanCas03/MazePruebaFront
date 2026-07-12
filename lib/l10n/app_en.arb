@@ -87,5 +87,37 @@
   },
   "leaderboardEmpty": "No scores on this level yet.\nBe the first!",
   "leaderboardError": "Couldn't load the ranking.",
-  "viewLeaderboard": "View ranking"
+  "viewLeaderboard": "View ranking",
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of the settings screen and tooltip of the home gear icon."
+  },
+  "settingsAudioSection": "Audio",
+  "@settingsAudioSection": {
+    "description": "Header of the audio section in settings."
+  },
+  "settingsMusic": "Music",
+  "@settingsMusic": {
+    "description": "Label of the background-music (BGM) toggle in settings."
+  },
+  "settingsSfx": "Sound effects",
+  "@settingsSfx": {
+    "description": "Label of the sound-effects (SFX) toggle in settings."
+  },
+  "settingsLanguageSection": "Language",
+  "@settingsLanguageSection": {
+    "description": "Header of the language section in settings."
+  },
+  "languageSpanish": "Spanish",
+  "@languageSpanish": {
+    "description": "Name of the Spanish language option in the language selector."
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "Name of the English language option in the language selector."
+  },
+  "languageSystem": "System",
+  "@languageSystem": {
+    "description": "Language option that follows the device/OS locale (no explicit preference)."
+  }
 }

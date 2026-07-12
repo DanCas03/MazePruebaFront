@@ -176,7 +176,10 @@ void main() async {
         // capas internas solo conocen el puerto ILeaderboardRepository.
         submitScoreUseCaseProvider.overrideWithValue(
           SubmitScoreUseCase(
-            RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
+            RemoteLeaderboardRepository(
+              LeaderboardRemoteDataSource(dio),
+              LoggerServiceAdapter(),
+            ),
             LoggerServiceAdapter(),
           ),
         ),
@@ -185,7 +188,10 @@ void main() async {
         // conocen el puerto ILeaderboardRepository.
         getLeaderboardUseCaseProvider.overrideWithValue(
           GetLeaderboardUseCase(
-            RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
+            RemoteLeaderboardRepository(
+              LeaderboardRemoteDataSource(dio),
+              LoggerServiceAdapter(),
+            ),
             LoggerServiceAdapter(),
           ),
         ),

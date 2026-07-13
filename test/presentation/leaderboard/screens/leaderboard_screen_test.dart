@@ -16,12 +16,14 @@ import 'package:flutter_arrow_maze/presentation/leaderboard/screens/leaderboard_
 void main() {
   LeaderboardEntry entryRow({
     String userId = 'user-1',
+    String username = 'user-1',
     int score = 1200,
     int stars = 3,
   }) =>
       LeaderboardEntry(
         id: 'row-$userId',
         userId: userId,
+        username: username,
         levelId: LevelId('3'),
         score: Score(score),
         stars: Stars.fromValue(stars),
@@ -60,8 +62,8 @@ void main() {
     await tester.pumpWidget(harness(
       leaderboardProvider('3').overrideWith(
         (ref) async => [
-          entryRow(userId: 'ana', score: 900),
-          entryRow(userId: 'leo', score: 500),
+          entryRow(userId: 'id-a', username: 'ana', score: 900),
+          entryRow(userId: 'id-b', username: 'leo', score: 500),
         ],
       ),
     ));

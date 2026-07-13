@@ -1267,3 +1267,12 @@
 **Prompt o instrucción proporcionada:** > "front#17: cablear los textos del leaderboard vía AppLocalizations ahora que i18n está en main."
 **Resultado obtenido:** Nuevas claves ARB (es/en): `leaderboardTitle({level})`, `leaderboardEmpty`, `leaderboardError`, `viewLeaderboard`; se reutiliza `retry`. `LeaderboardScreen` (título, estados vacío/error, botón) y el tooltip del ícono de ranking en `LevelSelectionScreen` leen `AppLocalizations.of(context)`; se regeneró el delegate (`gen-l10n`). El widget test monta `MaterialApp` con `localizationsDelegates`/`supportedLocales` y `locale: es`, aserando las cadenas localizadas. `flutter analyze` limpio; tests de leaderboard y selector en verde.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 059 — front#50 — leaderboard renders username instead of raw userId
+
+**Fecha:** 2026-07-13
+**Tarea o problema abordado:** El tile del leaderboard pintaba `entry.userId` (UUID crudo) porque el back no exponía el nombre. El back (PR feat/leaderboard-username, MazePruebaBack#25) ahora agrega `username` a cada fila de `GET /leaderboard/:levelId`; mapear y renderizar ese campo en el front (front#50).
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "front#50: agregar `username` a `LeaderboardEntry`, mapearlo en `RemoteLeaderboardRepository._fromJson` y pintarlo en `_LeaderboardTile` en vez del `userId` crudo, TDD (test en rojo antes de cada cambio)."
+**Resultado obtenido:** `LeaderboardEntry` gana `final String username` (requerido, en `props` para la igualdad por valor). `RemoteLeaderboardRepository._fromJson` mapea `username: j['username'] as String`. `_LeaderboardTile` pinta `entry.username` en vez de `entry.userId`. Ciclo TDD por capa: test de entidad (rojo por parámetro inexistente → verde), test de repositorio (rojo por argumento requerido faltante → verde), test de pantalla (rojo por buscar el username en vez del userId → verde). Colateral: `get_leaderboard_use_case_test.dart` (fuera del alcance del ticket) también construye `LeaderboardEntry` y requería el nuevo parámetro para seguir compilando; se le agregó `username: 'ana'` sin tocar su lógica. README actualizado (sección "Leaderboard view (front#17)") con el shape de fila incluyendo `username`. Suite completa: 471 tests verdes, `flutter analyze` limpio.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -8,12 +8,14 @@ import '../../game_core/value_objects/stars.dart';
 /// Fila del ranking leída de `GET /leaderboard/:levelId` (contrato back#9).
 ///
 /// A diferencia de `ScoreEntry` (payload de envío, front#16), es el modelo de
-/// lectura: agrega la identidad persistida (`id`, `userId`) y la marca temporal
-/// `createdAt`. El rango es posicional —el back devuelve las filas ordenadas por
-/// score desc— y no un campo del cable. Dart puro, igualdad por valor.
+/// lectura: agrega la identidad persistida (`id`, `userId`, `username`) y la
+/// marca temporal `createdAt`. El rango es posicional —el back devuelve las
+/// filas ordenadas por score desc— y no un campo del cable. Dart puro,
+/// igualdad por valor.
 class LeaderboardEntry extends Equatable {
   final String id;
   final String userId;
+  final String username;
   final LevelId levelId;
   final Score score;
   final Stars stars;
@@ -24,6 +26,7 @@ class LeaderboardEntry extends Equatable {
   LeaderboardEntry({
     required this.id,
     required this.userId,
+    required this.username,
     required this.levelId,
     required this.score,
     required this.stars,
@@ -39,6 +42,15 @@ class LeaderboardEntry extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, userId, levelId, score, stars, moves, timeSeconds, createdAt];
+  List<Object?> get props => [
+        id,
+        userId,
+        username,
+        levelId,
+        score,
+        stars,
+        moves,
+        timeSeconds,
+        createdAt,
+      ];
 }

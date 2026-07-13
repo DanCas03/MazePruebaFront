@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_arrow_maze/application/use_cases/generate_board_use_case.dart';
 import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
@@ -55,6 +56,14 @@ void main() {
       // Assert
       expect(generator, isA<ILevelGenerator>());
       expect(generator, isA<GraphBoardGenerator>());
+    });
+
+    test('generateBoardUseCaseProvider compone el puerto ILevelGenerator', () {
+      // Act — front#36: el caso de uso se resuelve desde el composition root.
+      final useCase = container.read(generateBoardUseCaseProvider);
+
+      // Assert
+      expect(useCase, isA<GenerateBoardUseCase>());
     });
 
     test('los providers son singletons dentro de un mismo contenedor', () {

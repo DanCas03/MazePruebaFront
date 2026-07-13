@@ -28,7 +28,7 @@ The dependency rule points inward: `infrastructure` and `presentation` depend on
 ```
 lib/
 ├── domain/          Pure Dart — entities, value objects, exceptions, port interfaces
-│   ├── arrows/      Arrow, ArrowBoard (aggregate root), ArrowId, ArrowLength, ILevelGenerator
+│   ├── arrows/      Arrow, ArrowBoard (aggregate root), ArrowId, ArrowLength, ILevelGenerator, Difficulty, GeneratorConfig, GeneratedBoard
 │   ├── board/       LevelId, Level, LevelFailure, ILevelRepository, ILevelProgressRepository, IRemoteProgressRepository, ProgressReconciler
 │   ├── game_core/   Position, Direction, MoveCount, Score, Stars
 │   ├── leaderboard/ ScoreEntry, LeaderboardEntry, ILeaderboardRepository (port — submit + read)
@@ -37,7 +37,7 @@ lib/
 ├── application/     Use cases, Commands (undo), GameState (sealed), Riverpod Notifiers
 │   ├── commands/    ICommand, CommandInvoker, RemoveArrowCommand
 │   ├── state/       GameState / AuthState (sealed), GameController / AuthController (AsyncNotifier)
-│   ├── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login), LoginUseCase, RegisterUseCase, SyncProgressUseCase, SubmitScoreUseCase, GetLeaderboardUseCase
+│   ├── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login), LoginUseCase, RegisterUseCase, SyncProgressUseCase, SubmitScoreUseCase, GetLeaderboardUseCase, GenerateBoardUseCase
 │   └── providers/   leaderboard_providers.dart (submitScoreUseCaseProvider, scoreSubmissionObserverProvider — Observer, getLeaderboardUseCaseProvider, leaderboardProvider — FutureProvider.family), level_catalog_provider.dart (levelCatalogProvider — remote catalog + campaign prefetch)
 ├── infrastructure/  Hive persistence, secure token storage, RemoteAuthRepository, RemoteProgressRepository, RemoteLeaderboardRepository, RemoteLevelRepository (campaign, `levels_cache` box), GraphBoardGenerator (implements the domain ports)
 ├── presentation/    Screens, Widgets, Painters + providers/ (the only place infra is built)
@@ -69,7 +69,7 @@ Los niveles de la campaña ya no se generan localmente: los sirve el back oficia
 
 [`levelCatalogProvider`](lib/application/providers/level_catalog_provider.dart) (`LevelCatalogNotifier`, `AsyncNotifier`) carga el Catálogo al arrancar y dispara en segundo plano un prefetch secuencial de toda la campaña vía `getLevel` (que cachea como efecto colateral); los fallos individuales del prefetch se loggean y se tragan. Tras una visita online, la campaña queda jugable **offline**. "Siguiente nivel" en la pantalla de victoria sigue el orden del Catálogo, no un cálculo local. La app necesita alcanzar el back en `AppConfig.apiBaseUrl` (por defecto `http://10.0.2.2:3000` para el emulador de Android, configurable con `--dart-define=API_BASE_URL=...`).
 
-El generador local ([`GraphBoardGenerator`](lib/infrastructure/generators/graph_board_generator.dart)) se conserva en el código pero ya no alimenta la campaña; queda reservado para la futura feature "Generar nivel" (front#36).
+El generador local ([`GraphBoardGenerator`](lib/infrastructure/generators/graph_board_generator.dart)) se conserva en el código pero ya no alimenta la campaña; ahora alimenta la feature "Generar nivel" (front#36) de tableros efímeros — ver *Tooling → Player-generated boards*.
 
 ### Auth flow
 
@@ -105,6 +105,27 @@ The level-selection screen exposes a ranking icon per level; tapping it opens `L
 
 Gating lives in the pure domain service `TierGating`: the first Tier is always open, and a Tier unlocks once **every** level of the lower-ranked Tiers is completed. `LevelSelectionController` (`AsyncNotifier`) composes the catalog (via `ref.watch` on `levelCatalogProvider`), the local progress (`ILevelProgressRepository.getAll`, whose `bestStars` feed the star row and degrade to 0 when no score exists yet) and `TierGating` into per-Tier view models. The screen invalidates the provider on entry (`ref.invalidate` in a post-frame callback) and on reveal-by-pop (`RouteAware.didPopNext`), so returning from a won level reflects the freshly earned stars and any newly unlocked Tier — re-reading only the local progress, since the already-resolved catalog is reused. If the catalog fails (offline and no cache), the screen shows an error state with a retry button that refreshes the catalog.
 
+### Player-generated boards (front#36) — application half
+
+"Generar nivel" lets the player request an **ephemeral, locally generated, solvable board**: board dimensions, a difficulty preset, an optional timer and an optional seed. This issue ships the **domain + application half** of the feature; the UI that collects the input and plays the board is a separate issue. The resulting artifact is a **GeneratedBoard** (*Tablero generado*, see the glossary in [`CONTEXT.md`](CONTEXT.md)): unlike a `Level`, it has no `LevelId`, is never scored, never persisted, and never touches `Progress` or the leaderboard — it is played and discarded, reproducible via `(seed, config)` within the same app version.
+
+**[`GeneratorConfig`](lib/domain/arrows/value_objects/generator_config.dart)** is a defensive value object: it can only be built through the `GeneratorConfig.create` factory, which validates that `cols` and `rows` fall in the playable range **4–10 inclusive** (`minDimension`/`maxDimension`, adjustable in one place) and throws the semantic domain failure [`InvalidGeneratorConfigException`](lib/domain/core/exceptions/invalid_generator_config_exception.dart) otherwise. The player chooses *intent* (size, difficulty, timer); the internal generator parameters are **derived** from the [`Difficulty`](lib/domain/arrows/value_objects/difficulty.dart) preset constants:
+
+| Preset | Arrow density (`fillRatio`) | `maxPathLen` | Timer budget (`secondsPerCell`) |
+|---|---|---|---|
+| `easy` | 0.40 | 3 | 3.0 s |
+| `medium` | 0.55 | 6 | 2.0 s |
+| `hard` | 0.70 | 9 | 1.5 s |
+
+- `arrowCount` = `round(cols · rows · fillRatio / avgPathLen)` with `avgPathLen = (2 + maxPathLen) / 2`, clamped to `[4, cells ~/ 2]` — the same density model the campaign used (`LevelBlueprint`).
+- `timeLimitSec` (only when `timed: true`, otherwise `null`) = `round(cols · rows · secondsPerCell)`, clamped to `[30, 300]` s.
+
+**[`GenerateBoardUseCase`](lib/application/use_cases/generate_board_use_case.dart)** consumes the existing [`ILevelGenerator`](lib/domain/arrows/services/i_level_generator.dart) port (implemented by `GraphBoardGenerator`, whose DAG construction makes every board **solvable by construction**). If the player did not fix a seed, the use case completes it through an injectable `SeedSource` (defaulting to `Random`) — randomness is the only non-deterministic effect and it is isolated behind that seam, so tests inject a fixed source and `execute` stays pure given its input. The result is a [`GeneratedBoard`](lib/domain/arrows/value_objects/generated_board.dart) bundling the `ArrowBoard`, the **effective config** and the **seed used** (always surfaced: same seed + same config ⇒ identical board). The generator's graceful degradation (fewer arrows than requested on dense configs) is accepted as-is. The use case performs **no persistence** — no Hive boxes, no `Progress`, no score submission.
+
+Presentation reaches the use case through `generateBoardUseCaseProvider` in the composition root ([`dependency_providers.dart`](lib/presentation/providers/dependency_providers.dart)), which composes the `ILevelGenerator` port with the AOP logger (the seed is logged for reproducibility).
+
+Per **ADR 0002**, the canonical auto-solve *Solution* is produced by the backend for curated levels only; generated boards never reach the backend, carry no Solution, and the hint/auto-solve feature is explicitly out of scope for this flow — solvability is guaranteed by construction instead.
+
 ## Design Patterns
 
 | Pattern | Where | Problem it solves |
@@ -114,7 +135,7 @@ Gating lives in the pure domain service `TierGating`: the first Tier is always o
 | **Adapter** | [`logger_service_adapter.dart`](lib/core/aspects/logger_service_adapter.dart), [`secure_auth_token_repository.dart`](lib/infrastructure/repositories/secure_auth_token_repository.dart), [`remote_auth_repository.dart`](lib/infrastructure/repositories/remote_auth_repository.dart), [`remote_progress_repository.dart`](lib/infrastructure/repositories/remote_progress_repository.dart), [`remote_leaderboard_repository.dart`](lib/infrastructure/repositories/remote_leaderboard_repository.dart), [`remote_level_repository.dart`](lib/infrastructure/repositories/remote_level_repository.dart), [`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart) | Wraps an external package/API behind a domain port, isolating the rest of the app from its concrete shape: `logger` behind `ILoggerService`, `flutter_secure_storage` behind `IAuthTokenStorage`, Dio behind `IAuthRepository` (`RemoteAuthRepository` translates HTTP/`DioException` into `AuthToken`/`AuthFailure`), behind `IRemoteProgressRepository` (`RemoteProgressRepository` maps `LevelProgress` to/from the `/progress` JSON shape), behind `ILeaderboardRepository` (`RemoteLeaderboardRepository` maps `ScoreEntry` to the `/scores` JSON shape) and behind `ILevelRepository` (`RemoteLevelRepository` maps the back's `/levels` JSON to `Level`, network-first with a `levels_cache` fallback), and the token header injection behind a Dio `Interceptor`. |
 | **AOP + Adapter** | [`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart) | `AuthTokenInterceptor` (a Dio `Interceptor`) injects `Authorization: Bearer <token>` on every outgoing request by reading `IAuthTokenStorage`, so authenticated calls never repeat that boilerplate in application code. |
 | **Observer** | [`leaderboard_providers.dart`](lib/application/providers/leaderboard_providers.dart) | `scoreSubmissionObserverProvider` listens to `gameControllerProvider` and reacts to `GameWon` by submitting the score, decoupling `GameController` from the leaderboard concern entirely. |
-| **Strategy** | [`graph_board_generator.dart`](lib/infrastructure/generators/graph_board_generator.dart) | `GraphBoardGenerator` implements `ILevelGenerator` as a swappable generation algorithm (a DAG that guarantees solvability). No longer feeds the campaign (front#8 moved that to the back's official levels); retained for the future "Generar nivel" feature (front#36). |
+| **Strategy** | [`graph_board_generator.dart`](lib/infrastructure/generators/graph_board_generator.dart) | `GraphBoardGenerator` implements `ILevelGenerator` as a swappable generation algorithm (a DAG that guarantees solvability). No longer feeds the campaign (front#8 moved that to the back's official levels); it now powers the ephemeral player-generated boards consumed by `GenerateBoardUseCase` (front#36). |
 | **Composition Root (DI)** | [`dependency_providers.dart`](lib/presentation/providers/dependency_providers.dart) | The one place concrete infrastructure is instantiated and injected as abstractions. |
 | **Custom Painter** | [`arrow_painter.dart`](lib/presentation/game/painters/arrow_painter.dart) | Procedural rendering of arrows with a 3-D glow, avoiding image assets. |
 | **Facade + Singleton** | [`audio_service.dart`](lib/infrastructure/audio/audio_service.dart) | `AudioService` is the single entry point to the audio subsystem behind the [`IAudioService`](lib/application/audio/i_audio_service.dart) port: it maps game events (`GameSound`) to asset paths and applies the **independent** mute rules (master / music / SFX), hiding players and formats. One instance for the app's lifetime (lazy Singleton + a single Riverpod provider). The concrete `audioplayers` package sits behind the [`IAudioBackend`](lib/infrastructure/audio/i_audio_backend.dart) adapter, and mute state persists via [`IAudioSettingsStore`](lib/infrastructure/audio/i_audio_settings_store.dart) (Hive). |

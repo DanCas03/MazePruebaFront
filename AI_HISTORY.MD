@@ -1,5 +1,14 @@
 # AI History — MazePruebaFront
 
+## Entrada 060 — Reconciliación doc de la fuente de nivel (front#9)
+
+**Fecha:** 2026-07-13
+**Tarea o problema abordado:** Cerrar front#9 (`RemoteLevelRepository` + `loadLevel` strategy). Sus criterios 1 (loadLevel remoto → GamePlaying) y 3 (test del repo con datasource mockeado) ya los entregó front#8; el criterio 2 ("Strategy intercambiable remoto/procedural", con la generación procedimental como modo práctica/fallback) quedó superado por el cutover (ADR 0001), por la caché como estrategia de offline y por el split de la generación en la feature GeneratedBoard (front#36/#37). `ILevelRepository` tiene una única implementación de producción → es DIP, no Strategy. Documentar esa reconciliación para poder cerrar el issue.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8), sesión /grill-with-docs (grilling + domain-modeling).
+**Prompt o instrucción proporcionada:** > "trae el issue #9 del front y vamos a diseñar el plan para su implementacion" → "Ejecuta el plan pero desde main, no desde la rama de feat #8".
+**Resultado obtenido:** Párrafo de reconciliación en README §"Campaña remota"; notas inline en `lib/domain/board/repositories/i_level_repository.dart` (puerto) y en `GameController.loadLevel`. Plan en `docs/superpowers/plans/2026-07-13-front9-level-source-doc-reconciliation.md`. Sin cambios de comportamiento, sin tests nuevos, sin ADR ni cambios de glosario. Rama `feat/#9-doc` desde `main` → PR a `main` (auto-cierra #9). `flutter analyze` limpio en los archivos tocados.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 058 — GenerateBoard use case + GeneratorConfig (front#36, mitad de aplicación)
 
 **Fecha:** 2026-07-13

@@ -1,5 +1,21 @@
 # AI History — MazePruebaFront
 
+## Entrada 058 — GenerateBoard use case + GeneratorConfig (front#36, mitad de aplicación)
+
+**Fecha:** 2026-07-13
+**Tarea o problema abordado:** Issue front#36 — la mitad dominio/aplicación de la feature "Generar nivel": un jugador pide un tablero efímero eligiendo dimensiones, preset de dificultad, timer opcional y seed opcional; el sistema lo genera localmente vía el puerto `ILevelGenerator` existente. La UI es un issue aparte.
+**Herramienta de IA utilizada:** Claude Code (Fable 5)
+**Prompt o instrucción proporcionada:** > "Continuemos con el Issue #36 [...] Value Objects Defensivos [...] Generación de Semilla Abstracta [...] Caso de Uso Efímero [...] Riverpod [...] Tests AAA y Documentación"
+**Resultado obtenido:**
+- **Dominio (`lib/domain/arrows/value_objects/`):** `Difficulty` (enum con constantes documentadas del mapeo dificultad → densidad de flechas `fillRatio` 0.40/0.55/0.70, `maxPathLen` 3/6/9 y presupuesto de timer `secondsPerCell` 3.0/2.0/1.5 — espejo de la filosofía de `LevelBlueprint`: la política de dificultad vive en el dominio); `GeneratorConfig` (VO defensivo: solo construible vía factory `create` que valida cols/rows en 4–10 inclusive y lanza la nueva `InvalidGeneratorConfigException` — fallo semántico en `domain/core/exceptions/`; deriva `arrowCount` = celdas·fillRatio/largo medio con clamp `[4, celdas ~/ 2]` y `timeLimitSec` = celdas·secondsPerCell con clamp `[30, 300]` solo si `timed`); `GeneratedBoard` (término del glosario de CONTEXT.md: tablero + config efectiva, con invariante de seed presente y getter `seed` — la seed usada siempre emerge en el resultado).
+- **Aplicación:** `GenerateBoardUseCase` consume el puerto `ILevelGenerator` (DIP), completa la seed ausente vía `SeedSource` inyectable (typedef; default `Random` acotado a 2^31-1 por dart2js) — el único efecto no determinista queda aislado en una costura testeable —, acepta la degradación con gracia del generador y NO persiste nada (sin Hive/Progress/leaderboard: se juega y se descarta). Loggea la seed (AOP) para reproducibilidad.
+- **Riverpod:** `generateBoardUseCaseProvider` en el composition root (`dependency_providers.dart`), componiendo puerto + logger.
+- **Alineación ADR 0002 (revisado a mitad de la implementación a pedido de Claudia):** sin conflicto — los GeneratedBoard son solubles por construcción (DAG), nunca llegan al back, no llevan Solución canónica y el hint/auto-solve queda fuera de alcance v1; documentado en README.
+- **Tests (29 nuevos, AAA):** `difficulty_test` (constantes documentadas + monotonía), `generator_config_test` (bordes 4/10 aceptados, 3/11 rechazados con mensaje semántico, derivaciones de flechas/timer con valores calculados, clamps piso/techo, `withSeed`, igualdad por valor), `generated_board_test` (seed visible, rechazo sin seed, igualdad), `generate_board_use_case_test` (mock de `ILevelGenerator`+`ILoggerService` vía build_runner: params derivados correctos, seed del jugador manda, fuente inyectada solo si falta, degradación aceptada, log con contexto; + grupo de determinismo con `GraphBoardGenerator` real: misma seed+config ⇒ tablero idéntico, y replay desde la config efectiva devuelta), y test del provider en `dependency_providers_test`.
+- **README:** nueva sección *Player-generated boards (front#36) — application half* (tabla de presets, fórmulas de derivación, seam de seed, no-persistencia, nota ADR 0002); árbol de `lib/` y fila Strategy actualizados.
+- **Verificación:** `flutter analyze` → No issues found. `flutter test` → **499/499 verde** (470 base + 29).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 057 — Merge origin/main en front#8: Catálogo remoto alimenta la selección por Tiers
 
 **Fecha:** 2026-07-12

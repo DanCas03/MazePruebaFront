@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
+import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
@@ -13,14 +14,28 @@ import 'package:flutter_arrow_maze/infrastructure/repositories/remote_leaderboar
 
 import 'remote_leaderboard_repository_test.mocks.dart';
 
+/// Logger de prueba: registra los `warn` para verificar que una fila inválida se
+/// loggea al saltarse (AOP), sin depender de codegen para un puerto trivial.
+class _RecordingLogger implements ILoggerService {
+  final List<String> warnings = [];
+  @override
+  void warn(String message, String context) => warnings.add(message);
+  @override
+  void log(String message, String context) {}
+  @override
+  void error(String message, String context, [Object? error]) {}
+}
+
 @GenerateMocks([LeaderboardRemoteDataSource])
 void main() {
   late MockLeaderboardRemoteDataSource dataSource;
+  late _RecordingLogger logger;
   late RemoteLeaderboardRepository repository;
 
   setUp(() {
     dataSource = MockLeaderboardRemoteDataSource();
-    repository = RemoteLeaderboardRepository(dataSource);
+    logger = _RecordingLogger();
+    repository = RemoteLeaderboardRepository(dataSource, logger);
   });
 
   ScoreEntry entry() => ScoreEntry(
@@ -112,5 +127,24 @@ void main() {
         .thenThrow(Exception('red caída'));
     // Act / Assert
     expect(() => repository.getLeaderboard(LevelId('7')), throwsException);
+  });
+
+  test(
+      'getLeaderboard omite las filas inválidas loggeándolas, sin tumbar el '
+      'ranking', () async {
+    // Arrange — la fila del medio trae `stars` fuera de la cota [1,3], que hoy
+    // haría lanzar a `Stars.fromValue` y convertiría toda la pantalla en error.
+    when(dataSource.fetchLeaderboard('7', limit: anyNamed('limit'))).thenAnswer(
+      (_) async => [
+        row(id: 'ok-1', score: 900),
+        row(id: 'bad', stars: 9),
+        row(id: 'ok-2', score: 500),
+      ],
+    );
+    // Act
+    final entries = await repository.getLeaderboard(LevelId('7'));
+    // Assert — solo las dos válidas, en orden; la corrupta se saltó y se loggeó.
+    expect(entries.map((e) => e.id).toList(), ['ok-1', 'ok-2']);
+    expect(logger.warnings, hasLength(1));
   });
 }

@@ -1,3 +1,4 @@
+import '../../core/aspects/i_logger_service.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
 import '../../domain/game_core/value_objects/score.dart';
@@ -12,7 +13,10 @@ import '../data_sources/remote/leaderboard_remote_data_source.dart';
 /// (`_fromJson`). Calca el estilo de `RemoteProgressRepository`.
 class RemoteLeaderboardRepository implements ILeaderboardRepository {
   final LeaderboardRemoteDataSource _dataSource;
-  RemoteLeaderboardRepository(this._dataSource);
+  // AOP: puerto de logging inyectado (DIP) para reportar filas descartadas sin
+  // acoplar el repo al package concreto de logs.
+  final ILoggerService _log;
+  RemoteLeaderboardRepository(this._dataSource, this._log);
 
   @override
   Future<void> submitScore(ScoreEntry entry) =>
@@ -25,10 +29,23 @@ class RemoteLeaderboardRepository implements ILeaderboardRepository {
   }) async {
     final rows = await _dataSource.fetchLeaderboard(levelId.value, limit: limit);
     // El back ya devuelve las filas ordenadas por score desc; se preserva ese
-    // orden (el rango es posicional).
-    return rows
-        .map((row) => _fromJson(row as Map<String, dynamic>))
-        .toList(growable: false);
+    // orden (el rango es posicional). Una fila corrupta (p.ej. `stars` fuera de
+    // `[1,3]` o un campo faltante) se SALTA loggeándola, en lugar de tumbar todo
+    // el ranking: degradación con gracia ante datos de red imperfectos. La
+    // estrictez de dominio (`Stars.fromValue`) se conserva; solo se aísla su
+    // efecto a la fila afectada.
+    final entries = <LeaderboardEntry>[];
+    for (final row in rows) {
+      try {
+        entries.add(_fromJson(row as Map<String, dynamic>));
+      } catch (e) {
+        _log.warn(
+          'Fila de leaderboard inválida, se omite: $e',
+          'RemoteLeaderboardRepository',
+        );
+      }
+    }
+    return List.unmodifiable(entries);
   }
 
   Map<String, dynamic> _toJson(ScoreEntry e) => {

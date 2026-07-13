@@ -1283,3 +1283,12 @@
 **Prompt o instrucción proporcionada:** > "front#17: cablear los textos del leaderboard vía AppLocalizations ahora que i18n está en main."
 **Resultado obtenido:** Nuevas claves ARB (es/en): `leaderboardTitle({level})`, `leaderboardEmpty`, `leaderboardError`, `viewLeaderboard`; se reutiliza `retry`. `LeaderboardScreen` (título, estados vacío/error, botón) y el tooltip del ícono de ranking en `LevelSelectionScreen` leen `AppLocalizations.of(context)`; se regeneró el delegate (`gen-l10n`). El widget test monta `MaterialApp` con `localizationsDelegates`/`supportedLocales` y `locale: es`, aserando las cadenas localizadas. `flutter analyze` limpio; tests de leaderboard y selector en verde.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 059 — front#17 (review) — degradación con gracia ante filas de leaderboard inválidas
+
+**Fecha:** 2026-07-12
+**Tarea o problema abordado:** Observación 2 del review del PR #46 (front#17): al mapear la respuesta de `GET /leaderboard/:levelId`, una sola fila corrupta (p.ej. `stars` fuera de `[1,3]` o un campo faltante) hacía lanzar a `Stars.fromValue`/`_fromJson` dentro del `Future` del provider y convertía **toda** la pantalla del ranking en estado de error.
+**Herramienta de IA utilizada:** Claude (Claude Code)
+**Prompt o instrucción proporcionada:** > "Arreglar la obs 2: que una fila malformada no tumbe todo el ranking; saltarla loggeándola. Sobre el main actual, en rama nueva para evitar conflictos."
+**Resultado obtenido:** `RemoteLeaderboardRepository.getLeaderboard` pasa de un `.map(...)` (que propaga la primera excepción) a un mapeo fila-a-fila con `try/catch`: las filas válidas se acumulan preservando el orden score-desc del back y las inválidas se **omiten** loggeándolas vía `ILoggerService.warn` (AOP). Se inyecta el puerto `ILoggerService` en el repo (DIP); compuesto con `LoggerServiceAdapter()` en `main.dart` en ambos providers (`submitScoreUseCaseProvider` y `getLeaderboardUseCaseProvider`). La estrictez de dominio (`Stars.fromValue`) se conserva; solo se aísla su efecto a la fila afectada. Test AAA nuevo con una fila `stars: 9` entre dos válidas: se devuelven solo las dos (en orden) y se registra un `warn` (fake `_RecordingLogger` para no depender de codegen). `flutter analyze` limpio; **471 tests verdes**. Rama `fix/leaderboard-skip-invalid-rows` desde `origin/main` (post #47/#48/#49) para evitar conflictos con trabajo ya mergeado.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

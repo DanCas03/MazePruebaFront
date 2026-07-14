@@ -9,8 +9,10 @@ import 'application/providers/leaderboard_providers.dart';
 import 'application/providers/level_catalog_provider.dart';
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
+import 'application/state/generated_game_controller.dart';
 import 'application/state/level_selection_controller.dart';
 import 'application/commands/command_invoker.dart';
+import 'application/use_cases/generate_board_use_case.dart';
 import 'application/use_cases/get_leaderboard_use_case.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/audio_settings_controller.dart';
@@ -31,6 +33,7 @@ import 'infrastructure/audio/audioplayers_backend.dart';
 import 'infrastructure/audio/hive_audio_settings_store.dart';
 import 'infrastructure/audio/logging_audio_decorator.dart';
 import 'infrastructure/data_sources/local/hive_level_progress_data_source.dart';
+import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/data_sources/local/level_cache_data_source.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
@@ -141,6 +144,19 @@ void main() async {
             const SystemTicker(),
             // #32: la pista auto-resolutora consume la Solución del back.
             solutionRepository,
+          ),
+        ),
+        // front#37: controlador del flujo de tableros GENERADOS. Compuesto SOLO
+        // con el generador local, las mecánicas puras y el reloj real — sin
+        // repositorio, sin submit de score, sin progreso: cortafuegos de "cero
+        // persistencia" por construcción. La seed aleatoria por defecto vive
+        // dentro de GenerateBoardUseCase.
+        generatedGameControllerProvider.overrideWith(
+          () => GeneratedGameController(
+            GenerateBoardUseCase(GraphBoardGenerator(), LoggerServiceAdapter()),
+            RemoveArrowUseCase(),
+            CommandInvoker(),
+            const SystemTicker(),
           ),
         ),
         // #18/#20: el repo de progreso local se comparte (una sola instancia)

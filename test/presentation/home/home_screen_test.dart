@@ -6,6 +6,7 @@ import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
+import 'package:flutter_arrow_maze/presentation/generated/configurator_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
 
@@ -60,6 +61,24 @@ void main() {
 
       // Assert
       expect(find.byType(LevelSelectionScreen), findsOneWidget);
+    });
+
+    testWidgets('renders the "Generar nivel" CTA (front#37)', (tester) async {
+      await tester.pumpWidget(_appUnderTest());
+      expect(find.widgetWithText(OutlinedButton, 'Generar nivel'),
+          findsOneWidget);
+    });
+
+    testWidgets('"Generar nivel" navigates to ConfiguratorScreen (front#37)',
+        (tester) async {
+      await tester.pumpWidget(_appUnderTest());
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Generar nivel'));
+      // El logo anima en bucle: bombeamos la transición con pumps acotados.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(ConfiguratorScreen), findsOneWidget);
     });
   });
 }

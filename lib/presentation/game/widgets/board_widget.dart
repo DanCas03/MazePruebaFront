@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../application/state/game_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/arrows/entities/arrow.dart';
+import '../../../domain/arrows/value_objects/arrow_id.dart';
 import '../../../domain/game_core/value_objects/position.dart';
 import '../../../application/state/game_controller.dart';
 import '../arrow_color.dart';
@@ -21,7 +22,27 @@ class BoardWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(gameControllerProvider).valueOrNull;
     if (state is! GamePlaying) return const SizedBox.shrink();
+    return BoardView(
+      state: state,
+      onTapArrow: (id) =>
+          ref.read(gameControllerProvider.notifier).tapArrow(id),
+    );
+  }
+}
 
+/// Vista presentacional PURA del tablero: recibe el [GamePlaying] y el callback
+/// de toque, sin conocer QUÉ controlador lo alimenta. La extrae de [BoardWidget]
+/// para que el flujo de tableros generados (front#37) reutilice exactamente el
+/// mismo render y hit-testing enganchando su propio controlador, manteniendo
+/// una única fuente de la lógica de dibujo (DRY).
+class BoardView extends StatelessWidget {
+  final GamePlaying state;
+  final void Function(ArrowId arrowId) onTapArrow;
+
+  const BoardView({super.key, required this.state, required this.onTapArrow});
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;
     final gridColor = (isDark
@@ -54,7 +75,7 @@ class BoardWidget extends ConsumerWidget {
                   .clamp(0, board.rows - 1);
               final arrow = board.arrowAt(Position(row: row, col: col));
               if (arrow != null) {
-                ref.read(gameControllerProvider.notifier).tapArrow(arrow.id);
+                onTapArrow(arrow.id);
               }
             },
             child: Stack(

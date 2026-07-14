@@ -81,6 +81,34 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                // front#37: acceso al generador de tableros efímeros. Secundario
+                // (contorneado) frente al CTA primario de la campaña.
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.secondary,
+                    side: BorderSide(
+                        color: AppColors.secondary.withValues(alpha: 0.6)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRouter.generate),
+                  icon: const Icon(Icons.auto_awesome),
+                  label: Text(
+                    l10n.generateBoard,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
                   ],
                 ),
               ),

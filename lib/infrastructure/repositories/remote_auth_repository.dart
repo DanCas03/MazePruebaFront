@@ -29,9 +29,9 @@ class RemoteAuthRepository implements IAuthRepository {
 
   @override
   Future<Either<AuthFailure, AuthToken>> register(
-      Email email, String password) async {
+      Email email, String username, String password) async {
     try {
-      final token = await _remote.register(email.value, password);
+      final token = await _remote.register(email.value, username, password);
       return Right(AuthToken(token));
     } on DioException catch (e) {
       return Left(_mapRegister(e));
@@ -48,7 +48,11 @@ class RemoteAuthRepository implements IAuthRepository {
 
   AuthFailure _mapRegister(DioException e) {
     if (_isNetwork(e)) return const NetworkFailure();
-    if (e.response?.statusCode == 400) return const EmailAlreadyRegistered();
+    // El back responde 409 (Conflict) para email/username ya tomados —
+    // no 400, que es Bad Request por payload inválido (bug real que este
+    // fix corrige: antes se mapeaba 400, enmascarando errores de validación
+    // no relacionados como si fueran "ya registrado").
+    if (e.response?.statusCode == 409) return const EmailAlreadyRegistered();
     return const UnexpectedFailure();
   }
 

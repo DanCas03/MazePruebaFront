@@ -9,5 +9,6 @@ import '../value_objects/email.dart';
 /// esperado (credenciales, red) sin excepciones que crucen capas.
 abstract interface class IAuthRepository {
   Future<Either<AuthFailure, AuthToken>> login(Email email, String password);
-  Future<Either<AuthFailure, AuthToken>> register(Email email, String password);
+  Future<Either<AuthFailure, AuthToken>> register(
+      Email email, String username, String password);
 }

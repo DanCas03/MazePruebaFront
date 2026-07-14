@@ -76,7 +76,7 @@ void main() {
     final storage = MockIAuthTokenStorage();
     when(storage.read()).thenAnswer((_) async => null);
     when(storage.save(any)).thenAnswer((_) async {});
-    when(repo.register(any, any))
+    when(repo.register(any, any, any))
         .thenAnswer((_) async => Right(AuthToken(longLivedToken)));
 
     await tester.pumpWidget(host(repo, storage));
@@ -88,10 +88,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(RegisterScreen), findsOneWidget);
 
-    // Fill valid email, password (>=8) and matching confirm.
+    // Fill valid email, username, password (>=8) and matching confirm.
     await tester.enterText(
         find.widgetWithText(TextField, 'Email'),
         'newuser@example.com');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre de usuario'),
+        'newuser01');
     await tester.enterText(
         find.widgetWithText(TextField, 'Contraseña'),
         'password123');

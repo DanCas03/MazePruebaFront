@@ -77,6 +77,7 @@ class MockIAuthRepository extends _i1.Mock implements _i3.IAuthRepository {
   @override
   _i4.Future<_i2.Either<_i5.AuthFailure, _i6.AuthToken>> register(
     _i7.Email? email,
+    String? username,
     String? password,
   ) =>
       (super.noSuchMethod(
@@ -84,6 +85,7 @@ class MockIAuthRepository extends _i1.Mock implements _i3.IAuthRepository {
           #register,
           [
             email,
+            username,
             password,
           ],
         ),
@@ -95,6 +97,7 @@ class MockIAuthRepository extends _i1.Mock implements _i3.IAuthRepository {
             #register,
             [
               email,
+              username,
               password,
             ],
           ),

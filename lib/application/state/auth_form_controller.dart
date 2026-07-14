@@ -45,10 +45,12 @@ class AuthFormController extends Notifier<AuthFormState> {
     );
   }
 
-  Future<void> register(String email, String password,
+  Future<void> register(String email, String username, String password,
       {required bool remember}) async {
     await _submit(
-      () => ref.read(registerUseCaseProvider).execute(email, password),
+      () => ref
+          .read(registerUseCaseProvider)
+          .execute(email, username, password),
       remember: remember,
     );
   }

@@ -33,9 +33,11 @@ void main() {
       (tester) async {
     // Arrange
     await tester.pumpWidget(_host(const FormIdle()));
-    // Act — valid email, short password, non-matching confirm
+    // Act — valid email, valid username, short password, non-matching confirm
     await tester.enterText(
         find.widgetWithText(TextField, 'Email'), 'a@b.com');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre de usuario'), 'player_01');
     await tester.enterText(
         find.widgetWithText(TextField, 'Contraseña'), 'short');
     await tester.enterText(
@@ -46,6 +48,25 @@ void main() {
     // Assert
     expect(find.text('Mínimo 8 caracteres'), findsOneWidget);
     expect(find.text('Las contraseñas no coinciden'), findsOneWidget);
+  });
+
+  testWidgets('shows username-invalid error on bad input', (tester) async {
+    // Arrange
+    await tester.pumpWidget(_host(const FormIdle()));
+    // Act — valid email/password, username too short (below Username.minLength)
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Email'), 'a@b.com');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre de usuario'), 'ab');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Contraseña'), 'password123');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Confirmar contraseña'),
+        'password123');
+    await tester.tap(find.widgetWithText(FilledButton, 'Registrarme'));
+    await tester.pump();
+    // Assert
+    expect(find.text('3-20 letras, dígitos o guion bajo'), findsOneWidget);
   });
 
   testWidgets('disables submit while FormSubmitting', (tester) async {

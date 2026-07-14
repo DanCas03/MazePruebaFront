@@ -13,9 +13,13 @@ class AuthRemoteDataSource {
     return (res.data as Map)['token'] as String;
   }
 
-  Future<String> register(String email, String password) async {
-    final res = await _dio.post('/auth/register',
-        data: {'email': email, 'password': password});
+  Future<String> register(
+      String email, String username, String password) async {
+    final res = await _dio.post('/auth/register', data: {
+      'email': email,
+      'username': username,
+      'password': password,
+    });
     return (res.data as Map)['token'] as String;
   }
 }

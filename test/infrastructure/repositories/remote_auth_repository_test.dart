@@ -55,15 +55,25 @@ void main() {
     expect(result, const Left<AuthFailure, AuthToken>(NetworkFailure()));
   });
 
-  test('register maps 400 to EmailAlreadyRegistered', () async {
-    when(remote.register(any, any)).thenThrow(_dioError(status: 400));
-    final result = await repo.register(email, 'secret12');
+  test('register maps 409 to EmailAlreadyRegistered', () async {
+    // El back usa 409 (Conflict) para email/username ya tomados.
+    when(remote.register(any, any, any)).thenThrow(_dioError(status: 409));
+    final result = await repo.register(email, 'player_01', 'secret12');
     expect(result, const Left<AuthFailure, AuthToken>(EmailAlreadyRegistered()));
   });
 
+  test('register maps 400 to UnexpectedFailure, not EmailAlreadyRegistered', () async {
+    // Regresión: 400 es Bad Request (payload inválido), no "ya registrado".
+    // Mapearlo a EmailAlreadyRegistered enmascaraba errores de validación
+    // reales (p.ej. un campo requerido faltante) como un falso "ya existe".
+    when(remote.register(any, any, any)).thenThrow(_dioError(status: 400));
+    final result = await repo.register(email, 'player_01', 'secret12');
+    expect(result, const Left<AuthFailure, AuthToken>(UnexpectedFailure()));
+  });
+
   test('register returns UnexpectedFailure on non-Dio error', () async {
-    when(remote.register(any, any)).thenThrow(Exception('boom'));
-    final result = await repo.register(email, 'secret12');
+    when(remote.register(any, any, any)).thenThrow(Exception('boom'));
+    final result = await repo.register(email, 'player_01', 'secret12');
     expect(result, const Left<AuthFailure, AuthToken>(UnexpectedFailure()));
   });
 }

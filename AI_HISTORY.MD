@@ -1,5 +1,26 @@
 # AI History — MazePruebaFront
 
+## Entrada 060 — "Generar nivel": flujo de UI del jugador (front#37, mitad de presentación)
+
+**Fecha:** 2026-07-13
+**Tarea o problema abordado:** Issue front#37 — la mitad de UI/UX de "Generar nivel", sobre el dominio ya mergeado en #36: botón en el Home, pantalla configuradora (dimensiones 4–10, dificultad, contrarreloj, seed opcional), cableado de la partida reutilizando las mecánicas actuales, y pantalla post-partida con cuatro acciones — todo con un **cortafuegos de cero persistencia** (jamás Hive/Progress/leaderboard).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "Continuamos el Issue #37 [...] Home: botón 'Generar nivel'. Configurator: selectors rows/cols (4–10, Riverpod deshabilita 'Jugar' si es inválido), dificultad, toggle timed, seed opcional. Game Screen: reutiliza pantalla y mecánicas (derrota a 5 strikes, TimeLimit solo si se activó); HUD muestra la semilla sutil + copiar, oculta hints/puntajes/estrellas. Post-Game (sin Score/Stars/Next-Level): semilla copiable + 'Otro tablero'/'Repetir'/'Cambiar parámetros'/'Salir'. Cero Persistencia: cortafuegos en el estado."
+**Resultado obtenido:**
+- **Cortafuegos estructural (spec "Cero Persistencia"):** nuevo `GeneratedGameController` (`AsyncNotifier<GameState>`) compuesto SOLO con `GenerateBoardUseCase` + `RemoveArrowUseCase` + `CommandInvoker` + `ITicker` — **sin** `ILevelRepository`, `SubmitScoreUseCase` ni `ILevelProgressRepository`: no puede persistir porque no tiene ningún colaborador capaz de hacerlo (aislamiento por construcción, no un flag). Reutiliza las mecánicas de la campaña; solo cambian el origen del tablero (generado, en memoria) y el destino (sin puntuar). No observa `scoreSubmissionObserverProvider`, así que ganar nunca dispara el POST al leaderboard.
+- **Estado terminal sin métricas:** nuevo `GeneratedCleared extends GameState` (solo `MoveCount moves`) — espejo de `GameWon` pero sin `Score`/`Stars`/`LevelId`. La derrota reutiliza `GameLost` (moves+strikes, ya sin scoring).
+- **Reutilización del render (DRY):** se extrajo `BoardView` presentacional puro (`GamePlaying` + `onTapArrow`) de `BoardWidget`; la campaña y el flujo generado (`GeneratedBoardWidget`) lo alimentan cada uno con su controlador, con una sola fuente de la lógica de dibujo/hit-testing.
+- **Configurador (Riverpod):** `ConfiguratorState` (VO inmutable: cols/rows/difficulty/timed/seedText, con `isValid`/`isSeedValid`/`toConfig`) + `ConfiguratorController` (`NotifierProvider.autoDispose`). `ConfiguratorScreen`: selectores -/+ acotados a 4–10, `SegmentedButton<Difficulty>`, `SwitchListTile` de contrarreloj y campo de semilla opcional; **"Jugar" se deshabilita reactivamente** (`onPressed: null`) cuando la semilla no parsea a entero.
+- **Partida (HUD mínimo):** `GeneratedGameScreen` reutiliza `BoardView`, movimientos, reloj (solo si `timed`), deshacer y audio; muestra la **semilla de forma sutil** al pie con botón de **copiar al portapapeles** (`SeedChip`, `Clipboard`); oculta por completo pistas/puntajes/estrellas.
+- **Post-partida:** `GeneratedResultScreen` (sin Score/Stars/Next-Level) con la semilla final copiable y las cuatro acciones — "Otro tablero" (`anotherBoard`: misma config, nueva seed), "Repetir" (`repeat`: misma seed+config ⇒ tablero idéntico), "Cambiar parámetros" (vuelve al configurador) y "Salir" (Home).
+- **Navegación:** rutas `/generate`, `/generate/play`, `/generate/result` en `AppRouter`; botón secundario "Generar nivel" en el Home. Composition root (`main.dart`) sobreescribe `generatedGameControllerProvider` con el generador local real (`GraphBoardGenerator`), mecánicas puras y `SystemTicker`.
+- **Corrección de carrera:** `startNew` drena el `build()` asíncrono (`await future`) antes de montar el `GamePlaying`, evitando que la resolución tardía a `GameLoading` sobreescriba el tablero (mismo patrón que `GameController.loadLevel`).
+- **i18n:** claves ARB es/en nuevas (`generateBoard`, `configuratorTitle`, `configColumns/Rows/Difficulty/Timed/SeedOptional/SeedInvalid/Play`, `seedLabel({seed})`, `copySeed`, `seedCopied`, `generatedClearedTitle/LostTitle`, `generatedAnotherBoard/Repeat/ChangeParams/Exit`); delegates regenerados (`gen-l10n`).
+- **Tests (20 nuevos, AAA):** `generated_game_controller_test` (montaje/seed/contrarreloj, victoria ⇒ `GeneratedCleared` y **NUNCA** `GameWon`, 5º strike ⇒ `GameLost`, timeout ⇒ `GameLost`, `anotherBoard` seed nueva, `repeat` seed igual — con generador y ticker falsos), `configurator_state_test` (validez de semilla y dimensiones, `toConfig`), `configurator_screen_test` (habilitación reactiva de "Jugar"), `generated_result_screen_test` (4 acciones, sin estrellas/score, títulos, semilla copiable) y 2 tests de Home para el nuevo CTA.
+- **Verificación:** `flutter analyze` → No issues found. `flutter test` → **526/526 verde** (506 base + 20). Sin regresiones.
+- **Git:** rama `feat/#37-generate-board-ui` desde `origin/main` (que ya integra #36 vía PR #54), tras `git fetch --all --prune`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 058 — GenerateBoard use case + GeneratorConfig (front#36, mitad de aplicación)
 
 **Fecha:** 2026-07-13

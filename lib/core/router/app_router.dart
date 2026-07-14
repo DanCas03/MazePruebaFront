@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../domain/board/value_objects/level_id.dart';
 import '../../presentation/game/screens/game_screen.dart';
+import '../../presentation/generated/configurator_screen.dart';
+import '../../presentation/generated/generated_game_screen.dart';
+import '../../presentation/generated/generated_result_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
 import '../../presentation/leaderboard/screens/leaderboard_screen.dart';
 import '../../presentation/level_selection/defeat_screen.dart';
@@ -22,6 +25,13 @@ class AppRouter {
   static const String defeat = '/defeat';
   static const String leaderboard = '/leaderboard';
   static const String settings = '/settings';
+
+  // front#37: flujo de tableros generados por el jugador (configurador →
+  // partida → post-partida). Rutas separadas de la campaña; comparten el
+  // BoardView pero no el estado ni la persistencia.
+  static const String generate = '/generate';
+  static const String generatedGame = '/generate/play';
+  static const String generatedResult = '/generate/result';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     return switch (settings.name) {
@@ -46,6 +56,10 @@ class AppRouter {
           settings,
         ),
       AppRouter.settings => _fade(const SettingsScreen(), settings),
+      AppRouter.generate => _fade(const ConfiguratorScreen(), settings),
+      AppRouter.generatedGame => _fade(const GeneratedGameScreen(), settings),
+      AppRouter.generatedResult =>
+        _fade(const GeneratedResultScreen(), settings),
       _ => _fade(const HomeScreen(), settings),
     };
   }

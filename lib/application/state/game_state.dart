@@ -58,3 +58,13 @@ class GameLost extends GameState {
   final StrikeCount strikes;
   GameLost({required this.moves, required this.strikes});
 }
+
+/// front#37: tablero GENERADO despejado. Estado terminal de victoria del flujo
+/// de generación de tableros por el jugador. Espejo de [GameWon] para la
+/// campaña, pero SIN Score/Stars/LevelId: un tablero generado es efímero, no
+/// puntúa, no pertenece a la campaña y no alimenta el leaderboard. Es un
+/// cortafuegos por construcción — el estado no transporta nada persistible.
+class GeneratedCleared extends GameState {
+  final MoveCount moves;
+  GeneratedCleared({required this.moves});
+}

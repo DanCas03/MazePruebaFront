@@ -126,6 +126,17 @@ Presentation reaches the use case through `generateBoardUseCaseProvider` in the 
 
 Per **ADR 0002**, the canonical auto-solve *Solution* is produced by the backend for curated levels only; generated boards never reach the backend, carry no Solution, and the hint/auto-solve feature is explicitly out of scope for this flow — solvability is guaranteed by construction instead.
 
+### Player-generated boards (front#37) — UI half
+
+The player half of "Generar nivel" is a self-contained flow — **Home → configurator → generated game → post-game** — that reuses the campaign's play mechanics but is walled off from all persistence.
+
+- **Zero-persistence firewall (structural).** [`GeneratedGameController`](lib/application/state/generated_game_controller.dart) (`AsyncNotifier<GameState>`) is composed with only `GenerateBoardUseCase` + `RemoveArrowUseCase` + `CommandInvoker` + `ITicker` — it has **no** `ILevelRepository`, `SubmitScoreUseCase` or `ILevelProgressRepository`, so it *cannot* write Hive, touch `Progress` or submit to the leaderboard. Unlike the campaign screen, the generated screen never watches `scoreSubmissionObserverProvider`, so clearing a board never fires a score POST. Victory is a dedicated `GeneratedCleared` state carrying only `MoveCount` — a mirror of `GameWon` with no `Score`/`Stars`/`LevelId`.
+- **Configurator.** [`ConfiguratorScreen`](lib/presentation/generated/configurator_screen.dart) collects the player's *intent*: `cols`/`rows` steppers clamped to 4–10, a `Difficulty` segmented button, a timed toggle and an optional seed. [`ConfiguratorController`](lib/application/state/configurator_controller.dart) (an `autoDispose` `NotifierProvider`) drives an immutable [`ConfiguratorState`](lib/application/state/configurator_state.dart) whose `isValid` **disables the "Play" button reactively** when the optional seed is not a whole number.
+- **Game HUD.** [`GeneratedGameScreen`](lib/presentation/generated/generated_game_screen.dart) reuses the shared `BoardView` (extracted from `BoardWidget` so both flows render identically), the move counter, the countdown (only when the player enabled the timer), undo and audio. It shows the **seed subtly** at the foot with a **copy-to-clipboard** button (`SeedChip`) and hides hints, scores and stars entirely.
+- **Post-game.** [`GeneratedResultScreen`](lib/presentation/generated/generated_result_screen.dart) carries no score/stars/next-level. It surfaces the final seed (copyable) and the four required actions: **Otro tablero** (`anotherBoard` — same config, new seed), **Repetir** (`repeat` — same seed and config ⇒ identical board), **Cambiar parámetros** (back to the configurator) and **Salir** (Home).
+
+Routes `/generate`, `/generate/play` and `/generate/result` live in `AppRouter`; `main.dart` overrides `generatedGameControllerProvider` with the real `GraphBoardGenerator`, the pure mechanics and `SystemTicker`.
+
 ## Design Patterns
 
 | Pattern | Where | Problem it solves |

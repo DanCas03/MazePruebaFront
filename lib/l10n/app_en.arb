@@ -131,5 +131,80 @@
   "languageSystem": "System",
   "@languageSystem": {
     "description": "Language option that follows the device/OS locale (no explicit preference)."
+  },
+  "generateBoard": "Generate level",
+  "@generateBoard": {
+    "description": "Home CTA that opens the board generator configurator (front#37)."
+  },
+  "configuratorTitle": "Generate board",
+  "@configuratorTitle": {
+    "description": "Title of the generated-board configurator screen (front#37)."
+  },
+  "configColumns": "Columns",
+  "@configColumns": {
+    "description": "Label of the columns selector in the configurator."
+  },
+  "configRows": "Rows",
+  "@configRows": {
+    "description": "Label of the rows selector in the configurator."
+  },
+  "configDifficulty": "Difficulty",
+  "@configDifficulty": {
+    "description": "Label of the difficulty selector in the configurator."
+  },
+  "configTimed": "Timed",
+  "@configTimed": {
+    "description": "Label of the timed-mode toggle in the configurator."
+  },
+  "configSeedOptional": "Seed (optional)",
+  "@configSeedOptional": {
+    "description": "Label/hint of the optional seed text field in the configurator."
+  },
+  "configSeedInvalid": "Seed must be a whole number",
+  "@configSeedInvalid": {
+    "description": "Validation message shown when the optional seed is not a valid integer."
+  },
+  "configPlay": "Play",
+  "@configPlay": {
+    "description": "CTA that generates the board and starts the generated session; disabled while the seed input is invalid."
+  },
+  "seedLabel": "Seed {seed}",
+  "@seedLabel": {
+    "description": "Subtle display of the generation seed in the HUD and post-game screen.",
+    "placeholders": {
+      "seed": { "type": "int" }
+    }
+  },
+  "copySeed": "Copy seed",
+  "@copySeed": {
+    "description": "Tooltip/label of the button that copies the generation seed to the clipboard."
+  },
+  "seedCopied": "Seed copied to clipboard",
+  "@seedCopied": {
+    "description": "Snackbar confirmation shown after copying the seed."
+  },
+  "generatedClearedTitle": "Board cleared!",
+  "@generatedClearedTitle": {
+    "description": "Victory title of the generated-board post-game screen (no score/stars)."
+  },
+  "generatedLostTitle": "Out of moves!",
+  "@generatedLostTitle": {
+    "description": "Defeat title of the generated-board post-game screen."
+  },
+  "generatedAnotherBoard": "Another board",
+  "@generatedAnotherBoard": {
+    "description": "Post-game action: regenerate with the same config but a new seed."
+  },
+  "generatedRepeat": "Replay",
+  "@generatedRepeat": {
+    "description": "Post-game action: regenerate the identical board (same seed and config)."
+  },
+  "generatedChangeParams": "Change parameters",
+  "@generatedChangeParams": {
+    "description": "Post-game action: go back to the configurator."
+  },
+  "generatedExit": "Exit",
+  "@generatedExit": {
+    "description": "Post-game action: return to the home screen."
   }
 }

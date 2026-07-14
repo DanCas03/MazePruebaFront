@@ -1418,3 +1418,16 @@
 **Prompt o instrucción proporcionada:** > "Quiero que veamos la resolución del tablero como grafos… el último nivel sea un tablero de 50x50… tiene que haber un apartado temático donde hayan por lo menos 3 seeds personalizadas con figuras…"
 **Resultado obtenido:** CONTEXT.md ampliado con 5 términos; issues front#64–#68 triageados con Agent Briefs (más back#30–#32) y sesión C2 reservada en front#69.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 064 — front#64 — caché de ocupación por instancia en ArrowBoard
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** `ArrowBoard._occupiedExcluding` reconstruía el `Set<Position>` de ocupación en CADA llamada a `canExit`/`overlaps`. Sub-milisegundo para el jugador, pero el generador lo invoca decenas de miles de veces por tablero — un 50×50 denso (ADR 0003) era inviable. Primera mitad de front#64: cachear la ocupación por instancia sin cambiar la interface pública ni la inmutabilidad del aggregate root.
+**Herramienta de IA utilizada:** Claude Code (Fable 5) — rol frontend-architect; skills arrowmaze-frontend + arrowmaze-qa
+**Prompt o instrucción proporcionada:** > "Implement GitHub issue DanCas03/MazePruebaFront#64 end-to-end… The occupancy cache must respect the 'snake bent over its own lane' subtlety: canExit must ignore the arrow's OWN cells… Use: `lane.every((p) => !_occupied.contains(p) || ownCells.contains(p))`."
+**Resultado obtenido:**
+- `lib/domain/arrows/entities/arrow_board.dart`: el Set de ocupación total se computa lazy UNA vez por instancia. Detalle de implementación: un `Expando<Set<Position>>` estático en vez de un campo `late final`, porque `late` es incompatible con el constructor `const` — y ese constructor ES parte de la interface pública (`generated_board_test.dart` construye `GeneratedBoard(board: ArrowBoard(...))` en contexto const; un primer intento con `late final` rompió su compilación y se revirtió). El Expando no impide el GC de tableros descartados.
+- `canExit` aplica la fórmula del brief: las celdas de la PROPIA flecha nunca bloquean su salida (mecánica serpiente: el cuerpo se retrae por su camino — una serpiente doblada puede tener cuerpo geométricamente delante de la cabeza). `overlaps` consulta el mismo caché descartando las celdas de la copia propia en el tablero. `_occupiedExcluding` eliminado.
+- Tests nuevos (`test/domain/entities/arrow_board_occupancy_test.dart`, AAA): (1) regresión serpiente-doblada-sobre-su-propio-carril (sale; con bloqueador ajeno en el carril no sale; tras `removeArrow` del bloqueador la instancia NUEVA sale — ejercita el caché lazy fresco); (2) property-style: `canExit` cacheado ≡ implementación naive (oráculo pre-#64 reconstruido en el test) sobre 200 tableros aleatorios pequeños con cuerpos doblados auto-evitantes y `headDirection` independiente del cuerpo, incluyendo id ausente y post-remoción. Seed fija (64) para reproducibilidad.
+- Verificación: `flutter analyze` → 0 issues; tests de dominio 38/38 verdes; `arrow_board_test.dart` y `arrow_test.dart` intactos y verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

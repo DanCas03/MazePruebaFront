@@ -1,5 +1,20 @@
 # AI History — MazePruebaFront
 
+## Entrada 063 — feat(front): soporte Docker para desarrollo local (target web)
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** El usuario pidió correr todo el proyecto (back + front) en Docker para desarrollo local. El front es Flutter móvil (Android/iOS), que no puede "correr" dentro de un contenedor de forma práctica — este fragmento cubre el target web habilitado (`web/`): un contenedor que sirve el build web de Flutter contra el backend dockerizado.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol Arquitecto de Software Senior; skills superpowers:brainstorming + superpowers:writing-plans)
+**Prompt o instrucción proporcionada:** > "Necesito que configures todo el proyecto para back y front corran en docker"
+**Resultado obtenido:**
+- `Dockerfile` (nuevo): imagen de desarrollo `ghcr.io/cirruslabs/flutter:stable` (no existe imagen oficial de Flutter) — `flutter pub get`, luego `flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080 --dart-define=API_BASE_URL=$API_BASE_URL`. El valor de `API_BASE_URL` lo inyecta `docker-compose.yml` en runtime (variable de entorno del contenedor, sustituida por el shell del `CMD`); `AppConfig.apiBaseUrl` (`lib/core/config/app_config.dart`) ya soportaba esto vía `--dart-define`, sin cambios de código.
+- `.dockerignore` (nuevo): excluye `build/`, `.dart_tool/`, `.git`, `android/`, `ios/` (no hacen falta para servir web) para acotar el contexto de build.
+- No hace falta correr `build_runner` en la imagen: el `.g.dart` de Hive/Riverpod ya está commiteado, y `AppLocalizations` se regenera solo en `pub get`/`flutter run` porque `pubspec.yaml` tiene `generate: true`.
+- La orquestación completa (compose, Postgres, backend) vive en `ArrowMaze/docker-compose.yml`, fuera de este repo (esa carpeta raíz no es un repositorio git) — documentada en `ArrowMaze/README-docker.md`, incluyendo el procedimiento de hot reload manual (`docker attach` + tecla `r`), ya que `flutter run` no recarga solo al guardar un archivo.
+- Verificación: `docker build -t maze-front:dev -f Dockerfile .` exitoso. La verificación end-to-end (levantar el stack completo y abrir `localhost:8080` contra el backend real) se hizo en el fragmento de integración del stack completo.
+- README.md: nueva sub-sección "Docker (recommended for local dev — web target)" bajo "Getting Started".
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 062 — "Generar nivel": flujo de UI del jugador (front#37, mitad de presentación)
 
 **Fecha:** 2026-07-13

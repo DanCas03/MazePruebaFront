@@ -7,7 +7,7 @@ import '../../application/state/generated_game_controller.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
-import '../providers/dependency_providers.dart';
+import '../../core/di/dependency_providers.dart';
 import 'widgets/generated_board_widget.dart';
 import 'widgets/seed_chip.dart';
 

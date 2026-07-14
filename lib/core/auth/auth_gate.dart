@@ -5,7 +5,7 @@ import '../../application/state/auth_controller.dart';
 import '../../application/state/auth_state.dart';
 import '../../presentation/auth/screens/login_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
-import '../../presentation/providers/dependency_providers.dart';
+import '../di/dependency_providers.dart';
 import '../theme/app_colors.dart';
 
 /// Guard de ruta reactivo (Observer). Como la app usa Navigator 1.0 (sin

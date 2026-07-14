@@ -8,7 +8,7 @@ import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_re
 import 'package:flutter_arrow_maze/infrastructure/data_sources/local/hive_level_progress_data_source.dart';
 import 'package:flutter_arrow_maze/infrastructure/generators/graph_board_generator.dart';
 import 'package:flutter_arrow_maze/infrastructure/repositories/hive_progress_repository.dart';
-import 'package:flutter_arrow_maze/presentation/providers/dependency_providers.dart';
+import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 
 void main() {
   late ProviderContainer container;

@@ -31,7 +31,7 @@ import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/defeat_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
-import 'package:flutter_arrow_maze/presentation/providers/dependency_providers.dart';
+import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 
 import 'game_screen_test.mocks.dart';
 

@@ -1363,6 +1363,18 @@
 **Resultado obtenido:** `LeaderboardEntry` gana `final String username` (requerido, en `props` para la igualdad por valor). `RemoteLeaderboardRepository._fromJson` mapea `username: j['username'] as String`. `_LeaderboardTile` pinta `entry.username` en vez de `entry.userId`. Ciclo TDD por capa: test de entidad (rojo por parámetro inexistente → verde), test de repositorio (rojo por argumento requerido faltante → verde), test de pantalla (rojo por buscar el username en vez del userId → verde). Colateral: `get_leaderboard_use_case_test.dart` (fuera del alcance del ticket) también construye `LeaderboardEntry` y requería el nuevo parámetro para seguir compilando; se le agregó `username: 'ana'` sin tocar su lógica. README actualizado (sección "Leaderboard view (front#17)") con el shape de fila incluyendo `username`. Suite completa: 471 tests verdes, `flutter analyze` limpio.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
+## Entrada 062 — front#60 — mover el composition root de DI de presentation/ a core/
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Una revisión de arquitectura detectó que `dependency_providers.dart` — el composition root de DI que instancia infraestructura (`HiveProgressRepository`, `HiveLocalDataSource`, generadores) y la inyecta en los puertos — vivía en `lib/presentation/providers/`, mientras que CLAUDE.md ubica la composición DI en `core/`. Tenerlo en `presentation/` convertía a esa capa en el punto de cableado que alcanza `infrastructure/`, contradiciendo la regla CLEAN documentada y ensuciando el diagrama de capas (front#21). (Numerada 062 y no 061 para no colisionar con la entrada 061 de front#58/PR #59, aún sin mergear.)
+**Herramienta de IA utilizada:** Claude Code (Opus, rol Arquitecto Senior; skill arrowmaze-frontend)
+**Prompt o instrucción proporcionada:** > "hagamos ambas cosas a y b" (b = evaluar/mover el composition root a core/)
+**Resultado obtenido:**
+- `git mv lib/presentation/providers/dependency_providers.dart → lib/core/di/dependency_providers.dart` (y su test a `test/core/di/dependency_providers_test.dart`).
+- **Cero ediciones internas al archivo movido:** `core/di/` está a la MISMA profundidad bajo `lib/` que `presentation/providers/` (2 niveles), así que sus imports relativos (`../../domain/…`, `../../application/…`, `../../infrastructure/…`) resuelven idénticos. Solo cambian la ubicación del archivo y las 10 referencias externas.
+- Actualizadas las 4 referencias en `lib/` (imports relativos recalculados por profundidad: `main.dart` → `core/di/…`; `core/auth/auth_gate.dart` → `../di/…`; `presentation/generated/generated_game_screen.dart` → `../../core/di/…`; `presentation/game/screens/game_screen.dart` → `../../../core/di/…`) y las 6 en `test/` (imports `package:…/core/di/…`, reemplazo mecánico idéntico).
+- Los providers hermanos de estado de UI (`game_provider.dart`, `level_selection_provider.dart`) SE QUEDAN en `presentation/providers/`: solo se movió el composition root, no todo el directorio.
+- Verificación: `flutter analyze` → 0 issues; `flutter test` → 545 tests verdes (baseline de main; sin cambio de comportamiento — es una refactor de ubicación pura). El diagrama de capas CLEAN de front#21 ahora puede dibujar la composición DI en `core/`, no en `presentation/`.
 ## Entrada 061 — front#58 — persistir LevelProgress al ganar (cierra el eslabón del bucle de progresión)
 
 **Fecha:** 2026-07-14

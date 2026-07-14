@@ -35,7 +35,7 @@ import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart'
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
-import 'package:flutter_arrow_maze/presentation/providers/dependency_providers.dart';
+import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 
 // ── Dobles de test hechos a mano ─────────────────────────────────────────────
 

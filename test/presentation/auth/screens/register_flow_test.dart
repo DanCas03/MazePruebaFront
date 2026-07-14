@@ -20,7 +20,7 @@ import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/login_screen.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/register_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
-import 'package:flutter_arrow_maze/presentation/providers/dependency_providers.dart';
+import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 
 import 'register_flow_test.mocks.dart';
 

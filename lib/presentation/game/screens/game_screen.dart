@@ -10,7 +10,7 @@ import '../../../domain/board/failures/level_failure.dart';
 import '../../../domain/board/services/hint_policy.dart';
 import '../../../domain/board/value_objects/level_id.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../providers/dependency_providers.dart';
+import '../../../core/di/dependency_providers.dart';
 import '../../providers/game_provider.dart';
 import '../widgets/board_widget.dart';
 

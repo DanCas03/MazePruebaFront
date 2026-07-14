@@ -55,7 +55,7 @@ import 'infrastructure/repositories/secure_auth_token_repository.dart';
 import 'infrastructure/serialization/level_json_decoder.dart';
 import 'infrastructure/settings/hive_locale_store.dart';
 import 'infrastructure/time/system_ticker.dart';
-import 'presentation/providers/dependency_providers.dart';
+import 'core/di/dependency_providers.dart';
 
 /// Composition root: inicializa Hive y conecta las dependencias concretas de
 /// GameController via ProviderScope.overrides (DIP). Ninguna capa interna

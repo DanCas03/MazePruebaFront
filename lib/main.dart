@@ -6,6 +6,8 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'l10n/app_localizations.dart';
 
 import 'application/providers/leaderboard_providers.dart';
+import 'application/providers/progress_providers.dart';
+import 'application/use_cases/record_level_completion_use_case.dart';
 import 'application/providers/level_catalog_provider.dart';
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
@@ -199,6 +201,16 @@ void main() async {
         ),
         localeControllerProvider.overrideWith(
           () => LocaleController(HiveLocaleStore(appSettingsBox)),
+        ),
+        // front#58: registro de progreso local al ganar, compuesto con el MISMO
+        // repo de progreso compartido (#20) y el logger AOP. Es el productor que
+        // alimenta estrellas + gating; sin este override el observer lanzaría
+        // UnimplementedError al montar la GameScreen.
+        recordLevelCompletionUseCaseProvider.overrideWithValue(
+          RecordLevelCompletionUseCase(
+            levelProgressRepository,
+            LoggerServiceAdapter(),
+          ),
         ),
         // front#16: envío de score compuesto con el mismo Dio firmado. Las
         // capas internas solo conocen el puerto ILeaderboardRepository.

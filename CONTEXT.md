@@ -71,6 +71,24 @@ campaña. "Siguiente nivel" significa el siguiente `LevelId` del Catálogo, nunc
 sobre el id. El último elemento no tiene siguiente.
 _Avoid_: lista de niveles, índice, mapa de campaña.
 
+**Sección (del Catálogo)**:
+Partición del Catálogo que publica el backend: **campaña** (ordenada, con gating por Tier,
+"siguiente nivel" = adyacencia) y **temático** (sin gating ni orden de juego, jugable desde
+el inicio). Un `Level` pertenece a exactamente una sección.
+_Avoid_: categoría, modo, mundo.
+
+**Nivel temático**:
+`Level` curado cuyo tablero dibuja una figura reconocible (cara feliz, conejito, …). Vive en
+la sección temático del Catálogo; puntúa y persiste `Progress`/`Leaderboard` como cualquier
+`Level`. Lleva Instrucciones de pintado.
+_Avoid_: nivel especial, skin, easter egg.
+
+**Instrucciones de pintado**:
+Metadata visual opcional de un `Level`: una paleta de roles de color más un rol por flecha.
+El cliente resuelve rol→color según el tema visual activo; sin instrucciones, el color sale
+de la paleta por identidad (default). No afectan la mecánica ni la solubilidad.
+_Avoid_: colores hardcodeados, tematización del cliente.
+
 **GeneratedBoard** (Tablero generado):
 `ArrowBoard` creado **localmente** por el generador con parámetros elegidos por el jugador
 (dimensiones, preset de dificultad, timer opcional, seed opcional); soluble por construcción.
@@ -126,6 +144,21 @@ _Avoid_: generación, sorteo, autogenerado.
 Cada uno de los 5 escalones de la rampa (dimensiones, cantidad de flechas y longitud máxima
 de camino crecientes) en que se agrupan Candidatos y niveles curados.
 _Avoid_: mundo, capítulo.
+
+**Rampa (de dificultad)**:
+La curva de producción que asigna a cada tier sus parámetros objetivo: dimensiones,
+densidad de flechas (fracción de celdas ocupadas), longitud máxima de camino y límite de
+tiempo derivado del área del tablero. Los saltos entre tiers no son proporcionales; la
+campaña v1 remata en un tablero 50×50. Es insumo de la producción de Candidatos, no un
+concepto de runtime: el jugador ve niveles, no la Rampa.
+_Avoid_: curva implícita en los fixtures, blueprint, configuración del generador.
+
+**Máscara (de figura)**:
+Partición de las celdas del tablero en regiones de color, derivada de una **imagen de
+referencia** aportada al producir un Nivel temático. Restricción de producción: cada flecha
+se confina a una sola región (una flecha = un color; sale entera). La máscara no viaja en el
+wire — solo sus consecuencias (las Instrucciones de pintado).
+_Avoid_: plantilla, stencil, sprite.
 
 ### Vocabulario retirado (no usar)
 

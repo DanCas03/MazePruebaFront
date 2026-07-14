@@ -235,6 +235,17 @@ flutter run
 
 Re-run `build_runner` whenever you add or change files annotated with `@HiveType`, `@riverpod`, or `@JsonSerializable`.
 
+### Docker (recommended for local dev — web target)
+
+No Flutter SDK install required — serves the web build against the Dockerized backend. See `../README-docker.md` at the project root for the full stack (backend + frontend + database):
+
+```bash
+cd ..
+docker compose up --build
+```
+
+Opens the game at `http://localhost:8080` in the browser. Hot reload isn't automatic in a container (Flutter only hot-reloads on a keypress, not on file save) — see `../README-docker.md` for how to attach and trigger it.
+
 ## Running Tests
 
 ```bash

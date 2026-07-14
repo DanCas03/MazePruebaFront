@@ -104,7 +104,7 @@ class _LeaderboardTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.userId,
+                  entry.username,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: onBackground,

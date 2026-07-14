@@ -73,12 +73,14 @@ void main() {
   Map<String, dynamic> row({
     String id = 'row-1',
     String userId = 'user-1',
+    String username = 'ana',
     int score = 1200,
     int stars = 3,
   }) =>
       {
         'id': id,
         'userId': userId,
+        'username': username,
         'levelId': '7',
         'score': score,
         'stars': stars,
@@ -100,6 +102,7 @@ void main() {
     expect(e, isA<LeaderboardEntry>());
     expect(e.id, 'row-1');
     expect(e.userId, 'user-1');
+    expect(e.username, 'ana');
     expect(e.levelId.value, '7');
     expect(e.score.value, 1200);
     expect(e.stars.value, 3);

@@ -28,6 +28,7 @@ void main() {
   LeaderboardEntry entryRow() => LeaderboardEntry(
         id: 'row-1',
         userId: 'user-1',
+        username: 'ana',
         levelId: LevelId('7'),
         score: Score(1200),
         stars: const Stars.three(),

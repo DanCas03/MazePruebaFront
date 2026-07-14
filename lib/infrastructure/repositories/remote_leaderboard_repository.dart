@@ -59,6 +59,7 @@ class RemoteLeaderboardRepository implements ILeaderboardRepository {
   LeaderboardEntry _fromJson(Map<String, dynamic> j) => LeaderboardEntry(
         id: j['id'] as String,
         userId: j['userId'] as String,
+        username: j['username'] as String,
         levelId: LevelId(j['levelId'] as String),
         score: Score(j['score'] as int),
         stars: Stars.fromValue(j['stars'] as int),

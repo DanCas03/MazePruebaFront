@@ -12,6 +12,7 @@ class LevelJsonEncoder {
     required String levelId,
     required ArrowBoard board,
     int? timeLimitSec,
+    Map<String, String>? palette,
   }) =>
       {
         'levelId': levelId,
@@ -26,8 +27,12 @@ class LevelJsonEncoder {
               'cells': [
                 for (final c in a.cells) [c.row, c.col],
               ],
+              // Instrucciones de pintado (ADR 0004): solo se emite en flechas
+              // temáticas; ausente en campaña conserva el JSON original.
+              if (a.paintRole != null) 'paintRole': a.paintRole,
             },
         ],
+        if (palette != null) 'palette': palette,
       };
 
   /// JSON con indent de 2 espacios y newline final: salida byte-estable para
@@ -36,6 +41,7 @@ class LevelJsonEncoder {
     required String levelId,
     required ArrowBoard board,
     int? timeLimitSec,
+    Map<String, String>? palette,
   }) =>
-      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec))}\n';
+      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, palette: palette))}\n';
 }

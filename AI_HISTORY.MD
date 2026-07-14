@@ -1457,3 +1457,16 @@
 - Tests nuevos (AAA): en `test/domain/entities/arrow_test.dart` (grupo `Arrow.paintRole`): default null, propagación por `Arrow.straight`, desigualdad por `paintRole`, e invariante de que `paintRole` no altera `exitPath`. En `test/domain/board/entities/level_test.dart`: default null, porte de paleta opaca, igualdad por entradas iguales y desigualdad por paleta distinta.
 - Verificación: suite completa `flutter test` → 570/570 verdes (+8 nuevos); los tests de campaña existentes intactos y verdes (cambio puramente aditivo).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 067 — front#67 (fragmento B) — decode/encode de Instrucciones de pintado en el wire
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Segundo fragmento de front#67: que el `LevelJsonDecoder` parsee los campos temáticos opcionales del detalle de nivel (`palette` a nivel de Level, `paintRole` por flecha) y el `LevelJsonEncoder` los re-emita, preservando la propiedad golden encode(decode(x))==x también para niveles temáticos. La `Sección` (campaign/themed) NO va aquí — es campo del catálogo (`GET /levels`), se aborda en el fragmento de repositorio/catálogo.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Fragment B: LevelJsonDecoder parses optional `palette` (level) and `paintRole` (arrow); LevelJsonEncoder re-emits them so themed levels round-trip. Strict on SHAPE (Map<String,String>); leave hex-format leniency to the color seam's fallback."
+**Resultado obtenido:**
+- `lib/infrastructure/serialization/level_json_decoder.dart`: helpers `_optionalString` (paintRole por flecha) y `_optionalStringMap` (palette a nivel de Level). Estricto en FORMA — palette no-objeto, valor no-string, o paintRole no-string → `FormatException` (coherente con el resto del decoder); la validez del hex `#RRGGBB` se deja al seam de color (fallback), fiel a "datos opacos".
+- `lib/infrastructure/serialization/level_json_encoder.dart`: `toMap`/`encode` ganan param opcional `palette`; emiten `paintRole` por flecha solo cuando presente y `palette` a nivel cuando presente — aditivo, los callers de campaña (generador) intactos y con JSON byte-idéntico.
+- Tests nuevos (AAA, inglés como el resto del archivo) en `level_json_decoder_test.dart`: round-trip temático byte-a-byte contra el ejemplo del CONTEXT-MAP § Extensión temática; campaña decodifica palette/paintRole a null; y tres casos estrictos (palette no-objeto, valor de palette no-string, paintRole no-string → FormatException).
+- Verificación: `flutter analyze` (serialización) → 0 issues; suite completa `flutter test` → 575/575 verdes (+5 nuevos); tests de campaña/encoder existentes intactos.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

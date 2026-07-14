@@ -8,6 +8,11 @@ import 'package:mockito/mockito.dart';
 import 'package:flutter_arrow_maze/application/audio/silent_audio_service.dart';
 import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
 import 'package:flutter_arrow_maze/application/providers/leaderboard_providers.dart';
+import 'package:flutter_arrow_maze/application/providers/progress_providers.dart';
+import 'package:flutter_arrow_maze/application/use_cases/record_level_completion_use_case.dart';
+import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
 import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
@@ -97,6 +102,23 @@ class _NoopLeaderboardRepository implements ILeaderboardRepository {
       const [];
 }
 
+/// Repo de progreso no-op: los widget tests activan el Observer de progreso
+/// (front#58) al ganar, pero no ejercen Hive.
+class _NoopProgressRepository implements ILevelProgressRepository {
+  @override
+  Future<void> upsertAll(List<LevelProgress> progress) async {}
+  @override
+  Future<List<LevelProgress>> getAll() async => const [];
+  @override
+  Future<MoveCount?> getProgress(LevelId levelId) async => null;
+  @override
+  Future<void> saveProgress(LevelId levelId, MoveCount moves) async {}
+  @override
+  Future<void> markCompleted(LevelId levelId) async {}
+  @override
+  Future<bool> isCompleted(LevelId levelId) async => false;
+}
+
 /// Mock del puerto remoto (front#8) cuyo `getLevel` responde `Right(Level)` con
 /// el [board] dado; el límite de tiempo viaja en el propio Level.
 MockILevelRepository _repoWithBoard(ArrowBoard board, {int? timeLimitSec}) {
@@ -116,6 +138,10 @@ List<Override> _overrides(ILevelRepository repo) => [
       ),
       submitScoreUseCaseProvider.overrideWithValue(
         SubmitScoreUseCase(_NoopLeaderboardRepository(), LoggerServiceAdapter()),
+      ),
+      recordLevelCompletionUseCaseProvider.overrideWithValue(
+        RecordLevelCompletionUseCase(
+            _NoopProgressRepository(), LoggerServiceAdapter()),
       ),
       audioServiceProvider.overrideWithValue(const SilentAudioService()),
     ];

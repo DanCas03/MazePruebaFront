@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../application/audio/i_audio_service.dart';
 import '../../../application/providers/leaderboard_providers.dart';
+import '../../../application/providers/progress_providers.dart';
 import '../../../application/state/game_state.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -66,6 +67,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // Activa el Observer que envía el score al ganar (front#16). Mantiene vivo
     // el listener mientras esta pantalla esté montada.
     ref.watch(scoreSubmissionObserverProvider);
+
+    // front#58: Observer que persiste el progreso LOCAL al ganar (completado +
+    // best score/estrellas). Es el productor que alimenta las estrellas del
+    // selector de nivel y el gating de tiers (front#20).
+    ref.watch(levelCompletionObserverProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? AppColors.surface : AppColors.lightSurface;

@@ -1,5 +1,20 @@
 # AI History — MazePruebaFront
 
+## Entrada 063 — feat(front): soporte Docker para desarrollo local (target web)
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** El usuario pidió correr todo el proyecto (back + front) en Docker para desarrollo local. El front es Flutter móvil (Android/iOS), que no puede "correr" dentro de un contenedor de forma práctica — este fragmento cubre el target web habilitado (`web/`): un contenedor que sirve el build web de Flutter contra el backend dockerizado.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol Arquitecto de Software Senior; skills superpowers:brainstorming + superpowers:writing-plans)
+**Prompt o instrucción proporcionada:** > "Necesito que configures todo el proyecto para back y front corran en docker"
+**Resultado obtenido:**
+- `Dockerfile` (nuevo): imagen de desarrollo `ghcr.io/cirruslabs/flutter:stable` (no existe imagen oficial de Flutter) — `flutter pub get`, luego `flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080 --dart-define=API_BASE_URL=$API_BASE_URL`. El valor de `API_BASE_URL` lo inyecta `docker-compose.yml` en runtime (variable de entorno del contenedor, sustituida por el shell del `CMD`); `AppConfig.apiBaseUrl` (`lib/core/config/app_config.dart`) ya soportaba esto vía `--dart-define`, sin cambios de código.
+- `.dockerignore` (nuevo): excluye `build/`, `.dart_tool/`, `.git`, `android/`, `ios/` (no hacen falta para servir web) para acotar el contexto de build.
+- No hace falta correr `build_runner` en la imagen: el `.g.dart` de Hive/Riverpod ya está commiteado, y `AppLocalizations` se regenera solo en `pub get`/`flutter run` porque `pubspec.yaml` tiene `generate: true`.
+- La orquestación completa (compose, Postgres, backend) vive en `ArrowMaze/docker-compose.yml`, fuera de este repo (esa carpeta raíz no es un repositorio git) — documentada en `ArrowMaze/README-docker.md`, incluyendo el procedimiento de hot reload manual (`docker attach` + tecla `r`), ya que `flutter run` no recarga solo al guardar un archivo.
+- Verificación: `docker build -t maze-front:dev -f Dockerfile .` exitoso. La verificación end-to-end (levantar el stack completo y abrir `localhost:8080` contra el backend real) se hizo en el fragmento de integración del stack completo.
+- README.md: nueva sub-sección "Docker (recommended for local dev — web target)" bajo "Getting Started".
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 062 — "Generar nivel": flujo de UI del jugador (front#37, mitad de presentación)
 
 **Fecha:** 2026-07-13
@@ -1360,4 +1375,18 @@
 - Actualizadas las 4 referencias en `lib/` (imports relativos recalculados por profundidad: `main.dart` → `core/di/…`; `core/auth/auth_gate.dart` → `../di/…`; `presentation/generated/generated_game_screen.dart` → `../../core/di/…`; `presentation/game/screens/game_screen.dart` → `../../../core/di/…`) y las 6 en `test/` (imports `package:…/core/di/…`, reemplazo mecánico idéntico).
 - Los providers hermanos de estado de UI (`game_provider.dart`, `level_selection_provider.dart`) SE QUEDAN en `presentation/providers/`: solo se movió el composition root, no todo el directorio.
 - Verificación: `flutter analyze` → 0 issues; `flutter test` → 545 tests verdes (baseline de main; sin cambio de comportamiento — es una refactor de ubicación pura). El diagrama de capas CLEAN de front#21 ahora puede dibujar la composición DI en `core/`, no en `presentation/`.
+## Entrada 061 — front#58 — persistir LevelProgress al ganar (cierra el eslabón del bucle de progresión)
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Una revisión de completitud previa a los diagramas (front#21) detectó un gap funcional: **ganar un nivel nunca persistía `LevelProgress`**. `LevelSelectionController` lee `_progress.getAll()` para las estrellas (`bestStars`) y el gating de tiers (`TierGating`), pero el único escritor local era `SyncProgressUseCase.upsertAll` (solo al login, front#18) y el back no deriva progreso de `POST /scores`. Resultado: en una partida real las estrellas salían en 0 y el gating nunca avanzaba por juego (solo el botón "Next Level" de la victoria, que navega por id saltando el gating). front#18 (sync) y front#20 (selección/gating) quedaban implementados pero sin productor de datos.
+**Herramienta de IA utilizada:** Claude Code (Opus, rol Arquitecto Senior; skills arrowmaze-frontend + TDD)
+**Prompt o instrucción proporcionada:** > "vamos con la opción 1" (arreglar el gap: persistir LevelProgress al ganar)
+**Resultado obtenido:**
+- `lib/application/use_cases/record_level_completion_use_case.dart` (nuevo): `execute(LevelId, {score, stars})` lee el récord previo vía `getAll()`, hace merge **best-of** (conserva el MAX de score/estrellas para que rejugar peor no degrade el récord, coherente con `ProgressReconciler` de front#18) y persiste `LevelProgress{completed:true, bestScore, bestStars}` vía `upsertAll`. Traga+loggea errores (se invoca fire-and-forget desde el observer; un fallo de Hive no debe romper la transición a la victoria). Depende solo de puertos (`ILevelProgressRepository`, `ILoggerService`) — DIP.
+- `lib/application/providers/progress_providers.dart` (nuevo): `recordLevelCompletionUseCaseProvider` (default `UnimplementedError`, se compone en main) + `levelCompletionObserverProvider` (Observer GoF): escucha `gameControllerProvider` y al `GameWon` dispara el use case fire-and-forget. Espeja exactamente `scoreSubmissionObserverProvider` (front#16) pero contra el store LOCAL; NO `autoDispose` (sobrevive a la navegación a la victoria).
+- `lib/presentation/game/screens/game_screen.dart`: activa el nuevo observer con `ref.watch(levelCompletionObserverProvider)` junto al de score.
+- `lib/main.dart`: compone `RecordLevelCompletionUseCase` con la MISMA instancia compartida de `HiveProgressRepository` (#20) y el logger AOP.
+- Regla de capas respetada: el observer y el use case viven en `application/` y solo conocen puertos; `presentation/` solo añade un `ref.watch`.
+- TDD: `record_level_completion_use_case_test.dart` (4 AAA: persiste al no haber récord; conserva el mejor al rejugar peor; sube el récord al rejugar mejor; traga+loggea ante fallo de persistencia) + `progress_providers_test.dart` (2: el observer persiste al ganar con las stats del run; NO persiste mientras la partida sigue en curso). Se actualizaron `game_screen_test.dart` y `game_screen_hint_test.dart` para sobrescribir el nuevo provider con un repo de progreso no-op (el GameScreen ahora activa el observer al montar; sin el override lanzarían `UnimplementedError`).
+- Verificación: `flutter analyze` → 0 issues; `flutter test` → **551 tests verdes** (+6 nuevos, de 545). Verificado por tests que ejercen el camino real GameController → `GameWon` → observer → use case → repo (no por corrida en dispositivo esta sesión). El consumidor ya refrescaba al reentrar al selector (`should_refresh_gating_when_revealed_after_pop_from_a_game`), así que con este productor el bucle estrellas/gating cierra.
 **Modificaciones realizadas por el equipo:** (completar manualmente)

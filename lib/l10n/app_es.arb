@@ -27,6 +27,8 @@
   "backToLevels": "Volver a niveles",
   "levelUnavailable": "Este nivel no está disponible sin conexión",
   "levelLoadError": "No se pudo cargar este nivel",
+  "hintTooltip": "Ver solución",
+  "hintError": "No se pudo cargar la pista. Inténtalo de nuevo.",
   "victoryTitle": "¡Tablero despejado!",
   "victoryMoves": "{moves} movimientos",
   "victoryScore": "Puntaje: {score}",

@@ -37,6 +37,7 @@ import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/leaderboard_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/level_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
+import 'infrastructure/data_sources/remote/solution_remote_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
 import 'infrastructure/repositories/hive_progress_repository.dart';
 import 'infrastructure/repositories/in_memory_session_token_store.dart';
@@ -44,6 +45,7 @@ import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/remote_leaderboard_repository.dart';
 import 'infrastructure/repositories/remote_level_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
+import 'infrastructure/repositories/remote_solution_repository.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
 import 'infrastructure/serialization/level_json_decoder.dart';
 import 'infrastructure/settings/hive_locale_store.dart';
@@ -106,6 +108,14 @@ void main() async {
     LoggerServiceAdapter(),
   );
 
+  // #32: repo remoto de la Solución (pista auto-resolutora) con el mismo Dio
+  // firmado. El data source impone un timeout estricto por request; sin caché
+  // (la pista es on-demand). Las capas internas solo conocen ISolutionRepository.
+  final solutionRepository = RemoteSolutionRepository(
+    SolutionRemoteDataSource(dio),
+    LoggerServiceAdapter(),
+  );
+
   // #20: una sola composición del repo de progreso local (mismo box Hive ya
   // abierto), compartida por el sync (front#18) y por el selector de nivel, en
   // vez de instanciar dos `HiveProgressRepository` equivalentes.
@@ -129,6 +139,8 @@ void main() async {
             RemoveArrowUseCase(),
             CommandInvoker(),
             const SystemTicker(),
+            // #32: la pista auto-resolutora consume la Solución del back.
+            solutionRepository,
           ),
         ),
         // #18/#20: el repo de progreso local se comparte (una sola instancia)

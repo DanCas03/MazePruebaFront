@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:dartz/dartz.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
 import '../../domain/board/entities/level.dart';
+import '../../domain/board/failures/solution_failure.dart';
 import '../../domain/board/repositories/i_level_repository.dart';
+import '../../domain/board/repositories/i_solution_repository.dart';
+import '../../domain/board/services/hint_policy.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/services/i_ticker.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
@@ -32,12 +36,30 @@ class GameController extends AsyncNotifier<GameState> {
   final RemoveArrowUseCase _removeArrow;
   final CommandInvoker _invoker;
   final ITicker _ticker;
+  final ISolutionRepository _solutionRepository;
+  final HintPolicy _hintPolicy;
+
+  // Pausa entre pasos de la demo de la pista (#32): debe cubrir la animación de
+  // salida (~360 ms) para que cada flecha se vea deslizarse. Inyectable a
+  // Duration.zero en tests para reproducir la solución sin esperar tiempo real.
+  final Duration hintStepDelay;
 
   // El reloj es opcional: por defecto un Null Object inerte (tests que no
   // ejercen el tiempo, niveles sin límite). El composition root inyecta el
   // reloj real (SystemTicker) y los tests de tiempo, uno falso controlado.
-  GameController(this._levelRepository, this._removeArrow, this._invoker,
-      [this._ticker = const NullTicker()]);
+  //
+  // El repo de solución (#32) también es opcional: por defecto un Null Object
+  // que reporta "no disponible", para que un controlador sin componer degrade a
+  // "pista no disponible" en vez de crashear. `main` inyecta el remoto real.
+  GameController(
+    this._levelRepository,
+    this._removeArrow,
+    this._invoker, [
+    this._ticker = const NullTicker(),
+    this._solutionRepository = const _UnavailableSolutionRepository(),
+    this.hintStepDelay = const Duration(milliseconds: 420),
+    this._hintPolicy = const HintPolicy(),
+  ]);
 
   // Estado con alcance de partida (no de dominio).
   LevelId? _currentLevel;
@@ -48,6 +70,11 @@ class GameController extends AsyncNotifier<GameState> {
   int _blockedNonce = 0;
   int _exitNonce = 0;
   StrikeCount _strikes = const StrikeCount(0);
+
+  // Token de generación de la pista (#32): cada nueva pista, carga, reinicio o
+  // disposición lo incrementa; la demo en vuelo lo comprueba tras cada await y
+  // aborta si quedó superada (evita reproducir sobre un nivel que ya cambió).
+  int _hintRun = 0;
 
   // Cuenta atrás del nivel (front#11). _remainingSeconds es null si el nivel no
   // tiene límite; _tickSub es la suscripción viva al reloj inyectado.
@@ -62,8 +89,10 @@ class GameController extends AsyncNotifier<GameState> {
 
   @override
   Future<GameState> build() async {
-    // Evita que el reloj siga corriendo si el notifier se destruye.
+    // Evita que el reloj siga corriendo si el notifier se destruye. Bumpea el
+    // token de pista para que una demo en vuelo se detenga tras su próximo await.
     ref.onDispose(() {
+      _hintRun++;
       _cancelTimer();
       _cancelElapsed();
     });
@@ -79,6 +108,7 @@ class GameController extends AsyncNotifier<GameState> {
     try {
       await future;
     } catch (_) {}
+    _hintRun++; // invalida cualquier demo de pista en vuelo
     _cancelTimer();
     _cancelElapsed();
     state = const AsyncValue<GameState>.loading();
@@ -124,6 +154,9 @@ class GameController extends AsyncNotifier<GameState> {
   Future<void> tapArrow(ArrowId arrowId) async {
     final current = state.valueOrNull;
     if (current is! GamePlaying) return;
+    // Durante la pista (carga o reproducción) el input está bloqueado: la demo
+    // es no interactiva y no debe contar movimientos ni choques.
+    if (current.hintLoading || current.hintPlaying) return;
 
     final result = _removeArrow.execute(current.board, arrowId);
     result.fold(
@@ -200,6 +233,10 @@ class GameController extends AsyncNotifier<GameState> {
   Future<void> undoMove() async {
     if (!_invoker.canUndo) return;
     final current = state.valueOrNull;
+    // Undo bloqueado mientras la pista está en carga o reproducción (#32).
+    if (current is GamePlaying && (current.hintLoading || current.hintPlaying)) {
+      return;
+    }
 
     final ArrowBoard currentBoard;
     final int currentMoves;
@@ -233,8 +270,112 @@ class GameController extends AsyncNotifier<GameState> {
 
   Future<void> restartLevel() async {
     final level = _currentLevelData;
-    if (level != null) _startLevel(level); // sin refetch: mismo Level cacheado
+    if (level == null) return;
+    _hintRun++; // aborta una demo de pista en vuelo antes de remontar
+    _startLevel(level); // sin refetch: mismo Level cacheado
   }
+
+  // ── Pista auto-resolutora (#32) ─────────────────────────────────────────────
+
+  /// Pide la Solución del nivel al back y reproduce la demo no puntuable. Flujo:
+  /// 1) sub-estado de carga (bombilla transformada, anti doble-clic) mientras la
+  ///    petición HTTP viaja; 2) si falla/expira, rompe limpio conservando la
+  ///    partida y dispara el snackbar; 3) si llega, remonta el tablero y anima
+  ///    la salida de cada flecha en el orden del servidor —verbatim, sin derivar
+  ///    nada—; 4) al terminar, reinicia el nivel para que quede jugable.
+  Future<void> playHint() async {
+    final level = _currentLevelData;
+    final levelId = _currentLevel;
+    final current = state.valueOrNull;
+    if (level == null || levelId == null || current is! GamePlaying) return;
+    // Anti doble-clic: ya hay una petición o una reproducción en curso.
+    if (current.hintLoading || current.hintPlaying) return;
+    // Política: la pista solo existe en niveles elegibles (guarda defensiva; la
+    // UI ya oculta el botón fuera de ellos).
+    if (!_hintPolicy.isEligible(levelId)) return;
+
+    final run = ++_hintRun;
+    // Sub-estado de carga: transforma la bombilla y bloquea el botón.
+    state = AsyncValue.data(_withHint(current, loading: true));
+
+    final result = await _solutionRepository.getSolution(levelId);
+    // La partida pudo cambiar mientras la solución viajaba (otra carga/reinicio,
+    // disposición, o timeout que llevó a GameLost): aborta sin tocar el estado.
+    if (run != _hintRun) return;
+    final now = state.valueOrNull;
+    if (now is! GamePlaying) return;
+
+    if (result.isLeft()) {
+      // Rompe limpio: quita la carga, conserva la partida intacta y avisa vía
+      // el nonce (la UI muestra el snackbar de error).
+      state = AsyncValue.data(_withHint(now, loading: false, bumpError: true));
+      return;
+    }
+    final order = result.getOrElse(() => const <ArrowId>[]);
+    await _runHintDemo(level, order, run);
+  }
+
+  Future<void> _runHintDemo(Level level, List<ArrowId> order, int run) async {
+    // Demo no puntuable: congela reloj y cronómetro y NO toca el invoker (la
+    // pila de undo queda intacta) ni cuenta movimientos/choques.
+    _cancelTimer();
+    _cancelElapsed();
+    var board = level.board;
+    _exitNonce = 0;
+    // Remonta el tablero completo antes de empezar a vaciarlo.
+    state = AsyncValue.data(GamePlaying(
+      board: board,
+      moves: const MoveCount(0),
+      hintPlaying: true,
+    ));
+    await Future<void>.delayed(hintStepDelay);
+    if (run != _hintRun) return;
+
+    for (final id in order) {
+      final removed = board.arrowById(id);
+      // El back manda ids en orden de vaciado; si alguno ya no está, se salta
+      // sin derivar orden alguno (contrato: reproducir verbatim).
+      if (removed == null) continue;
+      board = board.removeArrow(id);
+      _exitNonce++;
+      // Reutiliza el canal de animación de salida (exitingArrow + exitNonce).
+      state = AsyncValue.data(GamePlaying(
+        board: board,
+        moves: const MoveCount(0),
+        hintPlaying: true,
+        exitingArrow: removed,
+        exitNonce: _exitNonce,
+      ));
+      await Future<void>.delayed(hintStepDelay);
+      if (run != _hintRun) return;
+    }
+
+    // Fin de la demo: el nivel se reinicia y queda jugable de nuevo.
+    if (run != _hintRun) return;
+    _startLevel(level);
+  }
+
+  // Copia [s] cambiando solo las señales de pista, conservando el resto del
+  // estado de partida (tablero, movimientos, choques, nonces, reloj) intactos.
+  GamePlaying _withHint(
+    GamePlaying s, {
+    required bool loading,
+    bool bumpError = false,
+  }) =>
+      GamePlaying(
+        board: s.board,
+        moves: s.moves,
+        strikes: s.strikes,
+        blockedArrow: s.blockedArrow,
+        blockedNonce: s.blockedNonce,
+        exitingArrow: s.exitingArrow,
+        exitNonce: s.exitNonce,
+        canUndo: s.canUndo,
+        remainingSeconds: s.remainingSeconds,
+        hintLoading: loading,
+        hintPlaying: s.hintPlaying,
+        hintErrorNonce: bumpError ? s.hintErrorNonce + 1 : s.hintErrorNonce,
+      );
 
   // ── Cuenta atrás inyectable (front#11) ──────────────────────────────────────
 
@@ -263,6 +404,11 @@ class GameController extends AsyncNotifier<GameState> {
           exitNonce: current.exitNonce,
           canUndo: current.canUndo,
           remainingSeconds: remaining,
+          // Preserva la carga de pista si un tick llega mientras la solución
+          // viaja (la reproducción cancela el reloj, así que no coincide con él).
+          hintLoading: current.hintLoading,
+          hintPlaying: current.hintPlaying,
+          hintErrorNonce: current.hintErrorNonce,
         ));
       }
     });
@@ -283,4 +429,15 @@ class GameController extends AsyncNotifier<GameState> {
     _elapsedSub?.cancel();
     _elapsedSub = null;
   }
+}
+
+/// Null Object del puerto de solución: repo por defecto cuando el controlador no
+/// se compone con uno real (tests que no ejercen la pista). Reporta siempre
+/// "no disponible" para degradar con gracia en vez de crashear.
+class _UnavailableSolutionRepository implements ISolutionRepository {
+  const _UnavailableSolutionRepository();
+
+  @override
+  Future<Either<SolutionFailure, List<ArrowId>>> getSolution(LevelId id) async =>
+      const Left(SolutionUnavailable());
 }

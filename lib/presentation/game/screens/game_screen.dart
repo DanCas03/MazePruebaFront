@@ -6,6 +6,7 @@ import '../../../application/state/game_state.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/board/failures/level_failure.dart';
+import '../../../domain/board/services/hint_policy.dart';
 import '../../../domain/board/value_objects/level_id.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../providers/dependency_providers.dart';
@@ -32,6 +33,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   // Referencia capturada en initState: el audio se usa en dispose(), donde `ref`
   // ya no es accesible. El provider no es autoDispose, asi que es estable.
   late final IAudioService _audio;
+
+  // #32: umbral de elegibilidad de la pista, fuente única compartida con el
+  // controlador. Decide si se pinta el botón de la bombilla en este nivel.
+  static const _hintPolicy = HintPolicy();
 
   @override
   void initState() {
@@ -84,6 +89,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         }
         if (state.blockedNonce > prevState.blockedNonce) {
           audio.play(GameSound.collision);
+        }
+        // #32: la pista falló o expiró (el back no respondió a tiempo). La
+        // partida queda intacta; solo avisamos con un snackbar no intrusivo.
+        if (state.hintErrorNonce > prevState.hintErrorNonce) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(l10n.hintError)));
         }
       }
 
@@ -139,10 +151,36 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 : const <Widget>[],
             orElse: () => const <Widget>[],
           ),
+          // #32: botón de pista, solo en niveles elegibles y durante el juego.
+          // La bombilla se transforma en un spinner mientras la solución viaja
+          // (mitiga dobles clics) y queda inerte durante la reproducción.
+          ...asyncState.maybeWhen(
+            data: (s) => s is GamePlaying && _hintPolicy.isEligible(widget.levelId)
+                ? [
+                    _HintButton(
+                      loading: s.hintLoading,
+                      playing: s.hintPlaying,
+                      color: accent,
+                      tooltip: l10n.hintTooltip,
+                      onPressed: () =>
+                          ref.read(gameControllerProvider.notifier).playHint(),
+                    )
+                  ]
+                : const <Widget>[],
+            orElse: () => const <Widget>[],
+          ),
           IconButton(
             icon: Icon(Icons.undo, color: accent),
-            onPressed: () =>
-                ref.read(gameControllerProvider.notifier).undoMove(),
+            // Undo deshabilitado mientras la pista está activa (#32).
+            onPressed: asyncState.maybeWhen(
+              data: (s) =>
+                  s is GamePlaying && (s.hintLoading || s.hintPlaying)
+                      ? null
+                      : () =>
+                          ref.read(gameControllerProvider.notifier).undoMove(),
+              orElse: () =>
+                  () => ref.read(gameControllerProvider.notifier).undoMove(),
+            ),
           ),
         ],
       ),
@@ -186,6 +224,60 @@ class _CountdownChip extends StatelessWidget {
           Text(_label, style: TextStyle(color: color)),
         ],
       ),
+    );
+  }
+}
+
+/// Botón de la pista auto-resolutora (#32). Tres aspectos según el sub-estado:
+/// - inactivo: bombilla de contorno, pulsable (dispara [onPressed]).
+/// - cargando: un spinner sustituye a la bombilla y el botón queda inerte, para
+///   mitigar dobles clics mientras la solución viaja por HTTP.
+/// - reproduciendo: bombilla rellena y atenuada, inerte (la demo está en curso).
+class _HintButton extends StatelessWidget {
+  final bool loading;
+  final bool playing;
+  final Color color;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _HintButton({
+    required this.loading,
+    required this.playing,
+    required this.color,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      // Mismo footprint que un IconButton para no saltar el layout del AppBar.
+      return Semantics(
+        label: tooltip,
+        child: SizedBox(
+          width: kMinInteractiveDimension,
+          height: kMinInteractiveDimension,
+          child: Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            ),
+          ),
+        ),
+      );
+    }
+    if (playing) {
+      return IconButton(
+        icon: Icon(Icons.lightbulb, color: color.withValues(alpha: 0.38)),
+        tooltip: tooltip,
+        onPressed: null, // inerte durante la reproducción de la solución
+      );
+    }
+    return IconButton(
+      icon: Icon(Icons.lightbulb_outline, color: color),
+      tooltip: tooltip,
+      onPressed: onPressed,
     );
   }
 }

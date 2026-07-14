@@ -29,21 +29,34 @@ class GraphBoardGenerator implements ILevelGenerator {
     assert(maxPathLen >= 2, 'maxPathLen must be >= 2; got $maxPathLen');
     final rng = Random(seed);
     final placed = <Arrow>[];
+    // Estado interno incremental (#64): las celdas ocupadas por las flechas
+    // YA aceptadas se acumulan aquí y se actualizan al aceptar cada flecha,
+    // en lugar de reconstruirse (y de instanciar un ArrowBoard temporal) en
+    // cada intento — eso hacía inviable un 50×50 denso (~10⁸ operaciones).
+    final occupied = <Position>{};
     final maxAttempts = cols * rows * 30;
     var attempts = 0;
 
     while (placed.length < arrowCount && attempts < maxAttempts) {
       attempts++;
-      final occupied = <Position>{for (final a in placed) ...a.cells};
       final candidate =
           _randomBentArrow(rng, cols, rows, placed.length, maxPathLen, occupied);
       if (candidate == null) continue;
 
-      final tempBoard =
-          ArrowBoard(arrows: [...placed, candidate], cols: cols, rows: rows);
-      if (!tempBoard.overlaps(candidate) && tempBoard.canExit(candidate.id)) {
-        placed.add(candidate);
-      }
+      // Válido por construcción contra el estado local: _randomBentArrow
+      // elige una cabeza con carril de salida libre de `occupied`, reserva
+      // ese carril y crece el cuerpo evitando `occupied` — no hay overlap y
+      // la salida queda libre en el momento de colocarla (invariante DAG).
+      assert(candidate.cells.every((c) => !occupied.contains(c)),
+          'candidate overlaps the incremental occupancy state');
+      assert(
+          candidate
+              .exitPath(cols, rows)
+              .every((p) => !occupied.contains(p)),
+          'candidate exit lane is blocked at placement time');
+
+      placed.add(candidate);
+      occupied.addAll(candidate.cells);
     }
 
     if (placed.length < arrowCount) {

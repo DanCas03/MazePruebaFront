@@ -139,6 +139,8 @@ Presentation reaches the use case through `generateBoardUseCaseProvider` in the 
 
 Per **ADR 0002**, the canonical auto-solve *Solution* is produced by the backend for curated levels only; generated boards never reach the backend, carry no Solution, and the hint/auto-solve feature is explicitly out of scope for this flow — solvability is guaranteed by construction instead.
 
+> **Performance (front#64).** `ArrowBoard` caches its occupancy set lazily per instance (it is immutable, so each `removeArrow` yields a fresh instance whose cache is recomputed once), and `GraphBoardGenerator` keeps an incremental occupancy state that is updated as each arrow is accepted instead of being rebuilt per attempt. This makes dense 50×50 generation (ADR 0003: campaign finale and XL presets) finish in well under 2 s; behavior is unchanged (same public interfaces, seed→output still deterministic).
+
 ### Player-generated boards (front#37) — UI half
 
 The player half of "Generar nivel" is a self-contained flow — **Home → configurator → generated game → post-game** — that reuses the campaign's play mechanics but is walled off from all persistence.

@@ -9,6 +9,7 @@ import '../../../application/state/auth_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/auth/value_objects/email.dart';
 import '../../../domain/auth/value_objects/password.dart';
+import '../../../domain/auth/value_objects/username.dart';
 import '../../../l10n/app_localizations.dart';
 import '../widgets/auth_text_field.dart';
 
@@ -26,16 +27,19 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _email = TextEditingController();
+  final _username = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _remember = true;
   String? _emailError;
+  String? _usernameError;
   String? _passwordError;
   String? _confirmError;
 
   @override
   void dispose() {
     _email.dispose();
+    _username.dispose();
     _password.dispose();
     _confirm.dispose();
     super.dispose();
@@ -44,12 +48,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _validate() {
     final l10n = AppLocalizations.of(context);
     String? emailErr;
+    String? usernameErr;
     String? passErr;
     String? confirmErr;
     try {
       Email(_email.text.trim());
     } on ArgumentError {
       emailErr = l10n.emailInvalid;
+    }
+    try {
+      Username(_username.text.trim());
+    } on ArgumentError {
+      usernameErr = l10n.usernameInvalid;
     }
     if (_password.text.length < Password.minLength) {
       passErr = l10n.passwordTooShort;
@@ -59,16 +69,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     setState(() {
       _emailError = emailErr;
+      _usernameError = usernameErr;
       _passwordError = passErr;
       _confirmError = confirmErr;
     });
-    return emailErr == null && passErr == null && confirmErr == null;
+    return emailErr == null &&
+        usernameErr == null &&
+        passErr == null &&
+        confirmErr == null;
   }
 
   void _submit() {
     if (!_validate()) return;
     ref.read(authFormControllerProvider.notifier).register(
           _email.text.trim(),
+          _username.text.trim(),
           _password.text,
           remember: _remember,
         );
@@ -117,6 +132,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   label: l10n.emailLabel,
                   keyboardType: TextInputType.emailAddress,
                   errorText: _emailError,
+                ),
+                const SizedBox(height: 16),
+                AuthTextField(
+                  controller: _username,
+                  label: l10n.usernameLabel,
+                  errorText: _usernameError,
                 ),
                 const SizedBox(height: 16),
                 AuthTextField(

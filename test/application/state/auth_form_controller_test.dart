@@ -54,14 +54,14 @@ void main() {
   test('register success saves session and ends FormIdle', () async {
     // Arrange
     final token = AuthToken('jwt-reg');
-    when(repo.register(any, any)).thenAnswer((_) async => Right(token));
+    when(repo.register(any, any, any)).thenAnswer((_) async => Right(token));
     when(storage.save(any)).thenAnswer((_) async {});
     final container = makeContainer();
     await container.read(authControllerProvider.future); // settle
     // Act
     await container
         .read(authFormControllerProvider.notifier)
-        .register('a@b.com', 'secret12', remember: true);
+        .register('a@b.com', 'player_01', 'secret12', remember: true);
     // Assert
     expect(container.read(authFormControllerProvider), isA<FormIdle>());
     verify(storage.save(token)).called(1);

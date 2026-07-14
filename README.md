@@ -86,7 +86,7 @@ Coherente con **ADR 0002**: solo los niveles curados del back tienen *Solution*;
 
 ### Auth flow
 
-Login and registration hit the backend at `POST /auth/login` and `POST /auth/register` (base URL configurable via `--dart-define=API_BASE_URL=...`, defaulting to `http://10.0.2.2:3000` for the Android emulator). A successful call persists the returned JWT through `IAuthTokenStorage` (front#14); `AuthGate`, sitting at the `MaterialApp`'s `home`, watches `authControllerProvider` and swaps from `LoginScreen` to the game flow (`HomeScreen`) as soon as the session becomes `Authenticated` — no manual navigation call is needed after login.
+Login and registration hit the backend at `POST /auth/login` and `POST /auth/register` (base URL configurable via `--dart-define=API_BASE_URL=...`, defaulting to `http://10.0.2.2:3000` for the Android emulator). Registration requires `email`, `username` (3-20 chars, letters/digits/underscore, validated client-side by the `Username` VO — the back rejects a missing/invalid one with 400) and `password` (≥8 chars); a taken email or username gets a 409, mapped to `EmailAlreadyRegistered`. A successful call persists the returned JWT through `IAuthTokenStorage` (front#14); `AuthGate`, sitting at the `MaterialApp`'s `home`, watches `authControllerProvider` and swaps from `LoginScreen` to the game flow (`HomeScreen`) as soon as the session becomes `Authenticated` — no manual navigation call is needed after login.
 
 ### Progress sync (front#18)
 

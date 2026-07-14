@@ -1,5 +1,24 @@
 # AI History — MazePruebaFront
 
+## Entrada 064 — fix(front): registro nunca enviaba username, bloqueando registro y login
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Probando la app dockerizada (entrada 063) en el navegador, el usuario reportó que el registro devolvía "email ya registrado" para cualquier email, bloqueando también el login. Diagnóstico: `RegisterDto.username` es requerido por el back desde hace tiempo, pero todo el lazo de registro del front (pantalla → use case → repo → data source) nunca lo pedía ni lo enviaba — cada intento fallaba con 400 (Bad Request, campo faltante), y `RemoteAuthRepository._mapRegister` mapeaba **cualquier** 400 a `EmailAlreadyRegistered`, cuando el back en realidad usa 409 para "ya registrado". Verificado con la DB dockerizada vacía (`SELECT * FROM "User"` → 0 filas) y un `curl` directo: registrar un email nuevo con username funciona (201); sin username, 400 (mal mapeado); duplicado real, 409.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol Arquitecto de Software Senior)
+**Prompt o instrucción proporcionada:** > "Tengo un error que al intentar registrarme me dice que el correo ya esta registrado constantemente por lo que no puedo o registrarme o iniciar sesion, ayudame a resolverlo rapidamente"
+**Resultado obtenido:**
+- `domain/auth/value_objects/username.dart` (nuevo): VO `Username` (3-20 chars, `^[A-Za-z0-9_]+$`), espejando la política de `RegisterDto.username` del back (DRY, mismo patrón que `Email`/`Password`).
+- `domain/auth/repositories/i_auth_repository.dart`: `register(Email, String password)` → `register(Email, String username, String password)`.
+- `application/use_cases/register_use_case.dart`: valida `Username` VO antes de tocar la red (igual que Email/Password).
+- `application/state/auth_form_controller.dart`: `register()` propaga `username`.
+- `infrastructure/data_sources/remote/auth_remote_data_source.dart`: el POST a `/auth/register` ahora incluye `username` en el body.
+- `infrastructure/repositories/remote_auth_repository.dart`: `_mapRegister` corregido de `statusCode == 400` a `statusCode == 409` (bug real, no solo el campo faltante — un 400 por cualquier otra razón de validación se enmascaraba como "ya registrado").
+- `presentation/auth/screens/register_screen.dart`: nuevo campo de texto "Nombre de usuario" con validación inline.
+- `l10n/app_en.arb` + `app_es.arb`: nuevas claves `usernameLabel`/`usernameInvalid`.
+- Tests actualizados en las 4 capas (AAA): casos nuevos para username inválido en `register_use_case_test.dart` y `register_screen_test.dart`; `remote_auth_repository_test.dart` ahora tiene un test que fija el bug (`register maps 400 to UnexpectedFailure, not EmailAlreadyRegistered`) además del caso correcto (`register maps 409 to EmailAlreadyRegistered`); `auth_remote_data_source_test.dart`, `auth_form_controller_test.dart` y `register_flow_test.dart` actualizados a la nueva firma. Mocks regenerados (`build_runner`).
+- Verificación: `flutter test` → 554 tests verdes (suite completa, sin regresiones). `flutter analyze` → sin issues. Verificación end-to-end real contra el stack Docker reconstruido: registro de un email nuevo con username → 201 + token; login con esas credenciales → 200 + token; reintentar el mismo email → 409 real.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 063 — feat(front): soporte Docker para desarrollo local (target web)
 
 **Fecha:** 2026-07-14

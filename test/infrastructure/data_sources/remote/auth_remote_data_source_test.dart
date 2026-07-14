@@ -35,14 +35,19 @@ void main() {
         .called(1);
   });
 
-  test('register POSTs /auth/register and returns the token field', () async {
+  test('register POSTs /auth/register with username and returns the token field', () async {
     // Arrange
     when(dio.post('/auth/register', data: anyNamed('data')))
         .thenAnswer((_) async => okResponse('/auth/register', {'token': 'jwt-456'}));
     // Act
-    final token = await dataSource.register('a@b.com', 'secret12');
+    final token = await dataSource.register('a@b.com', 'player_01', 'secret12');
     // Assert
     expect(token, 'jwt-456');
+    verify(dio.post('/auth/register', data: {
+      'email': 'a@b.com',
+      'username': 'player_01',
+      'password': 'secret12',
+    })).called(1);
   });
 
   test('propagates DioException from login', () async {

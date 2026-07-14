@@ -61,6 +61,7 @@ class MockAuthRemoteDataSource extends _i1.Mock
   @override
   _i3.Future<String> register(
     String? email,
+    String? username,
     String? password,
   ) =>
       (super.noSuchMethod(
@@ -68,6 +69,7 @@ class MockAuthRemoteDataSource extends _i1.Mock
           #register,
           [
             email,
+            username,
             password,
           ],
         ),
@@ -77,6 +79,7 @@ class MockAuthRemoteDataSource extends _i1.Mock
             #register,
             [
               email,
+              username,
               password,
             ],
           ),

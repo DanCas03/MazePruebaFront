@@ -1,6 +1,6 @@
 # AI History — MazePruebaFront
 
-## Entrada 060 — "Generar nivel": flujo de UI del jugador (front#37, mitad de presentación)
+## Entrada 061 — "Generar nivel": flujo de UI del jugador (front#37, mitad de presentación)
 
 **Fecha:** 2026-07-13
 **Tarea o problema abordado:** Issue front#37 — la mitad de UI/UX de "Generar nivel", sobre el dominio ya mergeado en #36: botón en el Home, pantalla configuradora (dimensiones 4–10, dificultad, contrarreloj, seed opcional), cableado de la partida reutilizando las mecánicas actuales, y pantalla post-partida con cuatro acciones — todo con un **cortafuegos de cero persistencia** (jamás Hive/Progress/leaderboard).
@@ -19,6 +19,15 @@
 - **Tests (20 nuevos, AAA):** `generated_game_controller_test` (montaje/seed/contrarreloj, victoria ⇒ `GeneratedCleared` y **NUNCA** `GameWon`, 5º strike ⇒ `GameLost`, timeout ⇒ `GameLost`, `anotherBoard` seed nueva, `repeat` seed igual — con generador y ticker falsos), `configurator_state_test` (validez de semilla y dimensiones, `toConfig`), `configurator_screen_test` (habilitación reactiva de "Jugar"), `generated_result_screen_test` (4 acciones, sin estrellas/score, títulos, semilla copiable) y 2 tests de Home para el nuevo CTA.
 - **Verificación:** `flutter analyze` → No issues found. `flutter test` → **526/526 verde** (506 base + 20). Sin regresiones.
 - **Git:** rama `feat/#37-generate-board-ui` desde `origin/main` (que ya integra #36 vía PR #54), tras `git fetch --all --prune`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 060 — Reconciliación doc de la fuente de nivel (front#9)
+
+**Fecha:** 2026-07-13
+**Tarea o problema abordado:** Cerrar front#9 (`RemoteLevelRepository` + `loadLevel` strategy). Sus criterios 1 (loadLevel remoto → GamePlaying) y 3 (test del repo con datasource mockeado) ya los entregó front#8; el criterio 2 ("Strategy intercambiable remoto/procedural", con la generación procedimental como modo práctica/fallback) quedó superado por el cutover (ADR 0001), por la caché como estrategia de offline y por el split de la generación en la feature GeneratedBoard (front#36/#37). `ILevelRepository` tiene una única implementación de producción → es DIP, no Strategy. Documentar esa reconciliación para poder cerrar el issue.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8), sesión /grill-with-docs (grilling + domain-modeling).
+**Prompt o instrucción proporcionada:** > "trae el issue #9 del front y vamos a diseñar el plan para su implementacion" → "Ejecuta el plan pero desde main, no desde la rama de feat #8".
+**Resultado obtenido:** Párrafo de reconciliación en README §"Campaña remota"; notas inline en `lib/domain/board/repositories/i_level_repository.dart` (puerto) y en `GameController.loadLevel`. Plan en `docs/superpowers/plans/2026-07-13-front9-level-source-doc-reconciliation.md`. Sin cambios de comportamiento, sin tests nuevos, sin ADR ni cambios de glosario. Rama `feat/#9-doc` desde `main` → PR a `main` (auto-cierra #9). `flutter analyze` limpio en los archivos tocados.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
 ## Entrada 058 — GenerateBoard use case + GeneratorConfig (front#36, mitad de aplicación)

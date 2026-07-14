@@ -70,6 +70,8 @@ class GameController extends AsyncNotifier<GameState> {
     return GameLoading();
   }
 
+  // Fuente de nivel única: el puerto remoto (DIP). El "Strategy remoto/procedural"
+  // de front#9 se descartó tras el cutover (ver README §"Campaña remota").
   Future<void> loadLevel(LevelId levelId) async {
     // build() ya resolvió, pero si una carga previa dejó el provider en
     // AsyncError, `future` está completado con ese error: lo ignoramos (se

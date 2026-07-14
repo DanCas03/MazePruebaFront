@@ -9,8 +9,10 @@ import 'application/providers/leaderboard_providers.dart';
 import 'application/providers/level_catalog_provider.dart';
 import 'application/state/auth_controller.dart';
 import 'application/state/game_controller.dart';
+import 'application/state/generated_game_controller.dart';
 import 'application/state/level_selection_controller.dart';
 import 'application/commands/command_invoker.dart';
+import 'application/use_cases/generate_board_use_case.dart';
 import 'application/use_cases/get_leaderboard_use_case.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/audio_settings_controller.dart';
@@ -31,12 +33,14 @@ import 'infrastructure/audio/audioplayers_backend.dart';
 import 'infrastructure/audio/hive_audio_settings_store.dart';
 import 'infrastructure/audio/logging_audio_decorator.dart';
 import 'infrastructure/data_sources/local/hive_level_progress_data_source.dart';
+import 'infrastructure/generators/graph_board_generator.dart';
 import 'infrastructure/data_sources/local/level_cache_data_source.dart';
 import 'infrastructure/data_sources/local/secure_token_data_source.dart';
 import 'infrastructure/data_sources/remote/auth_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/leaderboard_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/level_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
+import 'infrastructure/data_sources/remote/solution_remote_data_source.dart';
 import 'infrastructure/models/level_progress_hive_model.dart';
 import 'infrastructure/repositories/hive_progress_repository.dart';
 import 'infrastructure/repositories/in_memory_session_token_store.dart';
@@ -44,6 +48,7 @@ import 'infrastructure/repositories/remote_auth_repository.dart';
 import 'infrastructure/repositories/remote_leaderboard_repository.dart';
 import 'infrastructure/repositories/remote_level_repository.dart';
 import 'infrastructure/repositories/remote_progress_repository.dart';
+import 'infrastructure/repositories/remote_solution_repository.dart';
 import 'infrastructure/repositories/secure_auth_token_repository.dart';
 import 'infrastructure/serialization/level_json_decoder.dart';
 import 'infrastructure/settings/hive_locale_store.dart';
@@ -106,6 +111,14 @@ void main() async {
     LoggerServiceAdapter(),
   );
 
+  // #32: repo remoto de la Solución (pista auto-resolutora) con el mismo Dio
+  // firmado. El data source impone un timeout estricto por request; sin caché
+  // (la pista es on-demand). Las capas internas solo conocen ISolutionRepository.
+  final solutionRepository = RemoteSolutionRepository(
+    SolutionRemoteDataSource(dio),
+    LoggerServiceAdapter(),
+  );
+
   // #20: una sola composición del repo de progreso local (mismo box Hive ya
   // abierto), compartida por el sync (front#18) y por el selector de nivel, en
   // vez de instanciar dos `HiveProgressRepository` equivalentes.
@@ -126,6 +139,21 @@ void main() async {
         gameControllerProvider.overrideWith(
           () => GameController(
             levelRepository,
+            RemoveArrowUseCase(),
+            CommandInvoker(),
+            const SystemTicker(),
+            // #32: la pista auto-resolutora consume la Solución del back.
+            solutionRepository,
+          ),
+        ),
+        // front#37: controlador del flujo de tableros GENERADOS. Compuesto SOLO
+        // con el generador local, las mecánicas puras y el reloj real — sin
+        // repositorio, sin submit de score, sin progreso: cortafuegos de "cero
+        // persistencia" por construcción. La seed aleatoria por defecto vive
+        // dentro de GenerateBoardUseCase.
+        generatedGameControllerProvider.overrideWith(
+          () => GeneratedGameController(
+            GenerateBoardUseCase(GraphBoardGenerator(), LoggerServiceAdapter()),
             RemoveArrowUseCase(),
             CommandInvoker(),
             const SystemTicker(),
@@ -176,7 +204,10 @@ void main() async {
         // capas internas solo conocen el puerto ILeaderboardRepository.
         submitScoreUseCaseProvider.overrideWithValue(
           SubmitScoreUseCase(
-            RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
+            RemoteLeaderboardRepository(
+              LeaderboardRemoteDataSource(dio),
+              LoggerServiceAdapter(),
+            ),
             LoggerServiceAdapter(),
           ),
         ),
@@ -185,7 +216,10 @@ void main() async {
         // conocen el puerto ILeaderboardRepository.
         getLeaderboardUseCaseProvider.overrideWithValue(
           GetLeaderboardUseCase(
-            RemoteLeaderboardRepository(LeaderboardRemoteDataSource(dio)),
+            RemoteLeaderboardRepository(
+              LeaderboardRemoteDataSource(dio),
+              LoggerServiceAdapter(),
+            ),
             LoggerServiceAdapter(),
           ),
         ),

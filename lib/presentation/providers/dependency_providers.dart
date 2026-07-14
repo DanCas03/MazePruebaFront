@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/audio/i_audio_service.dart';
 import '../../application/audio/silent_audio_service.dart';
+import '../../application/use_cases/generate_board_use_case.dart';
 import '../../application/use_cases/sync_progress_use_case.dart';
 import '../../core/aspects/i_logger_service.dart';
 import '../../core/aspects/logger_service_adapter.dart';
@@ -44,6 +45,16 @@ final levelProgressRepositoryProvider = Provider<ILevelProgressRepository>(
 
 final levelGeneratorProvider = Provider<ILevelGenerator>(
   (_) => GraphBoardGenerator(),
+);
+
+// front#36: generación efímera de tableros por el jugador. Flujo puro (sin
+// Hive/Progress): compone el puerto ILevelGenerator con el logger AOP; la
+// seed aleatoria por defecto vive dentro del use case (inyectable en tests).
+final generateBoardUseCaseProvider = Provider<GenerateBoardUseCase>(
+  (ref) => GenerateBoardUseCase(
+    ref.watch(levelGeneratorProvider),
+    ref.watch(loggerServiceProvider),
+  ),
 );
 
 // front#18: el repo remoto necesita el Dio compuesto en main (con el token

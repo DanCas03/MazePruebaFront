@@ -13,10 +13,17 @@ class Arrow extends Equatable {
   final List<Position> cells;
   final Direction headDirection;
 
+  /// Rol de pintado (Instrucciones de pintado, ADR 0004): dato OPACO servido por
+  /// niveles temáticos que asocia esta flecha a un color de la `palette` del
+  /// `Level`. Nulo en campaña. No participa en la mecánica (salida/solubilidad);
+  /// solo lo consume el seam de color en presentación (front#67).
+  final String? paintRole;
+
   const Arrow({
     required this.id,
     required this.cells,
     required this.headDirection,
+    this.paintRole,
   });
 
   /// Conveniencia para flechas rectas: genera `length` celdas desde `tail` en
@@ -26,6 +33,7 @@ class Arrow extends Equatable {
     required Position tail,
     required Direction direction,
     required int length,
+    String? paintRole,
   }) {
     assert(length >= 1, 'length must be >= 1');
     final cells = List<Position>.generate(length, (i) => switch (direction) {
@@ -34,7 +42,8 @@ class Arrow extends Equatable {
           Direction.down => Position(row: tail.row + i, col: tail.col),
           Direction.up => Position(row: tail.row - i, col: tail.col),
         });
-    return Arrow(id: id, cells: cells, headDirection: direction);
+    return Arrow(
+        id: id, cells: cells, headDirection: direction, paintRole: paintRole);
   }
 
   Position get head => cells.last;
@@ -58,5 +67,5 @@ class Arrow extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, cells, headDirection];
+  List<Object?> get props => [id, cells, headDirection, paintRole];
 }

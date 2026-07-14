@@ -1444,3 +1444,16 @@
 - README: nota de performance (front#64) bajo la sección del generador.
 - Verificación: `flutter analyze` → 0 issues; suite completa `flutter test` → 562/562 verdes; los 4 archivos de test citados por el brief (`arrow_board_test.dart`, `arrow_test.dart`, `game_controller_test.dart`, `graph_board_generator_test.dart`) pasan SIN modificación.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 066 — front#67 (fragmento A) — portadores opacos de Instrucciones de pintado en el dominio
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** front#67 (Sección temáticos + seam de pintado, ADR 0004) necesita que el nivel dicte colores. Primer fragmento: que `Arrow` y `Level` porten las Instrucciones de pintado como DATOS OPACOS, espejo de la decisión del back (back#31), sin comportamiento de dominio, sin tocar mecánica ni solubilidad. La interface pública crece de forma aditiva (campos nullable) para no romper campaña ni tests existentes.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Implement GitHub issue DanCas03/MazePruebaFront#67 in order. Fragment A: Arrow carries an opaque `paintRole` and Level an opaque `palette` (role→hex), mirroring the back's opaque-data decision — no domain behavior, additive/nullable, existing tests untouched."
+**Resultado obtenido:**
+- `lib/domain/arrows/entities/arrow.dart`: nuevo campo `final String? paintRole` (nulo en campaña), incluido en `props` de Equatable y propagado por el factory `Arrow.straight` (param opcional). No afecta `exitPath` ni ninguna primitiva de salida.
+- `lib/domain/board/entities/level.dart`: nuevo campo `final Map<String, String>? palette` (rol→hex), opaco, incluido en `props` (Equatable deep-compara el Map). El constructor no valida los colores (el dominio los ignora; la validación de forma es del back y del decoder en presentación/infra).
+- Tests nuevos (AAA): en `test/domain/entities/arrow_test.dart` (grupo `Arrow.paintRole`): default null, propagación por `Arrow.straight`, desigualdad por `paintRole`, e invariante de que `paintRole` no altera `exitPath`. En `test/domain/board/entities/level_test.dart`: default null, porte de paleta opaca, igualdad por entradas iguales y desigualdad por paleta distinta.
+- Verificación: suite completa `flutter test` → 570/570 verdes (+8 nuevos); los tests de campaña existentes intactos y verdes (cambio puramente aditivo).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

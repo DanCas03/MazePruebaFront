@@ -142,5 +142,62 @@ void main() {
       // Assert
       expect(result, isFalse);
     });
+
+    // front#67 — Instrucciones de pintado (ADR 0004): la paleta es un dato
+    // opaco que solo portan los niveles temáticos.
+    test('should_default_palette_to_null_when_omitted', () {
+      // Arrange
+      final id = LevelId('1');
+      final board = _boardWithOneArrow();
+      // Act
+      final level = Level(id: id, board: board);
+      // Assert
+      expect(level.palette, isNull);
+    });
+
+    test('should_carry_opaque_palette_when_provided', () {
+      // Arrange
+      final id = LevelId('t-smiley');
+      final board = _boardWithOneArrow();
+      // Act
+      final level = Level(
+        id: id,
+        board: board,
+        palette: const {'cara': '#FBBF24', 'ojo': '#1E293B'},
+      );
+      // Assert
+      expect(level.palette, {'cara': '#FBBF24', 'ojo': '#1E293B'});
+    });
+
+    test('should_be_equal_when_palettes_have_the_same_entries', () {
+      // Arrange
+      final board = _boardWithOneArrow();
+      final levelA = Level(
+          id: LevelId('t-smiley'),
+          board: board,
+          palette: const {'cara': '#FBBF24'});
+      final levelB = Level(
+          id: LevelId('t-smiley'),
+          board: board,
+          palette: const {'cara': '#FBBF24'});
+      // Act
+      final result = levelA == levelB;
+      // Assert
+      expect(result, isTrue);
+    });
+
+    test('should_not_be_equal_when_palette_differs', () {
+      // Arrange
+      final id = LevelId('t-smiley');
+      final board = _boardWithOneArrow();
+      final levelA =
+          Level(id: id, board: board, palette: const {'cara': '#FBBF24'});
+      final levelB =
+          Level(id: id, board: board, palette: const {'cara': '#000000'});
+      // Act
+      final result = levelA == levelB;
+      // Assert
+      expect(result, isFalse);
+    });
   });
 }

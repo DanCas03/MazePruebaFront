@@ -1409,3 +1409,12 @@
 - TDD: `record_level_completion_use_case_test.dart` (4 AAA: persiste al no haber récord; conserva el mejor al rejugar peor; sube el récord al rejugar mejor; traga+loggea ante fallo de persistencia) + `progress_providers_test.dart` (2: el observer persiste al ganar con las stats del run; NO persiste mientras la partida sigue en curso). Se actualizaron `game_screen_test.dart` y `game_screen_hint_test.dart` para sobrescribir el nuevo provider con un repo de progreso no-op (el GameScreen ahora activa el observer al montar; sin el override lanzarían `UnimplementedError`).
 - Verificación: `flutter analyze` → 0 issues; `flutter test` → **551 tests verdes** (+6 nuevos, de 545). Verificado por tests que ejercen el camino real GameController → `GameWon` → observer → use case → repo (no por corrida en dispositivo esta sesión). El consumidor ya refrescaba al reentrar al selector (`should_refresh_gating_when_revealed_after_pop_from_a_game`), así que con este productor el bucle estrellas/gating cierra.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 063 — Glosario: Rampa, Sección, Nivel temático, Instrucciones de pintado, Máscara
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Registrar en el glosario los términos acordados en la sesión de revisión de arquitectura + grilling (candidatos C1–C5): la Rampa de dificultad (curva de producción; la campaña conserva 15 niveles · 5 tiers × 3 y remata en 50×50), la Sección del Catálogo (campaña | temático), el Nivel temático, las Instrucciones de pintado (paleta de roles + rol por flecha) y la Máscara de figura (imagen de referencia → regiones; cada flecha confinada a una región). Respaldado por ADR 0003 y ADR 0004 (docs/adr/ del workspace).
+**Herramienta de IA utilizada:** Claude Code (Fable 5) — skills /improve-codebase-architecture, /grill-with-docs (/grilling + /domain-modeling), /codebase-design
+**Prompt o instrucción proporcionada:** > "Quiero que veamos la resolución del tablero como grafos… el último nivel sea un tablero de 50x50… tiene que haber un apartado temático donde hayan por lo menos 3 seeds personalizadas con figuras…"
+**Resultado obtenido:** CONTEXT.md ampliado con 5 términos; issues front#64–#68 triageados con Agent Briefs (más back#30–#32) y sesión C2 reservada en front#69.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

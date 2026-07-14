@@ -29,7 +29,7 @@ The dependency rule points inward: `infrastructure` and `presentation` depend on
 lib/
 ├── domain/          Pure Dart — entities, value objects, exceptions, port interfaces
 │   ├── arrows/      Arrow, ArrowBoard (aggregate root), ArrowId, ArrowLength, ILevelGenerator, Difficulty, GeneratorConfig, GeneratedBoard
-│   ├── board/       LevelId, Level, LevelFailure, ILevelRepository, ILevelProgressRepository, IRemoteProgressRepository, ProgressReconciler
+│   ├── board/       LevelId, Level, LevelFailure, SolutionFailure, ILevelRepository, ISolutionRepository, HintPolicy, ILevelProgressRepository, IRemoteProgressRepository, ProgressReconciler
 │   ├── game_core/   Position, Direction, MoveCount, Score, Stars
 │   ├── leaderboard/ ScoreEntry, LeaderboardEntry, ILeaderboardRepository (port — submit + read)
 │   ├── auth/        Email, AuthToken, IAuthTokenStorage (port)
@@ -72,6 +72,17 @@ Los niveles de la campaña ya no se generan localmente: los sirve el back oficia
 El generador local ([`GraphBoardGenerator`](lib/infrastructure/generators/graph_board_generator.dart)) se conserva en el código pero ya no alimenta la campaña; ahora alimenta la feature "Generar nivel" (front#36) de tableros efímeros — ver *Tooling → Player-generated boards*.
 
 > **Nota (front#9 — reconciliación).** El *Strategy intercambiable remoto/procedural* que imaginaban el backlog (E1.5) y el issue front#9 —con la generación procedimental como "modo práctica/fallback"— **no se construyó, a propósito**. Tras el cutover (ADR 0001, en `docs/adr/` del workspace), la fuente de niveles de la campaña es **DIP puro**: el puerto [`ILevelRepository`](lib/domain/board/repositories/i_level_repository.dart) con un **único Adapter de producción** (`RemoteLevelRepository`), no una familia de estrategias dentro de `loadLevel`. El **offline** lo resuelve la **caché** (network-first, arriba), no un tablero generado; sin red ni caché el resultado es `LevelUnavailable`, no un board de reemplazo. La generación procedimental es una **feature aparte** —`GeneratedBoard`, front#36/#37—: sus tableros son efímeros, sin `LevelId`, sin score ni progreso, y **nunca** sustituyen a un `Level` oficial. (`GraphBoardGenerator` sí es un Strategy, pero de `ILevelGenerator`, no de la campaña.) Por eso front#9 se cierra como documentación: los criterios 1 y 3 los entregó front#8, y el criterio 2 quedó superado por este diseño.
+
+### Pista auto-resolutora (#32)
+
+En los niveles difíciles (número ≥ 7, umbral único en [`HintPolicy`](lib/domain/board/services/hint_policy.dart)) el AppBar muestra una **bombilla** que reproduce la solución canónica del servidor como una **demo no puntuable**. Al pulsarla, `GameController.playHint()` pide la *Solución* al back (`GET /levels/:id/solution`, back#19) a través del puerto [`ISolutionRepository`](lib/domain/board/repositories/i_solution_repository.dart); la implementación [`RemoteSolutionRepository`](lib/infrastructure/repositories/remote_solution_repository.dart) mapea la respuesta (`{levelId, solution: [ids]}`) a `List<ArrowId>` en orden de vaciado. El cliente **reproduce ese orden verbatim** —nunca deriva la secuencia—: reinicia el tablero y anima la salida de cada flecha reutilizando el mismo mecanismo de *exit animation* (`exitingArrow` + `exitNonce`) que un tap real. Durante la demo el input y el undo quedan **bloqueados** y no se cuentan movimientos ni choques (la pila de undo del `CommandInvoker` no se toca); al terminar, el nivel **se reinicia y queda jugable**.
+
+Dos refuerzos de robustez sobre lo pedido:
+
+- **Sub-estado de carga.** Mientras la petición HTTP viaja, `GamePlaying.hintLoading` transforma la bombilla en un *spinner* inerte, mitigando dobles clics accidentales; un token de generación (`_hintRun`) invalida cualquier demo en vuelo si el jugador carga otro nivel, reinicia o la pantalla se destruye.
+- **Timeout estricto.** [`SolutionRemoteDataSource`](lib/infrastructure/data_sources/remote/solution_remote_data_source.dart) impone un `receiveTimeout` por request (5 s, más corto que el global del Dio): si el back tarda o falla, la llamada **rompe limpio** hacia `SolutionUnavailable`, se dispara un *snackbar* de error y **la partida en curso queda intacta**. No hay caché: la pista es on-demand y offline resuelve "no disponible" en vez de servir una copia vieja. Un 404 mapea a `SolutionNotFound` y un 422 (nivel insoluble) a `SolutionUnsolvable`.
+
+Coherente con **ADR 0002**: solo los niveles curados del back tienen *Solution*; los tableros generados (front#36) no la tienen y quedan fuera de esta feature.
 
 ### Auth flow
 

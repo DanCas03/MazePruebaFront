@@ -25,6 +25,11 @@ class GamePlaying extends GameState {
   final bool canUndo; // habilita el botón undo del top bar
   final int? remainingSeconds; // cuenta atrás del nivel; null si no tiene límite
 
+  // Pista auto-resolutora (#32), señales de presentación no-dominio:
+  final bool hintLoading; // petición HTTP de la solución en tránsito (bombilla en carga)
+  final bool hintPlaying; // reproducción de la solución en curso: input/undo bloqueados
+  final int hintErrorNonce; // ++ por fallo de pista → dispara el snackbar de error
+
   GamePlaying({
     required this.board,
     required this.moves,
@@ -35,6 +40,9 @@ class GamePlaying extends GameState {
     this.exitNonce = 0,
     this.canUndo = false,
     this.remainingSeconds,
+    this.hintLoading = false,
+    this.hintPlaying = false,
+    this.hintErrorNonce = 0,
   });
 }
 

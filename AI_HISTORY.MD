@@ -1,6 +1,6 @@
 # AI History — MazePruebaFront
 
-## Entrada 061 — "Generar nivel": flujo de UI del jugador (front#37, mitad de presentación)
+## Entrada 062 — "Generar nivel": flujo de UI del jugador (front#37, mitad de presentación)
 
 **Fecha:** 2026-07-13
 **Tarea o problema abordado:** Issue front#37 — la mitad de UI/UX de "Generar nivel", sobre el dominio ya mergeado en #36: botón en el Home, pantalla configuradora (dimensiones 4–10, dificultad, contrarreloj, seed opcional), cableado de la partida reutilizando las mecánicas actuales, y pantalla post-partida con cuatro acciones — todo con un **cortafuegos de cero persistencia** (jamás Hive/Progress/leaderboard).
@@ -19,6 +19,22 @@
 - **Tests (20 nuevos, AAA):** `generated_game_controller_test` (montaje/seed/contrarreloj, victoria ⇒ `GeneratedCleared` y **NUNCA** `GameWon`, 5º strike ⇒ `GameLost`, timeout ⇒ `GameLost`, `anotherBoard` seed nueva, `repeat` seed igual — con generador y ticker falsos), `configurator_state_test` (validez de semilla y dimensiones, `toConfig`), `configurator_screen_test` (habilitación reactiva de "Jugar"), `generated_result_screen_test` (4 acciones, sin estrellas/score, títulos, semilla copiable) y 2 tests de Home para el nuevo CTA.
 - **Verificación:** `flutter analyze` → No issues found. `flutter test` → **526/526 verde** (506 base + 20). Sin regresiones.
 - **Git:** rama `feat/#37-generate-board-ui` desde `origin/main` (que ya integra #36 vía PR #54), tras `git fetch --all --prune`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 061 — Pista auto-resolutora que anima la Solución del servidor (front#32)
+
+**Fecha:** 2026-07-13
+**Tarea o problema abordado:** Issue front#32 — botón de pista (bombilla) en los niveles difíciles (número ≥ 7) que demuestra la Solución canónica reproduciendo, como demo NO puntuable, las remociones de flechas que sirve el back (`GET /levels/:id/solution`, back#19). Durante la reproducción el input y el undo quedan bloqueados, no se cuentan movimientos ni choques y la pila de undo permanece intacta; al terminar, el nivel se reinicia y queda jugable. El cliente reproduce el orden VERBATIM, sin derivar la secuencia. Extensiones pedidas: sub-estado de carga (transformar la bombilla mientras la petición HTTP viaja, mitigando dobles clics) y robustez de red (timeout estricto → romper limpio + snackbar + partida intacta).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8), rol Senior Flutter Dev.
+**Prompt o instrucción proporcionada:** > "Actúa como Senior Flutter Dev para el Issue #32 [...] Git Sync [...] Sub-estado de Carga (HintLoadingState) [...] Robustez de Red: timeout estricto [...] Ejecuta la codificación de inmediato y haz el commit y PR automáticamente al concluir".
+**Resultado obtenido:**
+- **Dominio (`lib/domain/board/`):** puerto `ISolutionRepository` (`getSolution(LevelId) → Either<SolutionFailure, List<ArrowId>>`; ids planos como lengua del cable, sin caché — la pista es on-demand); `SolutionFailure` sellado (`SolutionUnavailable` red/timeout/servidor, `SolutionNotFound` 404, `SolutionUnsolvable` 422, `SolutionCorrupted` JSON); servicio puro `HintPolicy` (umbral único `minEligibleLevel = 7`, compartido por UI y controlador).
+- **Infra:** `SolutionRemoteDataSource` (`GET /levels/:id/solution`, **timeout estricto por request** `receiveTimeout`/`sendTimeout` 5 s vía `Options`, más corto que el global del Dio; guarda de forma → `FormatException`); `RemoteSolutionRepository` mapea `DioException` (404/422/timeout/otros) y `FormatException` a `SolutionFailure`, loguea vía AOP; compuesto en `main.dart` con el Dio firmado.
+- **Aplicación:** `GameController` gana 5º parámetro opcional `ISolutionRepository` (Null Object `_UnavailableSolutionRepository` por defecto, mismo patrón que el `ITicker`), 6º `hintStepDelay` (inyectable a `Duration.zero` en tests) y `HintPolicy`. `playHint()` orquesta carga → fetch → (fallo: conserva partida + `hintErrorNonce++`) / (éxito: `_runHintDemo()`); la demo remonta el tablero y anima cada salida reutilizando el canal `exitingArrow`/`exitNonce`, sin tocar el `CommandInvoker` ni contar. Token de generación `_hintRun` invalida demos en vuelo ante `loadLevel`/`restartLevel`/dispose. `tapArrow`/`undoMove` guardados durante carga y reproducción. `GamePlaying` (sealed state) suma `hintLoading`/`hintPlaying`/`hintErrorNonce` (preservados en el tick del reloj).
+- **Presentación:** `_HintButton` en el AppBar (solo niveles elegibles) — bombilla de contorno pulsable → **spinner inerte** en carga (transformación anti doble-clic) → bombilla rellena atenuada en reproducción; snackbar de error disparado por transición de `hintErrorNonce` en el `ref.listen` existente; undo deshabilitado durante la pista. Claves i18n `hintTooltip`/`hintError` (es/en).
+- **README:** nueva sección *Pista auto-resolutora (#32)* bajo Tooling; línea del árbol `domain/board/` ampliada.
+- **Tests (18 nuevos, AAA, sin build_runner — fakes a mano):** `game_controller_hint_test` (replay + auto-restart, `hintLoading` en vuelo con `Completer`, fallo conserva partida + nonce, ignorado en nivel < 7, `tapArrow` bloqueado en carga, anti doble-clic); `remote_solution_repository_test` (200 ordenado, 404/422/timeout/500, forma y payload corruptos); `game_screen_hint_test` (botón por elegibilidad, transform bombilla→spinner, snackbar de error).
+- **Verificación:** `flutter analyze` → No issues found. `flutter test` (suite completa) → **518/518 verde**. Rama `feat/#32-auto-solve-hint` desde `main` (`f5d2f9a`), commit único `56b1dde`, **PR #57** a `main` (auto-cierra #32).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
 ## Entrada 060 — Reconciliación doc de la fuente de nivel (front#9)

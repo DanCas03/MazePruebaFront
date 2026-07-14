@@ -55,6 +55,14 @@
   "@levelLoadError": {
     "description": "Game screen: terminal error for a missing or corrupted level."
   },
+  "hintTooltip": "Show solution",
+  "@hintTooltip": {
+    "description": "Tooltip of the lightbulb hint button that replays the server solution on eligible hard levels."
+  },
+  "hintError": "Couldn't load the hint. Try again.",
+  "@hintError": {
+    "description": "Snackbar shown when fetching the auto-solve solution fails or times out; the game stays intact."
+  },
   "victoryTitle": "Board Cleared!",
   "victoryMoves": "{moves} moves",
   "@victoryMoves": {

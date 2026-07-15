@@ -95,10 +95,16 @@ class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
           retryLabel: l10n.retry,
           onRetry: _retry,
         ),
-        data: (tiers) => ListView(
+        data: (view) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            for (final section in tiers) _TierSectionView(section: section),
+            for (final section in view.campaignTiers)
+              _TierSectionView(section: section),
+            // Bloque temático: solo si el back publicó niveles temáticos. Si no
+            // hay, no se renderiza nada extra (los catálogos solo-campaña se ven
+            // idénticos a antes).
+            if (view.themedTiles.isNotEmpty)
+              _ThemedSectionView(tiles: view.themedTiles),
           ],
         ),
       ),
@@ -186,6 +192,52 @@ class _TierSectionView extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             for (final tile in section.tiles) _LevelTileView(tile: tile),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
+
+/// Encabezado "Themed" + cuadrícula de niveles temáticos. Reutiliza
+/// `_LevelTileView`: como los tiles temáticos llegan con `locked == false`, se
+/// pintan siempre tappables y sin candado, y navegan con el LevelId REAL igual
+/// que la campaña. Sin gating ni etiqueta de dificultad (no pertenecen a un Tier).
+class _ThemedSectionView extends StatelessWidget {
+  final List<LevelTile> tiles;
+  const _ThemedSectionView({required this.tiles});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final onBackground =
+        isDark ? AppColors.onBackground : AppColors.lightOnBackground;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 12),
+          child: Text(
+            l10n.themedSection,
+            style: TextStyle(
+              color: onBackground,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        GridView.count(
+          crossAxisCount: 3,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (final tile in tiles) _LevelTileView(tile: tile),
           ],
         ),
         const SizedBox(height: 16),

@@ -26,7 +26,9 @@ import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/failures/solution_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_solution_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/domain/game_core/services/i_ticker.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
@@ -48,8 +50,8 @@ class _FakeLevelRepo implements ILevelRepository {
       Right(Level(id: id, board: board));
 
   @override
-  Future<Either<LevelFailure, List<LevelId>>> listLevelIds() async =>
-      Right([LevelId('1')]);
+  Future<Either<LevelFailure, List<CatalogEntry>>> listCatalog() async =>
+      Right([CatalogEntry(id: LevelId('1'), section: LevelSection.campaign)]);
 }
 
 class _FakeSolutionRepo implements ISolutionRepository {

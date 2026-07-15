@@ -161,7 +161,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           // La bombilla se transforma en un spinner mientras la solución viaja
           // (mitiga dobles clics) y queda inerte durante la reproducción.
           ...asyncState.maybeWhen(
-            data: (s) => s is GamePlaying && _hintPolicy.isEligible(widget.levelId)
+            data: (s) => s is GamePlaying &&
+                    _hintPolicy.isEligible(widget.levelId,
+                        themed: s.palette != null)
                 ? [
                     _HintButton(
                       loading: s.hintLoading,

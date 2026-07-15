@@ -5,7 +5,9 @@ import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/router/route_observer.dart';
 import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
@@ -127,6 +129,43 @@ void main() {
     expect(find.byIcon(Icons.lock), findsNWidgets(3));
   });
 
+  testWidgets('should_render_themed_block_without_locks_and_navigate_with_real_id',
+      (tester) async {
+    // Arrange: 3 niveles de campaña (Tier 1, desbloqueado) + 1 temático. El
+    // temático vive en su bloque "Themed", sin candado y siempre tappable.
+    final nav = _NavCapture();
+    final entries = <CatalogEntry>[
+      for (var n = 1; n <= 3; n++)
+        CatalogEntry(id: LevelId('$n'), section: LevelSection.campaign),
+      CatalogEntry(id: LevelId('t-smiley'), section: LevelSection.themed),
+    ];
+    await _pumpScreen(
+      tester,
+      nav,
+      overrides: levelSelectionOverrides(catalogEntries: entries),
+    );
+    // Assert: aparece el encabezado "Themed" y ningún candado (nada bloqueado).
+    expect(find.text('Themed'), findsOneWidget);
+    expect(find.byIcon(Icons.lock), findsNothing);
+
+    // Act: tocar la celda temática navega con el LevelId REAL.
+    await tester.tap(find.byKey(const ValueKey('level-tile-t-smiley')));
+    await tester.pump();
+    await tester.pump();
+    // Assert
+    expect(nav.pushedLevel, LevelId('t-smiley'));
+    expect(find.byKey(const Key('game-page')), findsOneWidget);
+  });
+
+  testWidgets('should_not_render_themed_block_when_catalog_is_campaign_only',
+      (tester) async {
+    // Arrange & Act: catálogo solo-campaña (el caso por defecto de los fakes).
+    await _pumpScreen(tester, _NavCapture());
+    // Assert: sin niveles temáticos no aparece el encabezado "Themed" (la
+    // pantalla se ve idéntica a antes de la feature).
+    expect(find.text('Themed'), findsNothing);
+  });
+
   testWidgets('should_render_earned_stars_on_completed_level', (tester) async {
     // Arrange & Act
     await _pumpScreen(tester, _NavCapture());
@@ -191,7 +230,7 @@ void main() {
 
   testWidgets('should_show_spinner_when_catalog_is_loading', (tester) async {
     // Arrange: un build() del Catálogo que nunca resuelve mantiene el loading.
-    final pending = Completer<List<LevelId>>();
+    final pending = Completer<List<CatalogEntry>>();
     final overrides = [
       stubCatalogOverride(builder: () => pending.future),
       levelSelectionControllerOverride(),
@@ -226,7 +265,7 @@ void main() {
     final overrides = [
       stubCatalogOverride(builder: () {
         if (shouldFail) throw const LevelUnavailable();
-        return _catalogIds;
+        return campaignEntries(_catalogIds);
       }),
       levelSelectionControllerOverride(),
     ];

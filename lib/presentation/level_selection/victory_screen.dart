@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/level_catalog_provider.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../domain/board/value_objects/catalog_entry.dart';
 import '../../domain/board/value_objects/level_id.dart';
+import '../../domain/board/value_objects/level_section.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Argumentos de la ruta de victoria. Transporta el [levelId] (para calcular el
@@ -13,9 +15,12 @@ import '../../l10n/app_localizations.dart';
 typedef VictoryArgs = ({LevelId levelId, int moves, int score, int stars});
 
 /// Pantalla de victoria. El "siguiente nivel" lo dicta el Catálogo
-/// (levelCatalogProvider): next = ids[indexOf(actual) + 1]. En el último nivel se
-/// oculta el CTA y aparece la felicitación de campaña completada. Sin pantalla
-/// nueva. Vista pasiva: recibe [VictoryArgs] via `ModalRoute`.
+/// (levelCatalogProvider) SOLO sobre los niveles de campaña: next =
+/// campaignIds[indexOf(actual) + 1]. En el último de campaña se oculta el CTA y
+/// aparece la felicitación de campaña completada. Un nivel TEMÁTICO (su id no
+/// está entre los de campaña) no ofrece "siguiente nivel" NI "campaña completa":
+/// no tiene adyacencia. Sin pantalla nueva. Vista pasiva: recibe [VictoryArgs]
+/// via `ModalRoute`.
 class VictoryScreen extends ConsumerWidget {
   const VictoryScreen({super.key});
 
@@ -35,11 +40,20 @@ class VictoryScreen extends ConsumerWidget {
     final score = args?.score ?? 0;
     final moves = args?.moves ?? 0;
 
-    // Orden de juego del Catálogo; el siguiente nivel es el posterior en la lista.
-    final ids = ref.watch(levelCatalogProvider).valueOrNull ?? const <LevelId>[];
-    final index = args == null ? -1 : ids.indexOf(args.levelId);
-    final nextId = (index >= 0 && index + 1 < ids.length) ? ids[index + 1] : null;
-    final isLastLevel = index >= 0 && index == ids.length - 1;
+    // Adyacencia SOLO sobre la campaña: los niveles temáticos no tienen orden de
+    // "siguiente nivel". Si el id actual no está entre los de campaña (es
+    // temático), index == -1 ⇒ ni CTA ni felicitación; solo "Back to Levels".
+    final catalog =
+        ref.watch(levelCatalogProvider).valueOrNull ?? const <CatalogEntry>[];
+    final campaignIds = [
+      for (final e in catalog)
+        if (e.section == LevelSection.campaign) e.id,
+    ];
+    final index = args == null ? -1 : campaignIds.indexOf(args.levelId);
+    final nextId = (index >= 0 && index + 1 < campaignIds.length)
+        ? campaignIds[index + 1]
+        : null;
+    final isLastLevel = index >= 0 && index == campaignIds.length - 1;
 
     return Scaffold(
       body: SafeArea(

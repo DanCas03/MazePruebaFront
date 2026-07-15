@@ -14,10 +14,18 @@ class Level extends Equatable {
   final ArrowBoard board;
   final int? timeLimitSec;
 
+  /// Instrucciones de pintado (ADR 0004): paleta rol→hex servida por niveles
+  /// temáticos. Dato OPACO — el dominio no valida ni interpreta los colores; la
+  /// solubilidad y la mecánica lo ignoran. Nulo en campaña. Lo consume el seam
+  /// de color en presentación, que resuelve `Arrow.paintRole` contra esta paleta
+  /// (front#67). Espejo de la decisión del back (back#31).
+  final Map<String, String>? palette;
+
   Level({
     required this.id,
     required this.board,
     this.timeLimitSec,
+    this.palette,
   }) {
     if (board.arrows.isEmpty) {
       throw const InvalidLevelException('a level must have at least one arrow');
@@ -29,5 +37,5 @@ class Level extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, board, timeLimitSec];
+  List<Object?> get props => [id, board, timeLimitSec, palette];
 }

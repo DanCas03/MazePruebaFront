@@ -172,4 +172,42 @@ void main() {
       expect(replay.board, first.board);
     });
   });
+
+  group('GenerateBoardUseCase.executeAsync (front#66)', () {
+    test('should_generate_inline_below_threshold_and_forward_seed', () async {
+      // 6x6 (36 celdas) < isolateCellThreshold ⇒ camino síncrono en línea, así
+      // que un generador mock (no enviable a un isolate) funciona igual.
+      final config = GeneratorConfig.create(
+          cols: 6, rows: 6, difficulty: Difficulty.easy, seed: 42);
+
+      final result = await useCase.executeAsync(config);
+
+      expect(result.board, same(stubBoard));
+      expect(result.seed, 42);
+      verify(generator.generate(
+        cols: 6,
+        rows: 6,
+        arrowCount: 6,
+        maxPathLen: 3,
+        seed: 42,
+      )).called(1);
+    });
+
+    test('should_offload_large_board_to_isolate_and_stay_deterministic',
+        () async {
+      // 25x25 (625 celdas) >= isolateCellThreshold ⇒ corre en un isolate vía
+      // `compute`. Con el generador REAL, el resultado debe ser idéntico al
+      // camino síncrono para la misma seed (determinismo a través del isolate).
+      final real = GenerateBoardUseCase(GraphBoardGenerator(), logger);
+      final config = GeneratorConfig.create(
+          cols: 25, rows: 25, difficulty: Difficulty.medium, seed: 20260715);
+
+      final async = await real.executeAsync(config);
+      final sync = real.execute(config);
+
+      expect(async.board, sync.board);
+      expect(async.seed, 20260715);
+      expect(async.config, config);
+    });
+  });
 }

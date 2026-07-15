@@ -9,6 +9,7 @@ import '../../../domain/game_core/value_objects/position.dart';
 import '../../../application/state/game_controller.dart';
 import '../arrow_color_resolver.dart';
 import 'arrow_widget.dart';
+import 'board_viewport.dart';
 import 'exiting_arrow_widget.dart';
 
 /// Rejilla del tablero: panel de `cols x rows` celdas con una flecha por
@@ -73,45 +74,88 @@ class BoardView extends StatelessWidget {
         final width = board.cols * cell;
         final height = board.rows * cell;
 
-        return SizedBox(
-          width: width,
-          height: height,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: (details) {
-              final col = (details.localPosition.dx / cell)
-                  .floor()
-                  .clamp(0, board.cols - 1);
-              final row = (details.localPosition.dy / cell)
-                  .floor()
-                  .clamp(0, board.rows - 1);
-              final arrow = board.arrowAt(Position(row: row, col: col));
-              if (arrow != null) {
-                onTapArrow(arrow.id);
-              }
-            },
-            child: Stack(
-              clipBehavior: Clip.none, // la flecha saliente cruza el borde
-              children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: surface.withValues(alpha: 0.30),
-                      borderRadius: BorderRadius.circular(cell * 0.35),
-                    ),
-                    child: CustomPaint(
-                      painter: _GridPainter(board.cols, board.rows, gridColor),
-                    ),
-                  ),
-                ),
-                for (final arrow in board.arrows) _positionArrow(arrow, cell, state),
-                if (state.exitingArrow != null)
-                  _positionExiting(state.exitingArrow!, cell, state.exitNonce, board.cols, board.rows),
-              ],
-            ),
+        // front#66: la cámara (zoom/pan + doble-tap) envuelve el tablero ya
+        // ajustado a "fit" y alimenta el rectángulo visible para el culling.
+        return BoardViewport(
+          viewportSize: Size(constraints.maxWidth, constraints.maxHeight),
+          boardSize: Size(width, height),
+          builder: (visibleRect) => _boardContent(
+            context: context,
+            cell: cell,
+            surface: surface,
+            gridColor: gridColor,
+            visibleRect: visibleRect,
           ),
         );
       },
+    );
+  }
+
+  Widget _boardContent({
+    required BuildContext context,
+    required double cell,
+    required Color surface,
+    required Color gridColor,
+    required Rect? visibleRect,
+  }) {
+    final board = state.board;
+    // Margen de culling: mantiene construidas las flechas que apenas rozan el
+    // borde del encuadre para que no aparezcan "de golpe" al hacer pan.
+    final camera = visibleRect?.inflate(cell * 2);
+
+    bool onCamera(Arrow arrow) {
+      if (camera == null) return true;
+      final b = _bounds(arrow);
+      final rect = Rect.fromLTWH(
+        b.minCol * cell,
+        b.minRow * cell,
+        (b.maxCol - b.minCol + 1) * cell,
+        (b.maxRow - b.minRow + 1) * cell,
+      );
+      return camera.overlaps(rect);
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: (details) {
+        final col = (details.localPosition.dx / cell)
+            .floor()
+            .clamp(0, board.cols - 1);
+        final row = (details.localPosition.dy / cell)
+            .floor()
+            .clamp(0, board.rows - 1);
+        final arrow = board.arrowAt(Position(row: row, col: col));
+        if (arrow != null) {
+          onTapArrow(arrow.id);
+        }
+      },
+      child: Stack(
+        clipBehavior: Clip.none, // la flecha saliente cruza el borde
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: surface.withValues(alpha: 0.30),
+                borderRadius: BorderRadius.circular(cell * 0.35),
+              ),
+              child: CustomPaint(
+                painter:
+                    _GridPainter(board.cols, board.rows, gridColor, visibleRect),
+              ),
+            ),
+          ),
+          // Culling de flechas: solo se construyen (con su AnimationController)
+          // las que caen dentro de la cámara. Fuera de zoom, el encuadre cubre
+          // todo el tablero, así que se construyen todas (comportamiento previo).
+          for (final arrow in board.arrows)
+            if (onCamera(arrow)) _positionArrow(arrow, cell, state),
+          // La flecha saliente es una animación transitoria que cruza el borde:
+          // siempre se dibuja mientras dure, aunque su celda de origen ya no esté.
+          if (state.exitingArrow != null)
+            _positionExiting(state.exitingArrow!, cell, state.exitNonce,
+                board.cols, board.rows),
+        ],
+      ),
     );
   }
 
@@ -172,12 +216,16 @@ class BoardView extends StatelessWidget {
   }
 }
 
-/// Rejilla de fondo muy sutil.
+/// Rejilla de fondo muy sutil con culling por viewport (front#66): en un XL de
+/// 50×50 dibujar las 98 líneas completas en cada frame de pan es desperdicio;
+/// [visibleRect] (coords locales del tablero) acota QUÉ líneas se dibujan y las
+/// recorta al alto/ancho del encuadre. `null` ⇒ se dibuja el tablero entero.
 class _GridPainter extends CustomPainter {
   final int cols;
   final int rows;
   final Color color;
-  const _GridPainter(this.cols, this.rows, this.color);
+  final Rect? visibleRect;
+  const _GridPainter(this.cols, this.rows, this.color, [this.visibleRect]);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -186,15 +234,32 @@ class _GridPainter extends CustomPainter {
       ..strokeWidth = 1;
     final cw = size.width / cols;
     final ch = size.height / rows;
-    for (var i = 1; i < cols; i++) {
-      canvas.drawLine(Offset(cw * i, 0), Offset(cw * i, size.height), paint);
+    final r = visibleRect;
+
+    // Banda visible acotada al tablero; sin encuadre se pinta completo.
+    final left = (r?.left ?? 0.0).clamp(0.0, size.width);
+    final right = (r?.right ?? size.width).clamp(0.0, size.width);
+    final top = (r?.top ?? 0.0).clamp(0.0, size.height);
+    final bottom = (r?.bottom ?? size.height).clamp(0.0, size.height);
+
+    // Solo las líneas verticales cuyo índice cae dentro del encuadre.
+    final firstCol = r == null ? 1 : math.max(1, (left / cw).floor());
+    final lastCol = r == null ? cols - 1 : math.min(cols - 1, (right / cw).ceil());
+    for (var i = firstCol; i <= lastCol; i++) {
+      canvas.drawLine(Offset(cw * i, top), Offset(cw * i, bottom), paint);
     }
-    for (var j = 1; j < rows; j++) {
-      canvas.drawLine(Offset(0, ch * j), Offset(size.width, ch * j), paint);
+
+    final firstRow = r == null ? 1 : math.max(1, (top / ch).floor());
+    final lastRow = r == null ? rows - 1 : math.min(rows - 1, (bottom / ch).ceil());
+    for (var j = firstRow; j <= lastRow; j++) {
+      canvas.drawLine(Offset(left, ch * j), Offset(right, ch * j), paint);
     }
   }
 
   @override
   bool shouldRepaint(covariant _GridPainter old) =>
-      old.cols != cols || old.rows != rows || old.color != color;
+      old.cols != cols ||
+      old.rows != rows ||
+      old.color != color ||
+      old.visibleRect != visibleRect;
 }

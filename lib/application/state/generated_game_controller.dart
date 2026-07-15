@@ -82,11 +82,16 @@ class GeneratedGameController extends AsyncNotifier<GameState> {
   /// `await future`: si no, esa resolución tardía sobreescribiría el
   /// [GamePlaying] recién montado y el tablero nunca aparecería (mismo patrón
   /// que `GameController.loadLevel`).
+  ///
+  /// front#66: usa la variante no bloqueante del caso de uso — los presets L/XL
+  /// generan en un isolate — y emite [AsyncValue.loading] mientras tanto para
+  /// que la pantalla muestre el indicador de progreso en vez de congelarse.
   Future<void> startNew(GeneratorConfig config) async {
     try {
       await future;
     } catch (_) {}
-    _mount(_generate.execute(config));
+    state = const AsyncValue<GameState>.loading();
+    _mount(await _generate.executeAsync(config));
   }
 
   /// "Otro tablero" (spec): misma intención del jugador (tamaño/dificultad/

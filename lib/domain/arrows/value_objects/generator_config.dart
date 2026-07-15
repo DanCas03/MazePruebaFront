@@ -12,10 +12,12 @@ import 'difficulty.dart';
 /// intención (tamaño/dificultad/timer), no números internos.
 class GeneratorConfig extends Equatable {
   /// Rango jugable de dimensiones (inclusive). Ajustable en un solo lugar:
-  /// por debajo de 4 no hay puzzle; por encima de 10 las celdas no se leen
-  /// en pantallas de móvil.
+  /// por debajo de 4 no hay puzzle. El techo se elevó a 50 en front#66: con el
+  /// viewport de zoom/pan (InteractiveViewer) los tableros grandes ya se leen y
+  /// se juegan en móvil, así que la vieja cota de 10 (celdas ilegibles sin
+  /// cámara) quedó obsoleta. 50×50 es el preset XL / final de campaña (ADR 0003).
   static const int minDimension = 4;
-  static const int maxDimension = 10;
+  static const int maxDimension = 50;
 
   /// Piso y techo de la cuenta atrás derivada, en segundos. El piso espeja el
   /// mínimo histórico de la campaña (30 s); el techo acota tableros grandes y

@@ -27,6 +27,11 @@ class ConfiguratorController extends AutoDisposeNotifier<ConfiguratorState> {
 
   void setRows(int rows) => state = state.copyWith(rows: _clampDim(rows));
 
+  /// Aplica un preset de tamaño (S/M/L/XL, front#66) en una sola transición:
+  /// fija ambas dimensiones a la vez (acotadas al rango jugable).
+  void setSize(int cols, int rows) =>
+      state = state.copyWith(cols: _clampDim(cols), rows: _clampDim(rows));
+
   void setDifficulty(Difficulty difficulty) =>
       state = state.copyWith(difficulty: difficulty);
 

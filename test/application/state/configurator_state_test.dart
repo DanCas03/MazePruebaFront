@@ -27,7 +27,7 @@ void main() {
 
     test('dimensiones fuera de rango invalidan aunque la semilla sea válida', () {
       const tooSmall = ConfiguratorState(cols: 3, seedText: '1');
-      const tooBig = ConfiguratorState(rows: 11, seedText: '1');
+      const tooBig = ConfiguratorState(rows: 51, seedText: '1');
       expect(tooSmall.isValid, isFalse);
       expect(tooBig.isValid, isFalse);
     });

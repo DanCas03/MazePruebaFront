@@ -57,6 +57,8 @@
   "languageSystem": "Sistema",
   "generateBoard": "Generar nivel",
   "configuratorTitle": "Generar tablero",
+  "configPresets": "Tamaños rápidos",
+  "configPresetTooltip": "{cols}×{rows}",
   "configColumns": "Columnas",
   "configRows": "Filas",
   "configDifficulty": "Dificultad",

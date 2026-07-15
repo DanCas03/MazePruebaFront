@@ -1589,3 +1589,16 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - `test/tool/level_production/themed_producer_test.dart` (AAA, 7 tests): GOLDEN byte-estable de una máscara mini 6×4 de 2 regiones con seed 0 (JSON verbatim capturado de una corrida real), ausencia de `order`/`timeLimitSec`, paintRole ∈ palette y palette == mask.palette (decodificado con dart:convert), coveragePerRole con roles correctos y valores en [0,1] más recomputación a mano covered/total desde el JSON, solubilidad (placedArrows > 0 sin lanzar) y determinismo (mismas semillas ⇒ JSON idéntico).
 - Verificación: `flutter test test/tool/level_production/themed_producer_test.dart` → 7/7 verdes; `flutter analyze` sobre los tres archivos → 0 issues; smoke del CLI sobre una máscara estrella 6×5 → `.json` + `.preview.txt` + `manifest-themed.md` escritos, incidencia de cobertura (89% < 90%) registrada, uso inválido ⇒ exit 64; artefactos `out/` eliminados antes del commit.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 075 — front#68 (fragmento 4a) — Orden de regiones detalle-primero en el productor temático
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Al correr el CLI sobre las máscaras reales (cara feliz, conejo) las regiones INTERIORES (ojos, boca) quedaban en 0% de cobertura: cero flechas colocadas. Causa raíz: `generateThemed` exige que cada flecha tenga su lane recto de salida al borde libre en el momento de colocarla (invariante de solubilidad — el tablero se vacía en orden inverso). El productor procesaba las regiones en el orden del legend; si la región exterior (cara, pelaje) se llenaba primero, toda flecha de una región interior tenía su lane bloqueado por celdas ya ocupadas ⇒ imposible de colocar ⇒ 0%.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect
+**Prompt o instrucción proporcionada:** > "Fix: procesar las regiones de menor a mayor tamaño (detalle-primero) para que los detalles interiores se coloquen sobre el tablero vacío (lanes libres) y la región grande rellene alrededor."
+**Resultado obtenido:**
+- `tool/level_production/themed_producer.dart`: antes de construir los `ThemedRegionSpec`, se ordena `mask.regions` por número de celdas ascendente (`orderedRegions`). Las regiones pequeñas (interiores) se generan primero, sobre el tablero aún vacío, garantizando lane de salida libre; la región grande rellena después. El orden global de ocupación + reserva de lane preserva la solubilidad en orden inverso (validado por `validateCandidate`), independientemente del orden de regiones.
+- `test/tool/level_production/themed_producer_test.dart`: nuevo test de regresión "orden detalle-primero" — una máscara 7×7 con una región `inner` 2×2 totalmente encerrada por `outer`; se afirma `coveragePerRole['inner'] > 0`, que sin el fix daría 0.
+- Efecto medido: cara feliz `features` 0% → 86–97%; conejo `eye` 0% → 83–100%, `pink` 27% → 88–92%. Todas las regiones reciben flechas.
+- Verificación: `flutter test test/tool/level_production/themed_producer_test.dart` → 8/8 verdes (golden byte-estable intacto); `flutter analyze` → 0 issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

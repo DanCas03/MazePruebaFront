@@ -234,4 +234,38 @@ void main() {
       expect(a.coveragePerRole, b.coveragePerRole);
     });
   });
+
+  group('produceThemed — orden detalle-primero', () {
+    test('una región interior encerrada recibe flechas (no queda en 0%)', () {
+      // Arrange — 'inner' (2x2) queda totalmente rodeada por 'outer': cada lane
+      // de salida de sus celdas cruza la región exterior. Si 'outer' se llenara
+      // primero, 'inner' no encontraría lane libre y quedaría en 0%.
+      const enclosed = '''
+name: enclosed
+legend:
+  O = outer : #FFFFFF
+  I = inner : #FF0000
+grid:
+OOOOOOO
+OOOOOOO
+OOOOOOO
+OOOIIOO
+OOOIIOO
+OOOOOOO
+OOOOOOO
+''';
+      final mask = parseMaskSpec(enclosed);
+
+      // Act
+      final result = produceThemed(
+        mask,
+        seeds: List<int>.generate(30, (i) => i),
+        maxPathLen: 3,
+      );
+
+      // Assert — el orden detalle-primero coloca 'inner' sobre el tablero vacío,
+      // así que recibe al menos una flecha.
+      expect(result.coveragePerRole['inner'], greaterThan(0.0));
+    });
+  });
 }

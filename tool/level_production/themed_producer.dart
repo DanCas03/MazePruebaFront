@@ -78,8 +78,17 @@ ThemedResult produceThemed(
   final generator = GraphBoardGenerator();
   final levelId = 'themed-${mask.name}';
 
+  // Orden detalle-primero: las regiones pequeñas (interiores: ojos, boca) se
+  // colocan antes que las grandes (cara, pelaje). El generateThemed exige que
+  // cada flecha tenga su lane de salida al borde libre en el momento de
+  // colocarla; si la región exterior se llenara primero, ninguna flecha
+  // interior encontraría lane libre y esa región quedaría en 0%. Colocando los
+  // detalles sobre el tablero (aún) vacío, todas las regiones reciben flechas.
+  final orderedRegions = mask.regions.toList()
+    ..sort((a, b) => a.cells.length.compareTo(b.cells.length));
+
   final regionSpecs = <ThemedRegionSpec>[
-    for (final region in mask.regions)
+    for (final region in orderedRegions)
       ThemedRegionSpec(
         role: region.role,
         cells: region.cells,

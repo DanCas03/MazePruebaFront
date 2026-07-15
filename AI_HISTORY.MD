@@ -1642,3 +1642,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "Actualizar README.md (§ Tooling) con la subsección de producción de niveles temáticos: máscaras, CLI, confinamiento por región, orden detalle-primero, cobertura/preview, sin límite de tiempo, fixtures congelados."
 **Resultado obtenido:** Nueva subsección `### Producción de niveles temáticos — Máscaras + CLI (front#68)` en `README.md` bajo `## Tooling`, tras la de candidatos: formato `.mask`, comando del CLI, confinamiento flecha↔región + `paintRole`/`palette` (ADR 0004), orden detalle-primero, ocupación global/solubilidad, reintento de semillas + cobertura + preview ANSI, sin `timeLimitSec` en v1, y ubicación de los 3 fixtures congelados con su comando reproducible. Suite completa del front verificada: `flutter analyze` 0 issues + `flutter test` 625/625 verdes.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 078 — front#78 (fragmento 1) — Dominio: UserProfile + puerto me()
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Modelar el perfil del usuario autenticado en el dominio del front para el panel de cuenta (front#78), y ampliar el puerto de auth con la lectura del perfil remoto (`GET /auth/me`, back#44).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (panel de cuenta con username/email/progreso + cerrar sesión; fragmento de dominio: entidad UserProfile y método me() en IAuthRepository).
+**Resultado obtenido:** Nueva entidad `lib/domain/auth/entities/user_profile.dart` (`UserProfile { String id, Username username, Email email }`, Equatable, Dart puro) que reutiliza los VOs `Username`/`Email` para arrastrar sus invariantes. `IAuthRepository` gana `Future<Either<AuthFailure, UserProfile>> me()`, documentando el mapeo 401→InvalidCredentials / red→NetworkFailure. Test AAA `test/domain/auth/entities/user_profile_test.dart` (3 casos: acceso a campos, igualdad por valor, desigualdad por id) — verde 3/3. La impl del puerto y los mocks se completan en el fragmento 2.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

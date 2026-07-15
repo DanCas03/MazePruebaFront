@@ -1793,3 +1793,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
 **Resultado obtenido:** `app_en.arb`/`app_es.arb`: clave `errorsLeft` ("Errors left" / "Errores restantes"). `flutter gen-l10n` regenera los getters (los `app_localizations*.dart` son build artifacts gitignoreados). Solo los `.arb` entran al commit.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 090 — front#83 (fragmento 5) — Chip descendente de errores en el HUD + cierre
+
+**Tarea o problema abordado:** Mostrar en partida el contador de errores descendente (lo que faltaba de la feature: la mecánica ya existía pero nunca se veía durante el juego).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `game_screen.dart` añade `_ErrorsChip` en la AppBar (corazón + `s.strikes.remaining`, tooltip `l10n.errorsLeft`), presente durante todo `GamePlaying` y espejo visual de `_CountdownChip`. TDD: `_repoWithBoard` acepta `maxErrors`; test nuevo (chip arranca en 3, desciende a 2 tras un choque, sigue jugando), **10/10** en game_screen (RED verificado). `flutter analyze` limpio; suite completa **684/684**. README actualizado (condición de derrota: presupuesto por nivel + contador descendente). Seguimiento OPCIONAL (backend): servir `maxErrors` por nivel en `GET /levels/:id` para que difieran entre niveles; hasta entonces todos usan el default 5 (dificultad sin cambios). Nota: `undoMove` no revierte strikes (comportamiento previo intencional, fuera de alcance).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

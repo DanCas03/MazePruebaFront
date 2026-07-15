@@ -120,10 +120,16 @@ class _NoopProgressRepository implements ILevelProgressRepository {
 
 /// Mock del puerto remoto (front#8) cuyo `getLevel` responde `Right(Level)` con
 /// el [board] dado; el límite de tiempo viaja en el propio Level.
-MockILevelRepository _repoWithBoard(ArrowBoard board, {int? timeLimitSec}) {
+MockILevelRepository _repoWithBoard(ArrowBoard board,
+    {int? timeLimitSec, int? maxErrors}) {
   final repo = MockILevelRepository();
   when(repo.getLevel(any)).thenAnswer((_) async => Right<LevelFailure, Level>(
-        Level(id: LevelId('level-01'), board: board, timeLimitSec: timeLimitSec),
+        Level(
+          id: LevelId('level-01'),
+          board: board,
+          timeLimitSec: timeLimitSec,
+          maxErrors: maxErrors ?? 5,
+        ),
       ));
   return repo;
 }
@@ -215,6 +221,33 @@ void main() {
       // Assert
       expect(find.text('Moves: 0'), findsOneWidget);
       expect(find.byIcon(Icons.undo), findsOneWidget);
+    });
+
+    testWidgets('shows a descending error budget that drops on a collision',
+        (tester) async {
+      // Arrange — un nivel con presupuesto de 3 errores y salida bloqueada.
+      final container =
+          _container(_repoWithBoard(_blockedArrowBoard(), maxErrors: 3));
+      addTearDown(container.dispose);
+      await tester.pumpWidget(_host(container));
+      await container
+          .read(gameControllerProvider.notifier)
+          .loadLevel(LevelId('level-1'));
+      await tester.pump();
+
+      // Assert — el contador arranca en el presupuesto del nivel (3).
+      expect(find.byIcon(Icons.favorite), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+
+      // Act — un choque (tap a la flecha bloqueada) descuenta un error.
+      await container
+          .read(gameControllerProvider.notifier)
+          .tapArrow(const ArrowId('a1'));
+      await tester.pump();
+
+      // Assert — el contador desciende a 2, sigue jugando.
+      expect(find.text('2'), findsOneWidget);
+      expect(find.byType(DefeatScreen), findsNothing);
     });
 
     testWidgets('shows the countdown for a timed level', (tester) async {

@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/board/repositories/i_level_progress_repository.dart';
 import '../../domain/board/services/tier_gating.dart';
+import '../../domain/board/value_objects/catalog_entry.dart';
 import '../../domain/board/value_objects/level_descriptor.dart';
 import '../../domain/board/value_objects/level_progress.dart';
+import '../../domain/board/value_objects/level_section.dart';
 import '../../domain/board/value_objects/tier.dart';
 import '../providers/level_catalog_provider.dart';
 import 'level_selection_state.dart';
@@ -12,39 +14,54 @@ import 'level_selection_state.dart';
 // por defecto falla explícitamente para no acoplar este archivo a impls
 // concretas (DIP), igual que gameControllerProvider.
 final levelSelectionControllerProvider =
-    AsyncNotifierProvider<LevelSelectionController, List<TierSection>>(
+    AsyncNotifierProvider<LevelSelectionController, CatalogView>(
   () => throw UnimplementedError(
     'levelSelectionControllerProvider must be overridden with composed dependencies',
   ),
 );
 
 /// Fachada reactiva (Riverpod) de la pantalla de selección: compone el Catálogo
-/// remoto y el progreso local en secciones por Tier con estrellas y estado de
-/// bloqueo ya resueltos. El `AsyncValue` que envuelve el estado cubre
-/// loading/error de forma sellada, sin necesidad de un estado propio.
+/// remoto y el progreso local en un [CatalogView] con dos bloques ya resueltos:
+/// la campaña por Tier (con estrellas y gating) y los niveles temáticos como
+/// celdas sueltas (sin Tier ni bloqueos). El `AsyncValue` que envuelve el estado
+/// cubre loading/error de forma sellada, sin necesidad de un estado propio.
 ///
 /// El Catálogo se lee de `levelCatalogProvider` (front#8) vía `watch`: la lista
-/// se descarga UNA vez por sesión (y dispara el prefetch de campaña), las
-/// recomposiciones por entrada a la pantalla solo releen el progreso local, y
-/// un `refresh()` del Catálogo (retry de la UI) recompone también este estado.
-class LevelSelectionController extends AsyncNotifier<List<TierSection>> {
+/// se descarga UNA vez por sesión (y dispara el prefetch), las recomposiciones
+/// por entrada a la pantalla solo releen el progreso local, y un `refresh()` del
+/// Catálogo (retry de la UI) recompone también este estado.
+class LevelSelectionController extends AsyncNotifier<CatalogView> {
   final ILevelProgressRepository _progress;
   final TierGating _gating;
 
   LevelSelectionController(this._progress, this._gating);
 
   @override
-  Future<List<TierSection>> build() async {
-    final ids = await ref.watch(levelCatalogProvider.future);
-    // El Tier se deriva de la POSICIÓN en el Catálogo (su orden ES el orden de
-    // juego); el id del back es opaco: nunca se usa para aritmética (glosario
-    // CONTEXT.md), solo para navegar y puntuar.
+  Future<CatalogView> build() async {
+    final entries = await ref.watch(levelCatalogProvider.future);
+
+    // Separa campaña (Tier + gating) de temáticos (sin gating). El Tier de la
+    // campaña se deriva de la POSICIÓN ENTRE LOS NIVELES DE CAMPAÑA, no de la
+    // posición absoluta: así intercalar temáticos no desplaza los Tiers. El id
+    // del back es opaco: nunca se usa para aritmética (glosario CONTEXT.md).
+    final campaignEntries =
+        entries.where((e) => e.section == LevelSection.campaign).toList();
+    final themedEntries =
+        entries.where((e) => e.section == LevelSection.themed).toList();
+
     final catalog = [
-      for (var i = 0; i < ids.length; i++)
-        LevelDescriptor(levelId: ids[i], tier: Tier.forLevelNumber(i + 1)),
+      for (var i = 0; i < campaignEntries.length; i++)
+        LevelDescriptor(
+          levelId: campaignEntries[i].id,
+          tier: Tier.forLevelNumber(i + 1),
+        ),
     ];
     final progress = await _progress.getAll();
-    return _sectionsFrom(catalog, progress);
+
+    return CatalogView(
+      campaignTiers: _sectionsFrom(catalog, progress),
+      themedTiles: _themedTilesFrom(themedEntries, progress),
+    );
   }
 
   // La pantalla fuerza la recomposición al entrar con
@@ -52,15 +69,19 @@ class LevelSelectionController extends AsyncNotifier<List<TierSection>> {
   // `LevelSelectionScreen`), de modo que `build()` vuelve a leer el progreso en
   // cada visita; el Catálogo ya resuelto se reutiliza (no re-descarga).
 
+  // Estrellas ganadas por id (bestStars). Compartido por campaña y temáticos:
+  // ambos bloques puntúan y persisten igual; solo difieren en Tier/gating.
+  Map<String, int> _starsById(List<LevelProgress> progress) => {
+        for (final p in progress)
+          if (p.bestStars != null) p.levelId.value: p.bestStars!,
+      };
+
   List<TierSection> _sectionsFrom(
     List<LevelDescriptor> catalog,
     List<LevelProgress> progress,
   ) {
     final unlocked = _gating.unlockedTiers(catalog, progress);
-    final starsById = <String, int>{
-      for (final p in progress)
-        if (p.bestStars != null) p.levelId.value: p.bestStars!,
-    };
+    final starsById = _starsById(progress);
 
     // Agrupa por Tier conservando el orden de aparición del catálogo; la
     // posición (i+1) es la etiqueta visible de la celda.
@@ -80,5 +101,24 @@ class LevelSelectionController extends AsyncNotifier<List<TierSection>> {
     final tiers = byTier.keys.toList()
       ..sort((a, b) => a.rank.compareTo(b.rank));
     return [for (final t in tiers) TierSection(tier: t, tiles: byTier[t]!)];
+  }
+
+  // Los niveles temáticos no tienen Tier ni gating: se exponen como celdas
+  // NUNCA bloqueadas, con posición 1-based dentro del propio bloque y las
+  // estrellas ganadas si las hay.
+  List<LevelTile> _themedTilesFrom(
+    List<CatalogEntry> themed,
+    List<LevelProgress> progress,
+  ) {
+    final starsById = _starsById(progress);
+    return [
+      for (var i = 0; i < themed.length; i++)
+        LevelTile(
+          levelId: themed[i].id,
+          position: i + 1,
+          stars: starsById[themed[i].id.value] ?? 0,
+          locked: false, // sin gating por Tier: los temáticos siempre juegan.
+        ),
+    ];
   }
 }

@@ -16,7 +16,9 @@ import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/failures/solution_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_solution_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/domain/game_core/services/i_ticker.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
@@ -33,8 +35,8 @@ class _FakeLevelRepo implements ILevelRepository {
   Future<Either<LevelFailure, Level>> getLevel(LevelId id) async => Right(level);
 
   @override
-  Future<Either<LevelFailure, List<LevelId>>> listLevelIds() async =>
-      Right([level.id]);
+  Future<Either<LevelFailure, List<CatalogEntry>>> listCatalog() async =>
+      Right([CatalogEntry(id: level.id, section: LevelSection.campaign)]);
 }
 
 /// Repo de solución con respuesta prefijada y contador de llamadas. Permite

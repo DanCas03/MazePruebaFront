@@ -9,7 +9,9 @@ import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/services/tier_gating.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,13 +22,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class UnusedLevelRepository implements ILevelRepository {
   const UnusedLevelRepository();
   @override
-  Future<Either<LevelFailure, List<LevelId>>> listLevelIds() =>
+  Future<Either<LevelFailure, List<CatalogEntry>>> listCatalog() =>
       throw UnimplementedError();
 
   @override
   Future<Either<LevelFailure, Level>> getLevel(LevelId id) =>
       throw UnimplementedError();
 }
+
+/// Mapea ids a entradas de campaña (el caso común en los tests del selector; las
+/// entradas temáticas se pasan explícitas). Público para que los tests con
+/// `builder:` puedan devolver el tipo nuevo del Catálogo.
+List<CatalogEntry> campaignEntries(List<LevelId> ids) =>
+    [for (final id in ids) CatalogEntry(id: id, section: LevelSection.campaign)];
 
 /// Logger no-op: [StubLevelCatalog] no dispara el prefetch, así que nunca
 /// loggea.
@@ -47,16 +55,16 @@ class NoopLogger implements ILoggerService {
 /// del Notifier real (ya cubierto aparte) y fija el "orden de juego" del que se
 /// derivan Tiers, posiciones y "siguiente nivel".
 class StubLevelCatalog extends LevelCatalogNotifier {
-  final FutureOr<List<LevelId>> Function() _builder;
+  final FutureOr<List<CatalogEntry>> Function() _builder;
 
-  StubLevelCatalog(List<LevelId> ids) : this.withBuilder(() => ids);
+  StubLevelCatalog(List<CatalogEntry> entries) : this.withBuilder(() => entries);
 
   /// Para forzar loading (future que no resuelve) o error (builder que lanza).
   StubLevelCatalog.withBuilder(this._builder)
       : super(const UnusedLevelRepository(), const NoopLogger());
 
   @override
-  Future<List<LevelId>> build() async => _builder();
+  Future<List<CatalogEntry>> build() async => _builder();
 }
 
 /// Repo de progreso falso: solo `getAll` importa para el selector; el resto de
@@ -80,16 +88,18 @@ class FakeLevelProgressRepository implements ILevelProgressRepository {
       throw UnimplementedError();
 }
 
-/// Override del Catálogo remoto stubeado con [ids] fijos (o un [builder] a
-/// medida para forzar loading/error).
+/// Override del Catálogo remoto stubeado. Se puede fijar por [ids] (todos como
+/// campaña, el caso común), por [entries] explícitas (para incluir temáticos) o
+/// con un [builder] a medida (para forzar loading/error).
 Override stubCatalogOverride({
   List<LevelId> ids = const [],
-  FutureOr<List<LevelId>> Function()? builder,
+  List<CatalogEntry>? entries,
+  FutureOr<List<CatalogEntry>> Function()? builder,
 }) =>
     levelCatalogProvider.overrideWith(
       () => builder != null
           ? StubLevelCatalog.withBuilder(builder)
-          : StubLevelCatalog(ids),
+          : StubLevelCatalog(entries ?? campaignEntries(ids)),
     );
 
 /// Override del controller del selector compuesto con el progreso fake (o un
@@ -113,11 +123,12 @@ Override levelSelectionControllerOverride({
 /// `levelCatalogProvider` vía `watch`).
 List<Override> levelSelectionOverrides({
   List<LevelId> catalogIds = const [],
+  List<CatalogEntry>? catalogEntries,
   List<LevelProgress> progress = const [],
   ILevelProgressRepository? progressRepository,
 }) =>
     [
-      stubCatalogOverride(ids: catalogIds),
+      stubCatalogOverride(ids: catalogIds, entries: catalogEntries),
       levelSelectionControllerOverride(
         progress: progress,
         progressRepository: progressRepository,

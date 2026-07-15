@@ -37,6 +37,10 @@ class LevelJsonDecoder {
         rows: _int(json, 'rows'),
       ),
       timeLimitSec: _optionalInt(json, 'timeLimitSec'),
+      // Instrucciones de pintado opcionales (ADR 0004): dato opaco de niveles
+      // temáticos. Ausente = campaña. Se valida la FORMA (Map<String,String>);
+      // la validez del hex la resuelve el seam de color con fallback (front#67).
+      palette: _optionalStringMap(json, 'palette'),
     );
   }
 
@@ -52,6 +56,8 @@ class LevelJsonDecoder {
       id: ArrowId(id),
       headDirection: _direction(_string(map, 'headDir')),
       cells: [for (final cell in cells) _position(cell, id)],
+      // Rol de pintado opcional (ADR 0004): dato opaco, ausente en campaña.
+      paintRole: _optionalString(map, 'paintRole'),
     );
   }
 
@@ -99,5 +105,30 @@ class LevelJsonDecoder {
       throw FormatException('"$key" must be an int when present');
     }
     return value;
+  }
+
+  String? _optionalString(Map<String, Object?> json, String key) {
+    final value = json[key];
+    if (value == null) return null;
+    if (value is! String) {
+      throw FormatException('"$key" must be a string when present');
+    }
+    return value;
+  }
+
+  Map<String, String>? _optionalStringMap(Map<String, Object?> json, String key) {
+    final value = json[key];
+    if (value == null) return null;
+    if (value is! Map) {
+      throw FormatException('"$key" must be an object when present');
+    }
+    final result = <String, String>{};
+    value.forEach((k, v) {
+      if (k is! String || v is! String) {
+        throw FormatException('"$key" must map strings to strings');
+      }
+      result[k] = v;
+    });
+    return result;
   }
 }

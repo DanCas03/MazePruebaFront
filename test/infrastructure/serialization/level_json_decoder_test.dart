@@ -250,5 +250,76 @@ void main() {
       // proving the DomainException -> FormatException translation.
       expect(() => sut.decode(bad), throwsFormatException);
     });
+
+    // front#67 — paint instructions (ADR 0004): a themed level carries an
+    // opaque `palette` (role -> hex) and per-arrow `paintRole`, verbatim from
+    // the CONTEXT-MAP § Themed extension example.
+    Map<String, Object?> themedWireMap() => <String, Object?>{
+          'levelId': 't-smiley',
+          'cols': 20,
+          'rows': 20,
+          'arrows': [
+            {
+              'id': 'a1',
+              'headDir': 'up',
+              'cells': [
+                [3, 4],
+                [3, 5],
+              ],
+              'paintRole': 'cara',
+            },
+          ],
+          'palette': {'cara': '#FBBF24', 'ojo': '#1E293B'},
+        };
+
+    test('should_round_trip_a_themed_level_with_palette_and_paint_roles', () {
+      // Arrange
+      const encoder = LevelJsonEncoder();
+      final themed = themedWireMap();
+      // Act — JSON -> Level -> JSON, threading palette back through the encoder.
+      final level = sut.decode(themed);
+      final reEncoded = encoder.toMap(
+        levelId: level.id.value,
+        board: level.board,
+        timeLimitSec: level.timeLimitSec,
+        palette: level.palette,
+      );
+      // Assert — themed fields survive the round-trip byte-for-byte.
+      expect(reEncoded, equals(themed));
+      expect(level.palette, equals({'cara': '#FBBF24', 'ojo': '#1E293B'}));
+      expect(level.board.arrows.first.paintRole, equals('cara'));
+    });
+
+    test('should_decode_null_palette_and_paint_role_for_a_campaign_level', () {
+      // Arrange — the canonical campaign map carries no themed fields.
+      final canonical = canonicalWireMap();
+      // Act
+      final level = sut.decode(canonical);
+      // Assert — absence means campaign, not a default.
+      expect(level.palette, isNull);
+      expect(level.board.arrows.every((a) => a.paintRole == null), isTrue);
+    });
+
+    test('should_throw_format_exception_when_palette_is_not_an_object', () {
+      // Arrange — palette given as a list instead of a role->hex map.
+      final bad = themedWireMap()..['palette'] = ['#FBBF24'];
+      // Act & Assert — a shape deviation is a contract violation.
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
+
+    test('should_throw_format_exception_when_a_palette_value_is_not_a_string', () {
+      // Arrange — a palette entry whose hex value is a number.
+      final bad = themedWireMap()..['palette'] = {'cara': 0xFBBF24};
+      // Act & Assert
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
+
+    test('should_throw_format_exception_when_paint_role_is_not_a_string', () {
+      // Arrange — an arrow whose paintRole is a number.
+      final bad = themedWireMap();
+      ((bad['arrows'] as List).first as Map)['paintRole'] = 7;
+      // Act & Assert
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
   });
 }

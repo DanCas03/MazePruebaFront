@@ -144,6 +144,7 @@ class GameController extends AsyncNotifier<GameState> {
     state = AsyncValue.data(GamePlaying(
       board: level.board,
       moves: const MoveCount(0),
+      palette: level.palette,
       canUndo: false,
       remainingSeconds: _remainingSeconds,
     ));
@@ -177,6 +178,7 @@ class GameController extends AsyncNotifier<GameState> {
           board: current.board,
           moves: current.moves,
           strikes: _strikes,
+          palette: _currentLevelData?.palette,
           blockedArrow: arrowId,
           blockedNonce: _blockedNonce,
           exitNonce: _exitNonce,
@@ -219,6 +221,7 @@ class GameController extends AsyncNotifier<GameState> {
             board: newBoard,
             moves: newMoves,
             strikes: _strikes,
+            palette: _currentLevelData?.palette,
             exitingArrow: removed,
             exitNonce: _exitNonce,
             blockedNonce: _blockedNonce,
@@ -261,6 +264,7 @@ class GameController extends AsyncNotifier<GameState> {
       board: previousBoard,
       moves: previousMoves,
       strikes: _strikes,
+      palette: _currentLevelData?.palette,
       blockedNonce: _blockedNonce,
       exitNonce: _exitNonce,
       canUndo: _invoker.canUndo,
@@ -291,8 +295,9 @@ class GameController extends AsyncNotifier<GameState> {
     // Anti doble-clic: ya hay una petición o una reproducción en curso.
     if (current.hintLoading || current.hintPlaying) return;
     // Política: la pista solo existe en niveles elegibles (guarda defensiva; la
-    // UI ya oculta el botón fuera de ellos).
-    if (!_hintPolicy.isEligible(levelId)) return;
+    // UI ya oculta el botón fuera de ellos). Los temáticos (con Instrucciones de
+    // pintado) son siempre elegibles — señal por `palette`, no por el id.
+    if (!_hintPolicy.isEligible(levelId, themed: level.palette != null)) return;
 
     final run = ++_hintRun;
     // Sub-estado de carga: transforma la bombilla y bloquea el botón.
@@ -326,6 +331,7 @@ class GameController extends AsyncNotifier<GameState> {
     state = AsyncValue.data(GamePlaying(
       board: board,
       moves: const MoveCount(0),
+      palette: level.palette,
       hintPlaying: true,
     ));
     await Future<void>.delayed(hintStepDelay);
@@ -342,6 +348,7 @@ class GameController extends AsyncNotifier<GameState> {
       state = AsyncValue.data(GamePlaying(
         board: board,
         moves: const MoveCount(0),
+        palette: level.palette,
         hintPlaying: true,
         exitingArrow: removed,
         exitNonce: _exitNonce,
@@ -366,6 +373,7 @@ class GameController extends AsyncNotifier<GameState> {
         board: s.board,
         moves: s.moves,
         strikes: s.strikes,
+        palette: s.palette,
         blockedArrow: s.blockedArrow,
         blockedNonce: s.blockedNonce,
         exitingArrow: s.exitingArrow,
@@ -398,6 +406,7 @@ class GameController extends AsyncNotifier<GameState> {
           board: current.board,
           moves: current.moves,
           strikes: current.strikes,
+          palette: current.palette,
           blockedArrow: current.blockedArrow,
           blockedNonce: current.blockedNonce,
           exitingArrow: current.exitingArrow,

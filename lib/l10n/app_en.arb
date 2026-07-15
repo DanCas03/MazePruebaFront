@@ -100,6 +100,10 @@
   "difficultyEasy": "Easy",
   "difficultyMedium": "Medium",
   "difficultyHard": "Hard",
+  "themedSection": "Themed",
+  "@themedSection": {
+    "description": "Header of the themed levels block on the level selection screen (no tiers, no locks)."
+  },
   "leaderboardTitle": "Ranking · Level {level}",
   "@leaderboardTitle": {
     "description": "Leaderboard screen AppBar title for a given level.",

@@ -336,4 +336,68 @@ void main() {
       expect(sut.headDirection, Direction.right);
     });
   });
+
+  // front#67 — paintRole es un dato opaco (Instrucciones de pintado, ADR 0004):
+  // nulo en campaña, presente en flechas de niveles temáticos. No afecta la
+  // mecánica; solo lo consume el seam de color en presentación.
+  group('Arrow.paintRole (opaque paint role)', () {
+    test('paintRole por defecto es null cuando no se provee', () {
+      // Arrange / Act
+      final arrow = Arrow.straight(
+        id: const ArrowId('a1'),
+        tail: Position(row: 0, col: 0),
+        direction: Direction.right,
+        length: 2,
+      );
+      // Assert
+      expect(arrow.paintRole, isNull);
+    });
+
+    test('Arrow.straight propaga paintRole cuando se provee', () {
+      // Arrange / Act
+      final arrow = Arrow.straight(
+        id: const ArrowId('a1'),
+        tail: Position(row: 0, col: 0),
+        direction: Direction.right,
+        length: 2,
+        paintRole: 'cara',
+      );
+      // Assert
+      expect(arrow.paintRole, 'cara');
+    });
+
+    test('dos flechas iguales salvo paintRole no son iguales', () {
+      // Arrange
+      final cells = [Position(row: 0, col: 0), Position(row: 0, col: 1)];
+      final a = Arrow(
+          id: const ArrowId('a1'),
+          cells: cells,
+          headDirection: Direction.right,
+          paintRole: 'cara');
+      final b = Arrow(
+          id: const ArrowId('a1'),
+          cells: cells,
+          headDirection: Direction.right,
+          paintRole: 'ojo');
+      // Act / Assert
+      expect(a == b, isFalse);
+    });
+
+    test('paintRole no altera exitPath (mecánica intacta)', () {
+      // Arrange
+      final plain = Arrow.straight(
+          id: const ArrowId('a1'),
+          tail: Position(row: 0, col: 0),
+          direction: Direction.right,
+          length: 2);
+      final themed = Arrow.straight(
+          id: const ArrowId('a1'),
+          tail: Position(row: 0, col: 0),
+          direction: Direction.right,
+          length: 2,
+          paintRole: 'cara');
+      // Act / Assert
+      expect(themed.exitPath(4, 4), plain.exitPath(4, 4));
+    });
+  });
 }

@@ -1444,3 +1444,79 @@
 - README: nota de performance (front#64) bajo la sección del generador.
 - Verificación: `flutter analyze` → 0 issues; suite completa `flutter test` → 562/562 verdes; los 4 archivos de test citados por el brief (`arrow_board_test.dart`, `arrow_test.dart`, `game_controller_test.dart`, `graph_board_generator_test.dart`) pasan SIN modificación.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 066 — front#67 (fragmento A) — portadores opacos de Instrucciones de pintado en el dominio
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** front#67 (Sección temáticos + seam de pintado, ADR 0004) necesita que el nivel dicte colores. Primer fragmento: que `Arrow` y `Level` porten las Instrucciones de pintado como DATOS OPACOS, espejo de la decisión del back (back#31), sin comportamiento de dominio, sin tocar mecánica ni solubilidad. La interface pública crece de forma aditiva (campos nullable) para no romper campaña ni tests existentes.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Implement GitHub issue DanCas03/MazePruebaFront#67 in order. Fragment A: Arrow carries an opaque `paintRole` and Level an opaque `palette` (role→hex), mirroring the back's opaque-data decision — no domain behavior, additive/nullable, existing tests untouched."
+**Resultado obtenido:**
+- `lib/domain/arrows/entities/arrow.dart`: nuevo campo `final String? paintRole` (nulo en campaña), incluido en `props` de Equatable y propagado por el factory `Arrow.straight` (param opcional). No afecta `exitPath` ni ninguna primitiva de salida.
+- `lib/domain/board/entities/level.dart`: nuevo campo `final Map<String, String>? palette` (rol→hex), opaco, incluido en `props` (Equatable deep-compara el Map). El constructor no valida los colores (el dominio los ignora; la validación de forma es del back y del decoder en presentación/infra).
+- Tests nuevos (AAA): en `test/domain/entities/arrow_test.dart` (grupo `Arrow.paintRole`): default null, propagación por `Arrow.straight`, desigualdad por `paintRole`, e invariante de que `paintRole` no altera `exitPath`. En `test/domain/board/entities/level_test.dart`: default null, porte de paleta opaca, igualdad por entradas iguales y desigualdad por paleta distinta.
+- Verificación: suite completa `flutter test` → 570/570 verdes (+8 nuevos); los tests de campaña existentes intactos y verdes (cambio puramente aditivo).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 067 — front#67 (fragmento B) — decode/encode de Instrucciones de pintado en el wire
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Segundo fragmento de front#67: que el `LevelJsonDecoder` parsee los campos temáticos opcionales del detalle de nivel (`palette` a nivel de Level, `paintRole` por flecha) y el `LevelJsonEncoder` los re-emita, preservando la propiedad golden encode(decode(x))==x también para niveles temáticos. La `Sección` (campaign/themed) NO va aquí — es campo del catálogo (`GET /levels`), se aborda en el fragmento de repositorio/catálogo.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Fragment B: LevelJsonDecoder parses optional `palette` (level) and `paintRole` (arrow); LevelJsonEncoder re-emits them so themed levels round-trip. Strict on SHAPE (Map<String,String>); leave hex-format leniency to the color seam's fallback."
+**Resultado obtenido:**
+- `lib/infrastructure/serialization/level_json_decoder.dart`: helpers `_optionalString` (paintRole por flecha) y `_optionalStringMap` (palette a nivel de Level). Estricto en FORMA — palette no-objeto, valor no-string, o paintRole no-string → `FormatException` (coherente con el resto del decoder); la validez del hex `#RRGGBB` se deja al seam de color (fallback), fiel a "datos opacos".
+- `lib/infrastructure/serialization/level_json_encoder.dart`: `toMap`/`encode` ganan param opcional `palette`; emiten `paintRole` por flecha solo cuando presente y `palette` a nivel cuando presente — aditivo, los callers de campaña (generador) intactos y con JSON byte-idéntico.
+- Tests nuevos (AAA, inglés como el resto del archivo) en `level_json_decoder_test.dart`: round-trip temático byte-a-byte contra el ejemplo del CONTEXT-MAP § Extensión temática; campaña decodifica palette/paintRole a null; y tres casos estrictos (palette no-objeto, valor de palette no-string, paintRole no-string → FormatException).
+- Verificación: `flutter analyze` (serialización) → 0 issues; suite completa `flutter test` → 575/575 verdes (+5 nuevos); tests de campaña/encoder existentes intactos.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 068 — front#67 (fragmento C) — seam de color ArrowColorResolver
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Tercer fragmento de front#67: la decisión de color deja de ser una llamada directa `arrowColorFor(id)` en `BoardView` y se vuelve un SEAM inyectable con dos adapters (OCP), para que los niveles temáticos dicten colores por rol sin tocar los painters (siguen recibiendo `Color` como primitiva) ni la campaña.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Fragment C: ArrowColorResolver seam with a default (identity/hash palette) and a themed adapter (paintRole→palette hex, falls back to identity on missing role/hex). GamePlaying carries the level palette; BoardView consumes the resolver via provider. Painters untouched."
+**Resultado obtenido:**
+- `lib/presentation/game/arrow_color_resolver.dart` (nuevo): `ArrowColorResolver` (interface `Color colorFor(Arrow, Map<String,String>? palette)`), `IdentityArrowColorResolver` (envuelve `arrowColorFor`, ignora la paleta → campaña byte-idéntica) y `ThemedArrowColorResolver` que COMPONE al identidad como fallback (rol ausente, rol fuera de paleta, o hex inválido → identidad). Helper `parseHexColor` (`#RRGGBB`/`#AARRGGBB` → Color opaco, null si inválido). `arrowColorResolverProvider` declarado en el mismo archivo (presentación-local: el resolver devuelve `Color`, tipo de presentación, así `core/di` no importa presentación).
+- `lib/application/state/game_state.dart`: `GamePlaying` gana `Map<String,String>? palette` (constante durante la partida; null en campaña y en tableros generados).
+- `lib/application/state/game_controller.dart`: los 8 sitios que reconstruyen `GamePlaying` propagan la paleta desde la fuente única `_currentLevelData?.palette` (y `level.palette`/`s.palette` en los helpers de pista/copia) — así ninguna reconstrucción intermedia pierde el color.
+- `lib/presentation/game/widgets/board_widget.dart`: `BoardView` gana `ArrowColorResolver colorResolver` (default temático que cae a identidad → los call sites que no lo inyectan, flujo generado y tests, pintan igual); `BoardWidget` inyecta el del provider. Los dos call sites de color usan `colorResolver.colorFor(arrow, state.palette)`. Import de `arrow_color.dart` reemplazado por el del resolver.
+- Tests nuevos (`test/presentation/game/arrow_color_resolver_test.dart`, AAA): identidad reproduce la paleta hash e ignora la paleta; temático resuelve rol→hex, y cae a identidad en los 4 casos de fallback (sin rol, paleta null, rol ausente, hex inválido); unit de `parseHexColor` (#RRGGBB, #AARRGGBB, longitud/hex inválido → null).
+- Verificación: `flutter analyze` (game/state/di) → 0 issues; suite completa `flutter test` → 584/584 verdes (+9 nuevos); board_widget y game_controller existentes intactos (el default del resolver preserva la campaña).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 069 — front#67 (fragmento D) — Sección temática en catálogo + selección + victoria
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Cuarto fragmento de front#67: el back (back#31, ADR 0004) sirve `GET /levels` como `[{ levelId, section }]`, con `section` aditivo (ausente ⇒ `campaign`). Los niveles temáticos son `Level`s reales (puntúan/persisten como cualquiera) pero SIN gating por Tier ni adyacencia de "siguiente nivel". La pantalla de selección debe mostrar los Tiers de campaña exactamente como hoy MÁS un bloque "Themed" (grid, sin candados); la de victoria NO debe ofrecer "siguiente nivel" para un nivel temático.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Fragment D: LevelSection.fromWire + CatalogEntry VOs; rename port listLevelIds→listCatalog (List<CatalogEntry>); RemoteLevelRepository parses section (offline degrades themed→hidden); levelCatalogProvider surfaces entries; selection controller splits campaign Tiers (unchanged) vs themed tiles (no locks, themed never shift campaign Tiers); themed block in the selection screen; victory suppresses next-level for a themed id."
+**Resultado obtenido:**
+- Dominio (Dart puro): `lib/domain/board/value_objects/level_section.dart` (`enum LevelSection { campaign, themed }` + `fromWire(String?)` → `themed` solo para el literal exacto `"themed"`; null/desconocido/`"campaign"` → `campaign`) y `catalog_entry.dart` (`CatalogEntry extends Equatable { LevelId id; LevelSection section }`).
+- Puerto `ILevelRepository`: `listLevelIds()` → `listCatalog()` devolviendo `Future<Either<LevelFailure, List<CatalogEntry>>>` (doc actualizado).
+- `RemoteLevelRepository`: `_parseIds`→`_parseCatalog` parsea `levelId` (String requerido) + `section` vía `LevelSection.fromWire`. Online mantiene write-through de SOLO ids (no se toca `LevelCacheDataSource`); la rama OFFLINE rehidrata cada id como `campaign` (documentado inline: offline degrada los temáticos a ocultos, aceptable v1). Mapeo de fallos idéntico.
+- `level_catalog_provider`: tipo `List<LevelId>` → `List<CatalogEntry>` (llama `listCatalog()`); prefetch oportunista por `entry.id` conservado.
+- Estado + controller: nuevo agregado `CatalogView { List<TierSection> campaignTiers; List<LevelTile> themedTiles }`. El controller separa campaña (Tier derivado de la posición ENTRE campaña → intercalar temáticos no desplaza Tiers, con gating idéntico) de temáticos (tiles nunca bloqueados, estrellas del progreso si las hay).
+- `level_selection_screen`: tras los Tiers de campaña, `_ThemedSectionView` (header "Themed" + grid 3-col reutilizando `_LevelTileView` sin candado y siempre tappable); si no hay temáticos no renderiza nada extra (campaña se ve idéntica). l10n: clave `themedSection` (en/es).
+- `victory_screen`: adyacencia calculada SOLO sobre ids de campaña (`section == campaign`); un id temático (no está entre los de campaña) no muestra "next level" ni "campaign complete", solo "Back to Levels". Campaña intacta.
+- Mocks regenerados (`dart run build_runner build`); fakes de test (`level_selection_fakes.dart`) migrados a `CatalogEntry` con helper público `campaignEntries` + params `entries`/`catalogEntries`; dos fakes a mano de otros tests (`game_controller_hint_test`, `game_screen_hint_test`) migrados a `listCatalog`.
+- Tests nuevos/extendidos (AAA): `LevelSection.fromWire` (4), `CatalogEntry` igualdad (3), repo `listCatalog` (section themed/ausente/desconocida, offline→campaign), catálogo, controller (temáticos sin candado, no desplazan Tiers, estrellas temáticas), pantalla (bloque themed sin candados + navegación con id real; campaña-only sin header), victoria (supresión de next-level para temático + next-level de campaña saltando temáticos intercalados).
+- Verificación: `flutter analyze` → 0 issues; suite completa `flutter test` → 600/600 verdes (+16 nuevos); tests de campaña existentes intactos (solo se ajustó el tipo de valor del catálogo donde cambió de verdad).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 070 — front#67 (fragmento E) — HintPolicy consciente de sección
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Último fragmento de front#67: la pista auto-resolutora debe estar disponible en los niveles temáticos. `HintPolicy.isEligible` decidía solo por `LevelId.number >= 7`; los ids temáticos (`t-…`) no son numéricos y `LevelId.number` cae a 1 (wart conocido), así que el umbral de campaña los excluía por accidente. Se hace la política consciente de sección usando `palette != null` como señal de temático (no el parseo del id).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Fragment E: make HintPolicy section-aware — campaign keeps number>=7, themed is always eligible via a `themed` flag; signal is `palette != null` at the controller guard and the bulb-button gate. Add AAA unit tests."
+**Resultado obtenido:**
+- `lib/domain/board/services/hint_policy.dart`: `isEligible(LevelId id, {bool themed = false}) => themed || id.number >= minEligibleLevel`. Comentario documenta el porqué (Solución servible + evitar el wart de `LevelId.number` con `t-…`).
+- `lib/application/state/game_controller.dart` (`playHint`): la guarda defensiva pasa `themed: level.palette != null` (el nivel cargado ya porta la paleta, fragmento C).
+- `lib/presentation/game/screens/game_screen.dart`: el gate de render de la bombilla pasa `themed: s.palette != null` desde el `GamePlaying` observado.
+- Tests nuevos (`test/domain/board/services/hint_policy_test.dart`, AAA): campaña < 7 no elegible, >= 7 elegible; temático siempre elegible con `themed:true` pese a `number==1`; y el mismo id temático NO elegible tratado como campaña (`themed:false`) — prueba que decide el flag, no el id.
+- Verificación: `flutter analyze` (services/state/screens) → 0 issues; suite completa `flutter test` → 604/604 verdes (+4 nuevos); tests de pista existentes (controller/screen) intactos.
+
+Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section-paint-seam`. Falta el criterio E2E del brief (sección temática end-to-end contra el back en Docker), que depende de aplicar el `prisma db push` + seed de back#31 (ver [[ola0-5050-prs]]).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

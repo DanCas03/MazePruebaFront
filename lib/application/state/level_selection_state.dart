@@ -43,3 +43,19 @@ class TierSection extends Equatable {
   @override
   List<Object?> get props => [tier, tiles];
 }
+
+/// Estado ya resuelto de la pantalla de selección: la campaña, agrupada en
+/// [campaignTiers] (con Tier + gating + estrellas), y los niveles temáticos como
+/// [themedTiles] (SIN Tier, SIN gating, nunca bloqueados). Modelar el catálogo
+/// como este agregado mantiene ambos bloques independientes: intercalar niveles
+/// temáticos no desplaza los Tiers de campaña, y un catálogo sin temáticos deja
+/// [themedTiles] vacío (la pantalla se ve idéntica a antes).
+class CatalogView extends Equatable {
+  final List<TierSection> campaignTiers;
+  final List<LevelTile> themedTiles;
+
+  const CatalogView({required this.campaignTiers, required this.themedTiles});
+
+  @override
+  List<Object?> get props => [campaignTiers, themedTiles];
+}

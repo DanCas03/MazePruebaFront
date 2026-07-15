@@ -1616,3 +1616,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - Certificación: los 3 pasan `validateCandidate` por construcción (no vacío + sin solape + se vacían en orden de colocación inverso ⇒ el orden inverso limpia el tablero); cada `paintRole` existe en `palette`; cada flecha confinada a su región (garantía de `generateThemed`).
 - Justificación de cobertura < objetivo: `face` (región grande y llena) y `fur`/`pink` se estancan en 79–88% porque las celdas interiores no tienen lane recto libre al borde una vez colocada parte de la figura — límite inherente de la invariante de solubilidad; la figura se reconoce a ese nivel de relleno. `heart` (convexa) sí alcanza 0.9. Reportado en el manifest.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 077 — front#68 (fragmento 5) — README tooling temático
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Documentar la funcionalidad pública nueva (producción de niveles temáticos) en el README del front, según la regla de control de versiones del proyecto.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "Actualizar README.md (§ Tooling) con la subsección de producción de niveles temáticos: máscaras, CLI, confinamiento por región, orden detalle-primero, cobertura/preview, sin límite de tiempo, fixtures congelados."
+**Resultado obtenido:** Nueva subsección `### Producción de niveles temáticos — Máscaras + CLI (front#68)` en `README.md` bajo `## Tooling`, tras la de candidatos: formato `.mask`, comando del CLI, confinamiento flecha↔región + `paintRole`/`palette` (ADR 0004), orden detalle-primero, ocupación global/solubilidad, reintento de semillas + cobertura + preview ANSI, sin `timeLimitSec` en v1, y ubicación de los 3 fixtures congelados con su comando reproducible. Suite completa del front verificada: `flutter analyze` 0 issues + `flutter test` 625/625 verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

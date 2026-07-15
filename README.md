@@ -88,6 +88,35 @@ por defecto); una semilla que exceda el tiempo o falle la validación se registr
 en el manifiesto de errores y el lote continúa. Los candidatos elegidos por la
 curación alimentan el seed del back (back#10).
 
+### Producción de niveles temáticos — Máscaras + CLI (front#68)
+
+Extiende el mismo tooling para el apartado temático (ADR 0004): niveles cuyo
+tablero **dibuja una figura** (corazón, cara feliz, conejo — mínimo 3). La figura
+se deriva de una imagen de referencia a una **Máscara**: un spec de texto
+reviewable (`tool/level_production/masks/*.mask`) con un grid de un glyph por
+celda + un legend `glyph = rol : #hex`. Sin visión por computadora, sin
+dependencias nuevas; el grid lo cura una persona por vista previa. El `.` es el
+fondo (sin flechas): la figura flota sobre un tablero vacío.
+
+    dart run tool/level_production/produce_themed.dart --masks-dir <dir> [--out <dir>] [--coverage <0..1>] [--seeds <A..B>] [--maxlen <n>]
+    dart run tool/level_production/produce_themed.dart --mask <file.mask> [opciones]
+
+El productor confina **cada flecha a una sola región de color** (una flecha = un
+color; sale entera) vía `GraphBoardGenerator.generateThemed`, tag `paintRole` por
+flecha + `palette` de roles→hex a nivel de nivel (ADR 0004; el back los guarda y
+sirve como datos opacos). Las regiones se generan **detalle-primero** (menor a
+mayor tamaño) para que las interiores encuentren lane de salida libre; comparten
+una ocupación **global** que preserva la solubilidad (el tablero se vacía en orden
+inverso de colocación, verificado con `validateCandidate`). Reintenta semillas
+hasta que cada región alcanza la cobertura objetivo (~0.9) o usa la mejor vista, y
+reporta cobertura por rol en `manifest-themed.md` + una **vista previa ANSI a
+color** por figura para curación. Los niveles temáticos **no llevan límite de
+tiempo** en v1 (la ausencia del campo `timeLimitSec` es la anotación).
+
+Los 3 fixtures congelados viven en `tool/level_production/themed/` (comando
+reproducible: `--masks-dir tool/level_production/masks --seeds 0..150 --maxlen 8`)
+y alimentan la Sección temática del back (reemplazan el smoke `t-smoke`).
+
 ### Campaña remota (front#8)
 
 Los niveles de la campaña ya no se generan localmente: los sirve el back oficial. `GET /levels` devuelve el Catálogo en orden de juego —una lista de `CatalogEntry { LevelId id; LevelSection section }`, con `section` aditivo (ausente ⇒ `campaign`; ver *Themed section* abajo)— y `GET /levels/:id` el nivel completo (`ArrowBoard` + arrows). La app depende del puerto [`ILevelRepository`](lib/domain/board/repositories/i_level_repository.dart) (`listCatalog()` + `getLevel()`); la implementación [`RemoteLevelRepository`](lib/infrastructure/repositories/remote_level_repository.dart) es network-first con fallback a caché: con red, refetchea y hace write-through a una box Hive `levels_cache`; sin red (o ante un error de servidor no-404), sirve la copia cacheada. Un 404 del back para un nivel concreto es autoritativo (`LevelNotFound`) y no consulta la caché.

@@ -5,9 +5,10 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/difficulty.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/generated_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/generator_config.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_generator_config_exception.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 
 void main() {
-  const board = ArrowBoard(arrows: [], cols: 4, rows: 4);
+  const board = ArrowBoard(arrows: [], space: RectSpace(4, 4));
 
   GeneratorConfig config({int? seed}) => GeneratorConfig.create(
         cols: 4,

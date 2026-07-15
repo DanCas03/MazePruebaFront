@@ -7,6 +7,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/infrastructure/serialization/level_json_encoder.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 
 void main() {
   group('LevelJsonEncoder', () {
@@ -20,8 +21,7 @@ void main() {
     test('should_serialize_wire_contract_keys_when_encoding_board', () {
       // Arrange — a minimal soluble board with a single straight arrow.
       final board = ArrowBoard(
-        cols: 5,
-        rows: 6,
+        space: RectSpace(5, 6),
         arrows: [
           Arrow(
             id: ArrowId('a1'),
@@ -48,8 +48,7 @@ void main() {
     test('should_serialize_cells_tail_to_head_as_row_col_pairs_when_arrow_is_bent', () {
       // Arrange — a bent arrow: tail (10,3) -> (9,3) -> head (9,4).
       final board = ArrowBoard(
-        cols: 8,
-        rows: 12,
+        space: RectSpace(8, 12),
         arrows: [
           Arrow(
             id: ArrowId('bent'),
@@ -90,8 +89,7 @@ void main() {
         Direction.right: 'right',
       };
       final board = ArrowBoard(
-        cols: 4,
-        rows: 4,
+        space: RectSpace(4, 4),
         arrows: [
           for (final dir in cases.keys)
             Arrow(
@@ -119,8 +117,7 @@ void main() {
     test('should_omit_time_limit_sec_when_null', () {
       // Arrange — a board serialized without a time limit.
       final board = ArrowBoard(
-        cols: 3,
-        rows: 3,
+        space: RectSpace(3, 3),
         arrows: [
           Arrow(
             id: ArrowId('a'),
@@ -140,8 +137,7 @@ void main() {
     test('should_include_time_limit_sec_when_provided', () {
       // Arrange — a board with an explicit time limit.
       final board = ArrowBoard(
-        cols: 3,
-        rows: 3,
+        space: RectSpace(3, 3),
         arrows: [
           Arrow(
             id: ArrowId('a'),
@@ -161,7 +157,7 @@ void main() {
 
     test('should_serialize_empty_arrows_list_when_board_is_cleared', () {
       // Arrange — a cleared board with no arrows.
-      final board = ArrowBoard(cols: 5, rows: 5, arrows: const []);
+      final board = ArrowBoard(space: RectSpace(5, 5), arrows: const []);
 
       // Act — serialize the empty board.
       final map = sut.toMap(levelId: 'cleared', board: board);
@@ -174,8 +170,7 @@ void main() {
     test('should_end_with_newline_and_two_space_indent_when_encode_returns_string', () {
       // Arrange — a board whose encoded form we inspect as a raw string.
       final board = ArrowBoard(
-        cols: 2,
-        rows: 2,
+        space: RectSpace(2, 2),
         arrows: [
           Arrow(
             id: ArrowId('a'),

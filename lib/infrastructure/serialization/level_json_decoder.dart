@@ -4,6 +4,7 @@ import '../../domain/arrows/value_objects/arrow_id.dart';
 import '../../domain/board/entities/level.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/core/exceptions/domain_exception.dart';
+import '../../domain/game_core/space/rect_space.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
 
@@ -33,8 +34,7 @@ class LevelJsonDecoder {
       id: LevelId(_string(json, 'levelId')),
       board: ArrowBoard(
         arrows: arrows,
-        cols: _int(json, 'cols'),
-        rows: _int(json, 'rows'),
+        space: RectSpace(_int(json, 'cols'), _int(json, 'rows')),
       ),
       timeLimitSec: _optionalInt(json, 'timeLimitSec'),
       // Instrucciones de pintado opcionales (ADR 0004): dato opaco de niveles

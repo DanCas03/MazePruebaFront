@@ -21,6 +21,8 @@ import 'package:flutter_arrow_maze/presentation/game/widgets/board_widget.dart';
 import 'package:flutter_arrow_maze/presentation/game/widgets/arrow_widget.dart';
 
 import 'board_widget_test.mocks.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../../support/arrow_fixtures.dart';
 
 // Genera mocks de ILevelRepository y RemoveArrowUseCase.
 // El .mocks.dart co-localizado se genera con:
@@ -31,7 +33,7 @@ import 'board_widget_test.mocks.dart';
 
 /// Crea una flecha horizontal de longitud 2 en la fila 0, columna [col].
 /// Ocupa las celdas (row:0, col) y (row:0, col+1).
-Arrow _arrow(String id, int col) => Arrow.straight(
+Arrow _arrow(String id, int col) => straightArrow(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
@@ -43,8 +45,7 @@ Arrow _arrow(String id, int col) => Arrow.straight(
 ///   arrow-2: celdas (0,2) y (0,3)
 ArrowBoard _board() => ArrowBoard(
       arrows: [_arrow('arrow-0', 0), _arrow('arrow-2', 2)],
-      cols: 4,
-      rows: 4,
+      space: RectSpace(4, 4),
     );
 
 /// Monta un [ProviderContainer] con el board listo y el widget árbol

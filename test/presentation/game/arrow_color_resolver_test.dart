@@ -6,12 +6,13 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/presentation/game/arrow_color.dart';
 import 'package:flutter_arrow_maze/presentation/game/arrow_color_resolver.dart';
+import '../../support/arrow_fixtures.dart';
 
 // front#67 — seam de color: dos adapters intercambiables. El default reproduce
 // la paleta por identidad (campaña); el temático resuelve rol→hex y cae a
 // identidad ante rol/hex ausente o inválido.
 
-Arrow _arrow(String id, {String? paintRole}) => Arrow.straight(
+Arrow _arrow(String id, {String? paintRole}) => straightArrow(
       id: ArrowId(id),
       tail: Position(row: 0, col: 0),
       direction: Direction.right,

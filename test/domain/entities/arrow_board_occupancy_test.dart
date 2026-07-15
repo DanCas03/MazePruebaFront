@@ -6,6 +6,8 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 // ---------------------------------------------------------------------------
 // Naive reference implementation of canExit (pre-#64 semantics): rebuilds the
@@ -19,7 +21,7 @@ bool _naiveCanExit(ArrowBoard board, ArrowId id) {
     for (final a in board.arrows)
       if (a.id != id) ...a.cells,
   };
-  return arrow.exitPath(board.cols, board.rows).every((p) => !occupied.contains(p));
+  return board.space.exitLane(arrow.head, arrow.headDirection).every((p) => !occupied.contains(p));
 }
 
 /// Builds a random small board with self-avoiding, non-overlapping bent
@@ -66,7 +68,7 @@ ArrowBoard _randomBoard(Random rng, {required int cols, required int rows}) {
     occupied.addAll(body);
   }
 
-  return ArrowBoard(arrows: arrows, cols: cols, rows: rows);
+  return ArrowBoard(arrows: arrows, space: RectSpace(cols, rows));
 }
 
 void main() {
@@ -84,7 +86,7 @@ void main() {
         ],
         headDirection: Direction.right,
       );
-      final board = ArrowBoard(arrows: [snake], cols: 5, rows: 5);
+      final board = ArrowBoard(arrows: [snake], space: RectSpace(5, 5));
 
       // Act
       final result = board.canExit(const ArrowId('snake'));
@@ -105,13 +107,13 @@ void main() {
         ],
         headDirection: Direction.right,
       );
-      final blocker = Arrow.straight(
+      final blocker = straightArrow(
         id: const ArrowId('blocker'),
         tail: Position(row: 3, col: 3),
         direction: Direction.up,
         length: 2, // occupies (3,3) and (2,3)
       );
-      final board = ArrowBoard(arrows: [snake, blocker], cols: 5, rows: 5);
+      final board = ArrowBoard(arrows: [snake, blocker], space: RectSpace(5, 5));
 
       // Act
       final blocked = board.canExit(const ArrowId('snake'));
@@ -132,13 +134,13 @@ void main() {
         ],
         headDirection: Direction.right,
       );
-      final blocker = Arrow.straight(
+      final blocker = straightArrow(
         id: const ArrowId('blocker'),
         tail: Position(row: 3, col: 3),
         direction: Direction.up,
         length: 2,
       );
-      final board = ArrowBoard(arrows: [snake, blocker], cols: 5, rows: 5);
+      final board = ArrowBoard(arrows: [snake, blocker], space: RectSpace(5, 5));
 
       // Act — removeArrow returns a NEW immutable instance (new lazy cache).
       final after = board.removeArrow(const ArrowId('blocker'));

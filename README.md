@@ -148,6 +148,10 @@ On the `Unauthenticated → Authenticated` transition (login or auto-login), `Au
 
 **Known limitation:** with "remember me" unchecked (`remember: false`), `AuthTokenInterceptor` does not yet sign requests from the in-memory session, so the sync's authenticated calls only succeed when "remember me" is checked, until front#16 fixes the interceptor.
 
+### Account panel (front#78)
+
+The start screen carries an account icon (top-left, mirroring the Settings gear) that opens a modal bottom sheet with the signed-in player's profile and a **Sign out** action. The `username` and `email` come from the protected `GET /auth/me` endpoint (back#44) through the `IAuthRepository.me()` port (`RemoteAuthRepository`), surfaced to the UI by `GetCurrentUserUseCase` and the `currentUserProvider` (a `FutureProvider.autoDispose` that re-fetches on each open and exposes load/error/retry states). Progress totals — **total stars** and **completed levels** — need no backend: `progressTotalsProvider` reduces the local Hive progress (`ILevelProgressRepository.getAll()`) via the `ProgressTotals` read model. Sign out calls `AuthController.signOut()`, which clears the token from memory and secure storage; `AuthGate` then swaps to `LoginScreen` (which offers register / log in) with no manual navigation, and a subsequent app restart does not auto-login. The panel widget consumes only `application/` providers — no direct `infrastructure/` or `domain/` access — and every string is localized (`accountTitle`, `accountSignOut`, `accountStarsTotal`, `accountLevelsCompleted`, …).
+
 ### Localization (i18n · front#4)
 
 The app ships Spanish (`es`, primary) and English (`en`), selected automatically from the device locale. Strings live in ARB files under [`lib/l10n/`](lib/l10n/) (`app_en.arb` is the key template, `app_es.arb` the Spanish translation); [`l10n.yaml`](l10n.yaml) drives `flutter gen-l10n`, which produces the `AppLocalizations` delegate. Because `flutter: generate: true` is set in `pubspec.yaml`, the delegate is regenerated on every `flutter pub get` / build, so the generated `lib/l10n/app_localizations*.dart` files are **not** committed (they are git-ignored).

@@ -1678,3 +1678,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de l10n: claves del panel de cuenta).
 **Resultado obtenido:** 7 claves nuevas en `app_en.arb` (plantilla, con metadata + placeholders `int`) y `app_es.arb`: `accountTooltip`, `accountTitle`, `accountStarsTotal` ({count}), `accountLevelsCompleted` ({count}), `accountSignOut`, `accountLoadError`, `accountRetry`. `flutter gen-l10n` regenera `AppLocalizations` con los 7 getters (el `.dart` generado está gitignored, no se versiona). Consumidas por el widget del panel en el fragmento 5.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 082 — front#78 (fragmento 5) — Presentación: icono de cuenta + AccountPanel
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Punto de entrada de cuenta en la pantalla inicial: icono que abre un panel (bottom sheet) con perfil (username/email), totales de progreso y cerrar sesión, cumpliendo la regla de capas (presentación solo consume providers de application) (front#78).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de presentación: icono en HomeScreen + widget AccountPanel como modal bottom sheet).
+**Resultado obtenido:** `HomeScreen` pasa de `StatelessWidget` a `ConsumerWidget` y gana un `IconButton(Icons.account_circle)` en `Alignment.topLeft` (espejo del de ajustes) que llama `AccountPanel.show(context)`. Nuevo `lib/presentation/home/widgets/account_panel.dart`: `ConsumerWidget` que hace `watch` de `currentUserProvider` (loading→spinner / error→mensaje+reintento que invalida el provider / data→avatar+username+email) y `progressTotalsProvider` (chips de estrellas ⭐ y niveles completados ✓); el botón Cerrar sesión lee el `AuthController`, cierra el sheet y llama `signOut()` — el `AuthGate` conmuta a `LoginScreen`. Widget tests AAA: (1) tap Cerrar sesión → LoginScreen + estado Unauthenticated; (2) el panel muestra los totales locales. `flutter analyze` 0 issues; suite completa 650/650 verde. README (§ Account panel) actualizado.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

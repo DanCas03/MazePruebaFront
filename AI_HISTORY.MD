@@ -1696,3 +1696,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "Fragmento 5: Presentación: helper único de proyección; painters/widgets con comportamiento idéntico. El hit-test píxel→celda queda en board_widget (proyección legítimamente 2D)."
 **Resultado obtenido:** Nuevo `lib/presentation/game/direction_projection.dart` con `directionUnit(dir)→Offset`, `directionAngle(dir)→double` (valores literales `0.0`/`math.pi`/`math.pi/2`/`-math.pi/2` idénticos, NO derivados por atan2 — garantiza doubles bit-idénticos) y `cellsToEdge(head, dir, {cols, rows})→int` (equivalente numérico a `RectSpace.exitLane(...).length`). `arrow_painter` usa `directionAngle`; `snake_exit_painter` borra `_dirUnit` (⇒ `directionUnit`) y colapsa `_laneCells` a `cellsToEdge`; `arrow_widget` borra su `_dirUnit` de tuplas (⇒ `directionUnit`) y quita el import de `Direction` ya no usado. `flutter analyze` limpio; tests de painters/widgets **22/22** SIN cambios (píxel-idéntico); suite completa **645/645**. El hit-test píxel→celda queda en `board_widget` (proyección legítimamente 2D, fuera del alcance).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 084 — front#73 (fragmento 7) — Certificación OCP sobre HoledRectSpace
+
+**Tarea o problema abordado:** Prueba decisiva (ADR-0005 D2/D7): correr el MISMO `ArrowBoard`/`Arrow` sobre un espacio agujereado (`HoledRectSpace`) usando solo la API pública existente, sin editar una línea de consumidor. Si compila y pasa, la extensibilidad prometida por `BoardSpace` queda DEMOSTRADA, no solo documentada (OCP).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 7: Test de certificación OCP: el mismo ArrowBoard sobre HoledRectSpace sin editar consumidores (carril que termina en agujero ⇒ sale; carril ocupado ⇒ bloqueado)."
+**Resultado obtenido:** `test/domain/entities/arrow_board_holed_space_certification_test.dart`: agujero en (2,4), flecha en (2,1) hacia la derecha ⇒ `canExit` true (el agujero es frontera, la flecha sale por ahí); con un bloqueador en (2,3) ⇒ `canExit` false. `flutter test` 2/2. `git status` confirma que NO se tocó ningún archivo de `lib/` — solo el test nuevo. La abstracción está cerrada para extensión (OCP demostrado, no especulado).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

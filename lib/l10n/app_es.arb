@@ -21,6 +21,7 @@
   "passwordEmpty": "Ingresa tu contraseña",
   "confirmMismatch": "Las contraseñas no coinciden",
   "gameMoves": "Movimientos: {count}",
+  "errorsLeft": "Errores restantes",
   "loading": "Cargando...",
   "error": "Error",
   "defeatTitle": "¡Sin movimientos!",

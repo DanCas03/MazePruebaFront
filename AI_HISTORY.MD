@@ -1784,3 +1784,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
 **Resultado obtenido:** `GameController._startLevel` cambia `const StrikeCount(0)` por `StrikeCount(0, max: level.maxErrors)` y pasa `strikes: _strikes` al `GamePlaying` inicial (antes el estado de arranque no llevaba strikes → el HUD no podía derivar los restantes). Las dos reconstrucciones de `GamePlaying` de la demo de pista pasan `StrikeCount(0, max: level.maxErrors)` para que el chip sea coherente durante la reproducción. Los tableros generados siguen con el default (`StrikeCount(0)` = `defaultMax`), sin `Level`. TDD: `_stubLevel` acepta `maxErrors`; 2 tests nuevos (presupuesto expuesto como `remaining` al cargar; pérdida al 3.er choque con `maxErrors:3`, no al 5.º), **29/29** en game_controller + hint (RED verificado; los tests de default 5 siguen verdes).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 089 — front#83 (fragmento 4) — String l10n errorsLeft (en/es)
+
+**Tarea o problema abordado:** Etiqueta de tooltip/semántica para el chip descendente de errores del HUD.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `app_en.arb`/`app_es.arb`: clave `errorsLeft` ("Errors left" / "Errores restantes"). `flutter gen-l10n` regenera los getters (los `app_localizations*.dart` son build artifacts gitignoreados). Solo los `.arb` entran al commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

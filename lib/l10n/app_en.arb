@@ -36,6 +36,10 @@
       "count": { "type": "int" }
     }
   },
+  "errorsLeft": "Errors left",
+  "@errorsLeft": {
+    "description": "Tooltip/semantics label of the descending error-budget chip in the game AppBar (front#83)."
+  },
   "loading": "Loading...",
   "error": "Error",
   "defeatTitle": "Out of Moves!",

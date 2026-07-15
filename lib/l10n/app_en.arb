@@ -232,5 +232,39 @@
   "generatedExit": "Exit",
   "@generatedExit": {
     "description": "Post-game action: return to the home screen."
+  },
+  "accountTooltip": "Account",
+  "@accountTooltip": {
+    "description": "Tooltip of the account icon on the home screen (front#78)."
+  },
+  "accountTitle": "Your account",
+  "@accountTitle": {
+    "description": "Heading of the account panel (bottom sheet) on the home screen (front#78)."
+  },
+  "accountStarsTotal": "{count} stars",
+  "@accountStarsTotal": {
+    "description": "Total stars earned across levels, shown in the account panel (front#78).",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "accountLevelsCompleted": "{count} levels completed",
+  "@accountLevelsCompleted": {
+    "description": "Number of completed levels, shown in the account panel (front#78).",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "accountSignOut": "Sign out",
+  "@accountSignOut": {
+    "description": "Button in the account panel that clears the session and returns to login (front#78)."
+  },
+  "accountLoadError": "Couldn't load your profile",
+  "@accountLoadError": {
+    "description": "Error message shown in the account panel when the profile fetch fails (front#78)."
+  },
+  "accountRetry": "Retry",
+  "@accountRetry": {
+    "description": "Button to retry loading the profile in the account panel (front#78)."
   }
 }

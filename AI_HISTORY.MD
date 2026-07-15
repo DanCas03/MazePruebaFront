@@ -1669,3 +1669,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de aplicación: GetCurrentUserUseCase, providers de perfil y totales de progreso derivados del progreso local).
 **Resultado obtenido:** `GetCurrentUserUseCase.execute()` delega en `IAuthRepository.me()`. Read model `ProgressTotals` (`lib/application/read_models/`) con factory `from(List<LevelProgress>)` que reduce el progreso a `totalStars` (Σ bestStars??0) y `completedLevels` (conteo de completados). `account_providers.dart`: `getCurrentUserUseCaseProvider`, `currentUserProvider` (FutureProvider.autoDispose que desenvuelve el Either lanzando el AuthFailure en Left → AsyncValue.error) y `progressTotalsProvider` (autoDispose sobre `getAll()`). Ambos `autoDispose` para re-consultar al reabrir el panel. Tests AAA: use case (éxito/fallo, mockito), `ProgressTotals.from` puro (vacío, mezcla, null=0) y wiring de ambos providers vía ProviderContainer con fakes. 8/8 verdes.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 081 — front#78 (fragmento 4) — l10n: cadenas del panel de cuenta
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Externalizar (en/es) las cadenas del panel de cuenta para no dejar literales hard-codeados en la presentación (front#78, criterio de aceptación de localización).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de l10n: claves del panel de cuenta).
+**Resultado obtenido:** 7 claves nuevas en `app_en.arb` (plantilla, con metadata + placeholders `int`) y `app_es.arb`: `accountTooltip`, `accountTitle`, `accountStarsTotal` ({count}), `accountLevelsCompleted` ({count}), `accountSignOut`, `accountLoadError`, `accountRetry`. `flutter gen-l10n` regenera `AppLocalizations` con los 7 getters (el `.dart` generado está gitignored, no se versiona). Consumidas por el widget del panel en el fragmento 5.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

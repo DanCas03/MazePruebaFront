@@ -1705,3 +1705,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "Fragmento 7: Test de certificación OCP: el mismo ArrowBoard sobre HoledRectSpace sin editar consumidores (carril que termina en agujero ⇒ sale; carril ocupado ⇒ bloqueado)."
 **Resultado obtenido:** `test/domain/entities/arrow_board_holed_space_certification_test.dart`: agujero en (2,4), flecha en (2,1) hacia la derecha ⇒ `canExit` true (el agujero es frontera, la flecha sale por ahí); con un bloqueador en (2,3) ⇒ `canExit` false. `flutter test` 2/2. `git status` confirma que NO se tocó ningún archivo de `lib/` — solo el test nuevo. La abstracción está cerrada para extensión (OCP demostrado, no especulado).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 085 — front#73 (fragmento 8) — README + verificación final de criterios de aceptación
+
+**Tarea o problema abordado:** Documentar el módulo `BoardSpace` en el README (sección de arquitectura) y verificar de punta a punta los criterios de aceptación del issue #73.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 8: README (sección arquitectura: módulo space) + cierre. Greps de aceptación: cero switch/if sobre Direction fuera de RectSpace.step, codec y helper de proyección; cero aritmética dr/dc/bounds/adyacencia fuera del módulo space."
+**Resultado obtenido:** `README.md`: fila `game_core/` incluye `space/ (BoardSpace, RectSpace)` y un párrafo nuevo en `## Architecture` que introduce `BoardSpace`/`RectSpace`/`HoledRectSpace` (ADR-0005). Criterios de aceptación verificados: (1) grep `switch` + `Direction.` ⇒ exactamente `rect_space.dart` y `direction_projection.dart` (el codec ni siquiera hace switch — usa mapas de strings); (2) único `Direction.` fuera de los archivos permitidos = `graph_board_generator.dart:161` `Direction.values[rng.nextInt(...)]`, que es SELECCIÓN aleatoria de dirección (rango de RNG), no aritmética geométrica. `flutter analyze` limpio; suite completa **647/647**; golden boards 2/2; smoke del CLI real (`produce.dart` con `Isolate.run`) reproduce el golden byte-a-byte.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -1766,3 +1766,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
 **Resultado obtenido:** `StrikeCount` gana `max` por instancia (default `defaultMax=5`) y un getter `remaining = (max-value).clamp(0,max)` — el contador DESCENDENTE que ve el jugador; el modelo interno sigue contando choques cometidos (el scoring los usa como `collisions`). `isFatal`/`increment` preservan `max`; `props` incluye `max`. `Level` gana `maxErrors` (default `StrikeCount.defaultMax`, invariante `> 0` → `InvalidLevelException`), en `props`. TDD: nuevo `test/domain/game_core/value_objects/strike_count_test.dart` (6) + 5 casos nuevos en `level_test.dart` (default/valor/cero/negativo/igualdad), **24/24** (RED verificado). Decisión: un único origen del "5" (`StrikeCount.defaultMax`), referenciado por `Level`; el default de generados (sin `Level`) sale del mismo sitio.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 087 — front#83 (fragmento 2) — Wire decode/encode de maxErrors
+
+**Tarea o problema abordado:** Transportar el presupuesto por nivel en el wire contract de forma aditiva/tolerante, sin romper clientes ni goldens existentes.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `LevelJsonDecoder` decodifica `maxErrors` con `_optionalInt(...) ?? StrikeCount.defaultMax` (ausente ⇒ default; no-int ⇒ FormatException, contrato roto). `LevelJsonEncoder.toMap`/`encode` ganan `int? maxErrors` opcional, emitido `if (maxErrors != null)` (igual que `timeLimitSec`/`order`): no pasarlo conserva el JSON de campaña original y mantiene los golden boards byte-idénticos. TDD: 4 casos nuevos en `level_json_decoder_test.dart` (default por ausencia, decode del valor, no-int lanza, round-trip preserva el presupuesto), **19/19** (RED verificado). La propiedad inversa se conserva porque el encoder es primitive-based: el caller elige qué campos emitir (como ya ocurría con palette/timeLimitSec).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

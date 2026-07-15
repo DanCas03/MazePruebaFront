@@ -68,7 +68,7 @@ ArrowBoard _singleArrowBoard() => ArrowBoard(
 ArrowBoard _blockedArrowBoard() => ArrowBoard(
       space: RectSpace(4, 4),
       arrows: [
-        // Sale hacia la derecha; su exitPath incluye (0,3).
+        // Sale hacia la derecha; su carril de salida (space.exitLane) incluye (0,3).
         straightArrow(
           id: const ArrowId('a1'),
           tail: Position(row: 0, col: 0),

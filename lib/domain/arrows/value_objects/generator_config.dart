@@ -18,8 +18,8 @@ class GeneratorConfig extends Equatable {
   static const int maxDimension = 10;
 
   /// Piso y techo de la cuenta atrás derivada, en segundos. El piso espeja el
-  /// mínimo de la campaña ([LevelBlueprint], 30 s); el techo acota tableros
-  /// grandes y fáciles para que el timer siga significando algo.
+  /// mínimo histórico de la campaña (30 s); el techo acota tableros grandes y
+  /// fáciles para que el timer siga significando algo.
   static const int minTimeLimitSec = 30;
   static const int maxTimeLimitSec = 300;
 
@@ -75,7 +75,7 @@ class GeneratorConfig extends Equatable {
   }
 
   /// Cantidad de flechas derivada de la densidad del preset. Mismo cálculo que
-  /// la campaña ([LevelBlueprint]): celdas objetivo / largo medio de camino.
+  /// la campaña: celdas objetivo / largo medio de camino.
   int get arrowCount {
     final avgPathLen = (2 + difficulty.maxPathLen) / 2;
     return (cols * rows * difficulty.fillRatio / avgPathLen)

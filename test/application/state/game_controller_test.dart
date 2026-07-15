@@ -428,7 +428,7 @@ void main() {
   });
 
   // ── Cuenta atrás inyectable (front#11) ──────────────────────────────────────
-  // El límite ahora viene de Level.timeLimitSec (remoto), no de LevelBlueprint.
+  // El límite ahora viene de Level.timeLimitSec (remoto), no de una curva local.
 
   test('should_start_countdown_when_level_has_time_limit', () async {
     // Arrange — nivel remoto cronometrado a 60 s.

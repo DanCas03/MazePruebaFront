@@ -3,8 +3,10 @@ import 'dart:convert';
 import '../../domain/arrows/entities/arrow_board.dart';
 
 /// Serializa un [ArrowBoard] al JSON arrow-path del wire contract
-/// (CONTEXT-MAP raíz). Emite EXACTAMENTE las claves del contrato para que el
-/// JSON sea copiable tal cual al seed del back sin limpiar campos.
+/// (CONTEXT-MAP raíz). Emite las claves del contrato para que el JSON sea
+/// copiable tal cual al seed del back sin limpiar campos. [order] es un campo
+/// opcional de curación/DB (la columna `order Int?` del back): se emite solo
+/// cuando se provee — los consumidores del wire puro (app) no lo pasan.
 class LevelJsonEncoder {
   const LevelJsonEncoder();
 
@@ -12,9 +14,11 @@ class LevelJsonEncoder {
     required String levelId,
     required ArrowBoard board,
     int? timeLimitSec,
+    int? order,
   }) =>
       {
         'levelId': levelId,
+        if (order != null) 'order': order,
         'cols': board.cols,
         'rows': board.rows,
         if (timeLimitSec != null) 'timeLimitSec': timeLimitSec,
@@ -36,6 +40,7 @@ class LevelJsonEncoder {
     required String levelId,
     required ArrowBoard board,
     int? timeLimitSec,
+    int? order,
   }) =>
-      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec))}\n';
+      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, order: order))}\n';
 }

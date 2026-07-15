@@ -1,5 +1,23 @@
 # AI History — MazePruebaFront
 
+## Entrada 066 — feat(tooling): Rampa + CLI de producción de candidatos (front#65)
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Issue front#65 — construir la Rampa de producción y una CLI de Dart que fabrique candidatos de nivel trazables para la campaña v1 (15 niveles · 5 tiers × 3, culminando en un 50×50), material de curación humana. Requería: rampa tier→parámetros, generación determinista y validada, resiliencia por semilla, retiro de `LevelBlueprint`, y actualización de README + AI_HISTORY. Bloqueante #64 (generador incremental para densidad 50×50) ya mergeado en `origin/main` (`3ecff8a`, PR #71).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8, rol Senior Dart Dev)
+**Prompt o instrucción proporcionada:** > "Actúa como Senior Dart Dev para el Issue #65. […] Resiliencia: atrapa semillas que exceden el tiempo o fallan validación en un manifiesto de errores y continúa. Safe I/O: crea --out recursivo. Audita AI_HISTORY y PR para evitar duplicados. Agrega tu registro, sube los cambios y abre el PR."
+**Resultado obtenido:**
+- `tool/level_production/ramp.dart` (nuevo): `RampStep` + `rampTable` (T1 6×8·0.30·mp3 sin límite; T2 10×12·0.38·mp5 sin límite; T3 18×20·0.45·mp7; T4 30×34·0.55·mp10; T5 42×46·0.60·mp12; remate T5 50×50·0.65·mp12) más `rampStepFor(tier, {finale})`. `arrowCount` derivado (celdas × fillRatio / largo medio, acotado); `timeLimitSec` = `arrowCount × 4` redondeado hacia arriba a múltiplos de 30 (T1–T2 sin límite). Sucesor del retirado `LevelBlueprint`.
+- `tool/level_production/validation.dart` (nuevo): `hasNoOverlap` + `emptiesInReverseOrder` (vaciado en orden inverso de colocación = solubilidad por construcción del DAG) + `validateCandidate` (fail-fast, lanza `CandidateValidationException`).
+- `tool/level_production/candidate_producer.dart` (nuevo): `CandidateSpec` (id trazable `cand-tN-sNNN`, seed a ≥3 dígitos) + `produceCandidate` puro (generar → validar → serializar), determinista; emite `order` placeholder = tier.
+- `tool/level_production/produce.dart` (nuevo): CLI `--tier/--seeds/--out/--finale/--budget`. Safe I/O (crea `--out` recursivo). **Resiliencia:** cada semilla corre en un `Isolate.run(...).timeout(budget)`; timeout o validación fallida → manifiesto de errores (`errors-tN.md`) y el lote continúa, nunca aborta. Escribe `cand-tN-sNNN.json` + `manifest-tN.md` (dims, flechas colocadas/pedidas, densidad lograda, duración).
+- `LevelJsonEncoder`: nuevo parámetro opcional `order` (columna `order Int?` del back), emitido solo si se provee — wire puro de la app intacto.
+- **Retiro de `LevelBlueprint`:** eliminados `lib/domain/board/value_objects/level_blueprint.dart` y su test (sin llamadores reales en producción); referencias en doc-comments de `difficulty.dart`, `generator_config.dart`, `level_descriptor.dart`, `tier.dart` y un comentario de `game_controller_test.dart` reescritas. Eliminado el predecesor `tool/generate_level_candidates.dart` (front#1), superado por esta CLI. Tier/gating de la app intactos.
+- Tests nuevos (AAA): `test/tool/level_production/ramp_test.dart` (tabla, derivaciones, validación de args) y `candidate_producer_test.dart` (formato, determinismo, invariantes, detección de candidatos rotos). README §producción reescrita.
+- Verificación: `flutter analyze` limpio; suite completa verde; CLI corrida end-to-end para tiers regulares y el remate 50×50 (<5 s por semilla, determinista).
+- **Nota de proceso:** el issue se implementó en un git worktree aislado (`ArrowMaze/front-wt65`) porque el working tree compartido tenía cambios sin commitear de una sesión paralela de front#66 (`maxDimension` 10→50 en `generator_config.dart`, `board_widget`/`board_viewport`, y dos tests). Esos cambios NO se incluyen en este PR; quedaron intactos para su sesión.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 064 — fix(front): registro nunca enviaba username, bloqueando registro y login
 
 **Fecha:** 2026-07-14

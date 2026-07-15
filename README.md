@@ -51,17 +51,42 @@ The rule that keeps the boundary honest: `domain/` imports nothing from Flutter,
 
 ## Tooling
 
-### Generador de candidatos de nivel (front#1 / E2.1)
+### Producción de candidatos de nivel — Rampa + CLI (front#65)
 
-    dart run tool/generate_level_candidates.dart [--out <dir>]
+    dart run tool/level_production/produce.dart --tier <1..5> --seeds <A..B> [--out <dir>] [--finale] [--budget <seg>]
 
-Corre `GraphBoardGenerator` con la tabla fija de seeds de
-`tool/generate_level_candidates.dart` y escribe en `tool/candidates/` (default)
-un JSON wire-estricto por candidato (`{levelId, cols, rows, arrows[]}`, ver
-CONTEXT-MAP raíz) más `manifest.md` con la tabla del batch. Reproducible:
-misma tabla => mismos archivos. Los candidatos commiteados son el artefacto
-congelado que consume la curación (E2.2) y el seed del back (back#10);
-cambiar el batch = editar la tabla y commitear la regeneración.
+Corre la **Rampa de producción** ([`tool/level_production/ramp.dart`](tool/level_production/ramp.dart)) —
+la curva de dificultad de la campaña, sucesora del retirado `LevelBlueprint`—
+sobre un rango de semillas y congela un JSON arrow-path por candidato más un
+manifiesto del lote. La Rampa mapea cada tier a dimensiones, densidad
+(`fillRatio`), largo máximo de camino y (de T3 en adelante) un `timeLimitSec`
+derivado (`arrowCount × 4`, redondeado hacia arriba a múltiplos de 30; T1–T2 sin
+límite). La campaña conserva su estructura 15 = 5 tiers × 3 y remata en un 50×50
+(`--tier 5 --finale`, nivel 15, `fillRatio` 0.65).
+
+Ejemplos:
+
+    dart run tool/level_production/produce.dart --tier 3 --seeds 300..309
+    dart run tool/level_production/produce.dart --tier 5 --finale --seeds 900..909
+
+Cada candidato lleva un id trazable `cand-tN-sNNN` (tier + seed; **placeholder**
+hasta que la curación asigne el identificador final) y un `order` placeholder =
+tier. Salida en `out/candidates/` por defecto (el directorio se crea recursivo
+si no existe):
+
+- `cand-tN-sNNN.json` — JSON `{levelId, order, cols, rows, timeLimitSec?, arrows[]}`.
+- `manifest-tN.md` — tabla del lote (dims, flechas colocadas/pedidas, densidad
+  lograda, duración).
+- `errors-tN.md` — manifiesto de errores (solo si alguna semilla falló).
+
+**Determinista** (misma semilla + parámetros ⇒ JSON idéntico dentro de la misma
+versión del SDK; el artefacto congelado real es el JSON en git). **Validación
+integrada** antes de escribir: cada candidato pasa *sin solape* + *vaciado en
+orden inverso de colocación* (solubilidad por construcción). **Resiliente**:
+cada semilla se genera en un isolate con presupuesto de tiempo (`--budget`, 5 s
+por defecto); una semilla que exceda el tiempo o falle la validación se registra
+en el manifiesto de errores y el lote continúa. Los candidatos elegidos por la
+curación alimentan el seed del back (back#10).
 
 ### Campaña remota (front#8)
 
@@ -122,7 +147,7 @@ Gating lives in the pure domain service `TierGating`: the first Tier is always o
 
 "Generar nivel" lets the player request an **ephemeral, locally generated, solvable board**: board dimensions, a difficulty preset, an optional timer and an optional seed. This issue ships the **domain + application half** of the feature; the UI that collects the input and plays the board is a separate issue. The resulting artifact is a **GeneratedBoard** (*Tablero generado*, see the glossary in [`CONTEXT.md`](CONTEXT.md)): unlike a `Level`, it has no `LevelId`, is never scored, never persisted, and never touches `Progress` or the leaderboard — it is played and discarded, reproducible via `(seed, config)` within the same app version.
 
-**[`GeneratorConfig`](lib/domain/arrows/value_objects/generator_config.dart)** is a defensive value object: it can only be built through the `GeneratorConfig.create` factory, which validates that `cols` and `rows` fall in the playable range **4–10 inclusive** (`minDimension`/`maxDimension`, adjustable in one place) and throws the semantic domain failure [`InvalidGeneratorConfigException`](lib/domain/core/exceptions/invalid_generator_config_exception.dart) otherwise. The player chooses *intent* (size, difficulty, timer); the internal generator parameters are **derived** from the [`Difficulty`](lib/domain/arrows/value_objects/difficulty.dart) preset constants:
+**[`GeneratorConfig`](lib/domain/arrows/value_objects/generator_config.dart)** is a defensive value object: it can only be built through the `GeneratorConfig.create` factory, which validates that `cols` and `rows` fall in the playable range **4–50 inclusive** (`minDimension`/`maxDimension`, adjustable in one place; the ceiling rose from 10 to 50 in front#66 once the zoom/pan viewport made large boards legible on mobile) and throws the semantic domain failure [`InvalidGeneratorConfigException`](lib/domain/core/exceptions/invalid_generator_config_exception.dart) otherwise. The player chooses *intent* (size, difficulty, timer); the internal generator parameters are **derived** from the [`Difficulty`](lib/domain/arrows/value_objects/difficulty.dart) preset constants:
 
 | Preset | Arrow density (`fillRatio`) | `maxPathLen` | Timer budget (`secondsPerCell`) |
 |---|---|---|---|

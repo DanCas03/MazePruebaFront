@@ -4,6 +4,7 @@ import '../../domain/arrows/entities/arrow.dart';
 import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
+import '../../domain/game_core/space/board_space.dart';
 import '../../domain/game_core/space/rect_space.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
@@ -45,6 +46,7 @@ class GraphBoardGenerator implements ILevelGenerator {
   }) {
     assert(maxPathLen >= 2, 'maxPathLen must be >= 2; got $maxPathLen');
     final rng = Random(seed);
+    final space = RectSpace(cols, rows);
     final placed = <Arrow>[];
     // Estado interno incremental (#64): las celdas ocupadas por las flechas
     // YA aceptadas se acumulan aquí y se actualizan al aceptar cada flecha,
@@ -56,8 +58,8 @@ class GraphBoardGenerator implements ILevelGenerator {
 
     while (placed.length < arrowCount && attempts < maxAttempts) {
       attempts++;
-      final candidate =
-          _randomBentArrow(rng, cols, rows, placed.length, maxPathLen, occupied);
+      final candidate = _randomBentArrow(
+          rng, space, cols, rows, placed.length, maxPathLen, occupied);
       if (candidate == null) continue;
 
       // Válido por construcción contra el estado local: _randomBentArrow
@@ -67,7 +69,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       assert(candidate.cells.every((c) => !occupied.contains(c)),
           'candidate overlaps the incremental occupancy state');
       assert(
-          RectSpace(cols, rows)
+          space
               .exitLane(candidate.head, candidate.headDirection)
               .every((p) => !occupied.contains(p)),
           'candidate exit lane is blocked at placement time');
@@ -84,7 +86,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       );
     }
 
-    return ArrowBoard(arrows: placed, space: RectSpace(cols, rows));
+    return ArrowBoard(arrows: placed, space: space);
   }
 
   /// Genera un tablero temático (#68): cada [ThemedRegionSpec] confina los
@@ -102,6 +104,7 @@ class GraphBoardGenerator implements ILevelGenerator {
     int? seed,
   }) {
     final rng = Random(seed);
+    final space = RectSpace(cols, rows);
     final placed = <Arrow>[];
     // GLOBAL entre regiones -> preserva el DAG global (misma disciplina de
     // ocupación + carril que [generate]).
@@ -116,6 +119,7 @@ class GraphBoardGenerator implements ILevelGenerator {
         attempts++;
         final candidate = _randomBentArrow(
           rng,
+          space,
           cols,
           rows,
           index,
@@ -140,7 +144,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       }
     }
 
-    return ArrowBoard(arrows: placed, space: RectSpace(cols, rows));
+    return ArrowBoard(arrows: placed, space: space);
   }
 
   /// Construye una flecha doblada: elige cabeza+dirección con carril de salida
@@ -151,23 +155,23 @@ class GraphBoardGenerator implements ILevelGenerator {
   /// salida NO se confina (sigue siendo de tablero completo). Con
   /// `allowedBody == null` el comportamiento — incluida la secuencia exacta de
   /// llamadas a [rng] — es idéntico al camino de campaña.
-  Arrow? _randomBentArrow(Random rng, int cols, int rows, int index,
-      int maxPathLen, Set<Position> occupied,
+  Arrow? _randomBentArrow(Random rng, BoardSpace space, int cols, int rows,
+      int index, int maxPathLen, Set<Position> occupied,
       {Set<Position>? allowedBody, String? paintRole}) {
     final dir = Direction.values[rng.nextInt(Direction.values.length)];
-    final head = _randomHeadWithClearLane(rng, cols, rows, dir, occupied,
+    final head = _randomHeadWithClearLane(rng, space, cols, rows, dir, occupied,
         allowedBody: allowedBody);
     if (head == null) return null;
 
     // Reserva el carril de salida para que la flecha nunca bloquee su salida.
-    final blocked = <Position>{...occupied, head, ..._lane(head, dir, cols, rows)};
+    final blocked = <Position>{...occupied, head, ...space.exitLane(head, dir)};
 
     final body = <Position>[head]; // head..tail; se invierte al final
     final targetLen = 2 + rng.nextInt(maxPathLen - 1); // 2..maxPathLen
     var cursor = head;
     while (body.length < targetLen) {
       final options =
-          _freeNeighbors(cursor, cols, rows, blocked, allowedBody: allowedBody);
+          _freeNeighbors(cursor, space, blocked, allowedBody: allowedBody);
       if (options.isEmpty) break; // acepta cuerpo más corto
       final next = options[rng.nextInt(options.length)];
       body.add(next);
@@ -184,35 +188,23 @@ class GraphBoardGenerator implements ILevelGenerator {
     );
   }
 
-  /// Celdas del carril recto desde la cabeza (exclusive) hasta el borde en [dir].
-  List<Position> _lane(Position head, Direction dir, int cols, int rows) {
-    return switch (dir) {
-      Direction.right => List.generate(
-          cols - 1 - head.col, (i) => Position(row: head.row, col: head.col + 1 + i)),
-      Direction.left => List.generate(
-          head.col, (i) => Position(row: head.row, col: head.col - 1 - i)),
-      Direction.down => List.generate(
-          rows - 1 - head.row, (i) => Position(row: head.row + 1 + i, col: head.col)),
-      Direction.up => List.generate(
-          head.row, (i) => Position(row: head.row - 1 - i, col: head.col)),
-    };
-  }
-
   /// Busca (hasta 20 intentos) una celda-cabeza libre cuyo carril recto al
   /// borde en [dir] esté libre de [occupied].
   ///
   /// Con [allowedBody] (#68) la cabeza se muestrea DESDE la región (eficiencia:
   /// muestrear el tablero completo desperdiciaría los 20 intentos en regiones
   /// pequeñas); el chequeo de carril sigue siendo contra [occupied] global.
-  Position? _randomHeadWithClearLane(
-      Random rng, int cols, int rows, Direction dir, Set<Position> occupied,
+  Position? _randomHeadWithClearLane(Random rng, BoardSpace space, int cols,
+      int rows, Direction dir, Set<Position> occupied,
       {Set<Position>? allowedBody}) {
     if (allowedBody == null) {
-      // Camino de campaña: byte a byte idéntico (misma secuencia de rng).
+      // Camino de campaña: byte a byte idéntico (misma secuencia de rng). El
+      // muestreo aleatorio de índice no es aritmética de espacio (ADR-0005)
+      // — usa cols/rows como rango de rng.nextInt, no como chequeo geométrico.
       for (var t = 0; t < 20; t++) {
         final head = Position(row: rng.nextInt(rows), col: rng.nextInt(cols));
         if (occupied.contains(head)) continue;
-        final lane = _lane(head, dir, cols, rows);
+        final lane = space.exitLane(head, dir);
         if (lane.every((p) => !occupied.contains(p))) return head;
       }
       return null;
@@ -223,28 +215,28 @@ class GraphBoardGenerator implements ILevelGenerator {
     for (var t = 0; t < 20; t++) {
       final head = pool[rng.nextInt(pool.length)];
       if (occupied.contains(head)) continue;
-      final lane = _lane(head, dir, cols, rows);
+      final lane = space.exitLane(head, dir);
       if (lane.every((p) => !occupied.contains(p))) return head;
     }
     return null;
   }
 
-  /// Vecinos ortogonales en rango que no están bloqueados (ni fuera de
-  /// [allowedBody], si se confina el cuerpo a una región — #68).
+  /// Vecinos ortogonales dentro del espacio que no están bloqueados (ni fuera
+  /// de [allowedBody], si se confina el cuerpo a una región — #68). Itera
+  /// [BoardSpace.directions] en vez de chequear bounds a mano: mismo orden
+  /// (up, down, left, right — ver Direction) que la versión anterior, así que
+  /// la secuencia de `rng.nextInt(options.length)` no cambia (ADR-0005).
   List<Position> _freeNeighbors(
-      Position p, int cols, int rows, Set<Position> blocked,
+      Position p, BoardSpace space, Set<Position> blocked,
       {Set<Position>? allowedBody}) {
-    final candidates = <Position>[
-      if (p.row > 0) Position(row: p.row - 1, col: p.col),
-      if (p.row < rows - 1) Position(row: p.row + 1, col: p.col),
-      if (p.col > 0) Position(row: p.row, col: p.col - 1),
-      if (p.col < cols - 1) Position(row: p.row, col: p.col + 1),
-    ];
-    return [
-      for (final c in candidates)
-        if (!blocked.contains(c) &&
-            (allowedBody == null || allowedBody.contains(c)))
-          c
-    ];
+    final result = <Position>[];
+    for (final dir in space.directions) {
+      final next = space.step(p, dir);
+      if (next == null) continue;
+      if (blocked.contains(next)) continue;
+      if (allowedBody != null && !allowedBody.contains(next)) continue;
+      result.add(next);
+    }
+    return result;
   }
 }

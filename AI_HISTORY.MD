@@ -1660,3 +1660,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de infraestructura: AuthRemoteDataSource.me() + RemoteAuthRepository.me()).
 **Resultado obtenido:** `AuthRemoteDataSource.me()` hace `GET /auth/me` (firmado por el interceptor) y devuelve el JSON crudo `{id, username, email}`. `RemoteAuthRepository.me()` lo mapea a `UserProfile` (construyendo los VOs Username/Email) y traduce errores en `_mapMe`: red→NetworkFailure, 401→InvalidCredentials, 404/otros→UnexpectedFailure; un payload malformado (VO que rechaza el valor) se degrada a UnexpectedFailure sin tumbar la pantalla. Tests AAA: +1 en el data source (GET + parseo) y +5 en el repo (éxito con mapeo a VOs, 401, red, 404, payload malformado). Mocks regenerados (build_runner) para las 5 clases que mockean IAuthRepository/AuthRemoteDataSource. Suites de auth reverificadas verdes.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 080 — front#78 (fragmento 3) — Aplicación: use case + read model + providers
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Exponer a la presentación el perfil del usuario y los totales de progreso como vistas reactivas, sin filtrar dominio/infraestructura a la UI (front#78).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de aplicación: GetCurrentUserUseCase, providers de perfil y totales de progreso derivados del progreso local).
+**Resultado obtenido:** `GetCurrentUserUseCase.execute()` delega en `IAuthRepository.me()`. Read model `ProgressTotals` (`lib/application/read_models/`) con factory `from(List<LevelProgress>)` que reduce el progreso a `totalStars` (Σ bestStars??0) y `completedLevels` (conteo de completados). `account_providers.dart`: `getCurrentUserUseCaseProvider`, `currentUserProvider` (FutureProvider.autoDispose que desenvuelve el Either lanzando el AuthFailure en Left → AsyncValue.error) y `progressTotalsProvider` (autoDispose sobre `getAll()`). Ambos `autoDispose` para re-consultar al reabrir el panel. Tests AAA: use case (éxito/fallo, mockito), `ProgressTotals.from` puro (vacío, mezcla, null=0) y wiring de ambos providers vía ProviderContainer con fakes. 8/8 verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -62,5 +62,17 @@ void runBoardSpaceContractTests(
         });
       expect(cells, equals(sorted));
     });
+
+    // Fase 1 (#85): la caja envolvente debe contener TODA celda del espacio.
+    // Invariante universal (no exige que la caja sea ajustada: un espacio puede
+    // declararla mayor que el span de sus celdas).
+    test('bounds contiene todas las celdas del espacio', () {
+      final space = build();
+      final box = space.bounds;
+      for (final cell in space.allCells) {
+        expect(box.contains(cell), isTrue,
+            reason: 'la caja $box debe contener $cell');
+      }
+    });
   });
 }

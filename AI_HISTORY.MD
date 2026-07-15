@@ -1792,4 +1792,48 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
 **Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
 **Resultado obtenido:** `lib/presentation/level_selection/victory_screen.dart` sustituye el cálculo inline de adyacencia (fuga de lógica a presentación) por `ref.watch(nextLevelOutcomeProvider(args.levelId))` y un `switch` exhaustivo sobre el `sealed NextLevelOutcome`: `NextLevelUnlocked`→CTA que navega al id resuelto; `NextLevelLocked`→mensaje de requisito (`l10n.nextLevelLocked`); `CampaignComplete`→felicitación; `NotInCampaign`/loading→nada. Se eliminan los imports de `levelCatalogProvider`/`CatalogEntry`/`LevelSection` (ya no se recompone la adyacencia aquí). TDD: `test/presentation/level_selection/victory_screen_test.dart` — harness overridea `levelProgressRepositoryProvider` con `FakeLevelProgressRepository`; 2 tests nuevos (bloqueado ⇒ sin CTA + mensaje + sin navegación; desbloqueado tras completar previos ⇒ navega al Tier siguiente), RED verificado antes del fix. **9/9** en la pantalla, **677/677** suite completa, `flutter analyze` limpio. README actualizado (§Progresión y §Themed section). Nota: la defensa en profundidad en `GameController.loadLevel` (guarda para futuros deep links) queda como follow-up opcional — el fix de la pantalla ya cierra la única ruta de bypass existente.
+
+## Entrada 090 — front#83 (fragmento 1) — Presupuesto de errores por nivel (dominio)
+
+**Tarea o problema abordado:** Punto C: "contador de errores máximo por nivel que va descendiendo por cada error". La mecánica de choques existía pero con máximo GLOBAL hardcodeado (5), ascendente y sin mostrarse en partida. Modelar el presupuesto por nivel y la vista descendente en el dominio.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `StrikeCount` gana `max` por instancia (default `defaultMax=5`) y un getter `remaining = (max-value).clamp(0,max)` — el contador DESCENDENTE que ve el jugador; el modelo interno sigue contando choques cometidos (el scoring los usa como `collisions`). `isFatal`/`increment` preservan `max`; `props` incluye `max`. `Level` gana `maxErrors` (default `StrikeCount.defaultMax`, invariante `> 0` → `InvalidLevelException`), en `props`. TDD: nuevo `test/domain/game_core/value_objects/strike_count_test.dart` (6) + 5 casos nuevos en `level_test.dart` (default/valor/cero/negativo/igualdad), **24/24** (RED verificado). Decisión: un único origen del "5" (`StrikeCount.defaultMax`), referenciado por `Level`; el default de generados (sin `Level`) sale del mismo sitio.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 091 — front#83 (fragmento 2) — Wire decode/encode de maxErrors
+
+**Tarea o problema abordado:** Transportar el presupuesto por nivel en el wire contract de forma aditiva/tolerante, sin romper clientes ni goldens existentes.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `LevelJsonDecoder` decodifica `maxErrors` con `_optionalInt(...) ?? StrikeCount.defaultMax` (ausente ⇒ default; no-int ⇒ FormatException, contrato roto). `LevelJsonEncoder.toMap`/`encode` ganan `int? maxErrors` opcional, emitido `if (maxErrors != null)` (igual que `timeLimitSec`/`order`): no pasarlo conserva el JSON de campaña original y mantiene los golden boards byte-idénticos. TDD: 4 casos nuevos en `level_json_decoder_test.dart` (default por ausencia, decode del valor, no-int lanza, round-trip preserva el presupuesto), **19/19** (RED verificado). La propiedad inversa se conserva porque el encoder es primitive-based: el caller elige qué campos emitir (como ya ocurría con palette/timeLimitSec).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 092 — front#83 (fragmento 3) — GameController inicializa strikes desde Level.maxErrors
+
+**Tarea o problema abordado:** Conectar el presupuesto por nivel al bucle de partida: el contador debe arrancar en `level.maxErrors` y perder al agotarlo (no al 5 hardcodeado), exponiendo el presupuesto al HUD desde la carga.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `GameController._startLevel` cambia `const StrikeCount(0)` por `StrikeCount(0, max: level.maxErrors)` y pasa `strikes: _strikes` al `GamePlaying` inicial (antes el estado de arranque no llevaba strikes → el HUD no podía derivar los restantes). Las dos reconstrucciones de `GamePlaying` de la demo de pista pasan `StrikeCount(0, max: level.maxErrors)` para que el chip sea coherente durante la reproducción. Los tableros generados siguen con el default (`StrikeCount(0)` = `defaultMax`), sin `Level`. TDD: `_stubLevel` acepta `maxErrors`; 2 tests nuevos (presupuesto expuesto como `remaining` al cargar; pérdida al 3.er choque con `maxErrors:3`, no al 5.º), **29/29** en game_controller + hint (RED verificado; los tests de default 5 siguen verdes).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 093 — front#83 (fragmento 4) — String l10n errorsLeft (en/es)
+
+**Tarea o problema abordado:** Etiqueta de tooltip/semántica para el chip descendente de errores del HUD.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `app_en.arb`/`app_es.arb`: clave `errorsLeft` ("Errors left" / "Errores restantes"). `flutter gen-l10n` regenera los getters (los `app_localizations*.dart` son build artifacts gitignoreados). Solo los `.arb` entran al commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 094 — front#83 (fragmento 5) — Chip descendente de errores en el HUD + cierre
+
+**Tarea o problema abordado:** Mostrar en partida el contador de errores descendente (lo que faltaba de la feature: la mecánica ya existía pero nunca se veía durante el juego).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `game_screen.dart` añade `_ErrorsChip` en la AppBar (corazón + `s.strikes.remaining`, tooltip `l10n.errorsLeft`), presente durante todo `GamePlaying` y espejo visual de `_CountdownChip`. TDD: `_repoWithBoard` acepta `maxErrors`; test nuevo (chip arranca en 3, desciende a 2 tras un choque, sigue jugando), **10/10** en game_screen (RED verificado). `flutter analyze` limpio; suite completa **684/684**. README actualizado (condición de derrota: presupuesto por nivel + contador descendente). Seguimiento OPCIONAL (backend): servir `maxErrors` por nivel en `GET /levels/:id` para que difieran entre niveles; hasta entonces todos usan el default 5 (dificultad sin cambios). Nota: `undoMove` no revierte strikes (comportamiento previo intencional, fuera de alcance).
 **Modificaciones realizadas por el equipo:** (completar manualmente)

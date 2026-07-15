@@ -8,6 +8,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_level_exception.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/strike_count.dart';
 
 // Board 4x4 con una sola flecha recta (0,0)->(0,1) mirando a la derecha:
 // suficiente para satisfacer la invariante "al menos una flecha" de Level.
@@ -140,6 +141,47 @@ void main() {
       final result = levelA == levelB;
       // Assert
       expect(result, isFalse);
+    });
+
+    // front#83 — Presupuesto de errores por nivel (contador descendente).
+    test('should_default_maxErrors_to_the_strike_budget_when_omitted', () {
+      // Arrange
+      final level = Level(id: LevelId('1'), board: _boardWithOneArrow());
+      // Act & Assert: sin campo en el wire, cae al presupuesto por defecto.
+      expect(level.maxErrors, StrikeCount.defaultMax);
+    });
+
+    test('should_carry_a_per_level_maxErrors_when_provided', () {
+      // Arrange & Act
+      final level =
+          Level(id: LevelId('1'), board: _boardWithOneArrow(), maxErrors: 3);
+      // Assert
+      expect(level.maxErrors, 3);
+    });
+
+    test('should_throw_InvalidLevelException_when_maxErrors_is_zero', () {
+      // Act
+      Level act() =>
+          Level(id: LevelId('1'), board: _boardWithOneArrow(), maxErrors: 0);
+      // Assert
+      expect(act, throwsA(isA<InvalidLevelException>()));
+    });
+
+    test('should_throw_InvalidLevelException_when_maxErrors_is_negative', () {
+      // Act
+      Level act() =>
+          Level(id: LevelId('1'), board: _boardWithOneArrow(), maxErrors: -2);
+      // Assert
+      expect(act, throwsA(isA<InvalidLevelException>()));
+    });
+
+    test('should_not_be_equal_when_maxErrors_differs', () {
+      // Arrange
+      final board = _boardWithOneArrow();
+      final levelA = Level(id: LevelId('1'), board: board, maxErrors: 3);
+      final levelB = Level(id: LevelId('1'), board: board, maxErrors: 5);
+      // Act & Assert
+      expect(levelA == levelB, isFalse);
     });
 
     // front#67 — Instrucciones de pintado (ADR 0004): la paleta es un dato

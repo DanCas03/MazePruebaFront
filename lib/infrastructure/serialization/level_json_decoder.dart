@@ -4,6 +4,7 @@ import '../../domain/arrows/value_objects/arrow_id.dart';
 import '../../domain/board/entities/level.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/core/exceptions/domain_exception.dart';
+import '../../domain/game_core/value_objects/strike_count.dart';
 import '../../domain/game_core/space/rect_space.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
@@ -37,6 +38,10 @@ class LevelJsonDecoder {
         space: RectSpace(_int(json, 'cols'), _int(json, 'rows')),
       ),
       timeLimitSec: _optionalInt(json, 'timeLimitSec'),
+      // Presupuesto de errores opcional (front#83): aditivo/tolerante como
+      // timeLimitSec. Ausente ⇒ el default del dominio (dificultad sin cambios);
+      // presente pero no-int ⇒ contrato roto (_optionalInt lanza).
+      maxErrors: _optionalInt(json, 'maxErrors') ?? StrikeCount.defaultMax,
       // Instrucciones de pintado opcionales (ADR 0004): dato opaco de niveles
       // temáticos. Ausente = campaña. Se valida la FORMA (Map<String,String>);
       // la validez del hex la resuelve el seam de color con fallback (front#67).

@@ -149,6 +149,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           error: (e, _) => Text(l10n.error),
         ),
         actions: [
+          // Presupuesto de errores del nivel (front#83): contador DESCENDENTE de
+          // choques restantes. Presente durante toda la partida (cada nivel tiene
+          // un máximo); al llegar a 0 se pierde.
+          ...asyncState.maybeWhen(
+            data: (s) => s is GamePlaying
+                ? [
+                    _ErrorsChip(
+                      remaining: s.strikes.remaining,
+                      color: onSurface,
+                      tooltip: l10n.errorsLeft,
+                    )
+                  ]
+                : const <Widget>[],
+            orElse: () => const <Widget>[],
+          ),
           // Cuenta atrás de los niveles con límite (front#11); ausente si el
           // nivel no está cronometrado.
           ...asyncState.maybeWhen(
@@ -231,6 +246,38 @@ class _CountdownChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(_label, style: TextStyle(color: color)),
         ],
+      ),
+    );
+  }
+}
+
+/// Presupuesto de errores restantes en la AppBar (front#83): un corazón y el
+/// número de choques que aún admite el nivel. Desciende con cada error; a 0 se
+/// pierde. Espeja el patrón visual de [_CountdownChip].
+class _ErrorsChip extends StatelessWidget {
+  final int remaining;
+  final Color color;
+  final String tooltip;
+  const _ErrorsChip({
+    required this.remaining,
+    required this.color,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.favorite, color: color, size: 18),
+            const SizedBox(width: 4),
+            Text('$remaining', style: TextStyle(color: color)),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../domain/game_core/value_objects/direction.dart';
 import '../../../domain/game_core/value_objects/position.dart';
+import '../direction_projection.dart';
 
 /// Pinta una flecha multi-celda como una POLILÍNEA gruesa (recorre los centros
 /// de `cells`) con glow, brillo interior y punta triangular orientada por
@@ -84,12 +85,7 @@ class ArrowPainter extends CustomPainter {
 
   void _drawHead(Canvas canvas, double stroke) {
     final tip = _center(cells.last);
-    final angle = switch (headDirection) {
-      Direction.right => 0.0,
-      Direction.left => math.pi,
-      Direction.down => math.pi / 2,
-      Direction.up => -math.pi / 2,
-    };
+    final angle = directionAngle(headDirection);
     final headLen = stroke * 1.2;
     final headHalf = stroke * 0.95;
     final apex = Offset(

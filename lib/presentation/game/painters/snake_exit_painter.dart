@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../domain/game_core/value_objects/direction.dart';
 import '../../../domain/game_core/value_objects/position.dart';
+import '../direction_projection.dart';
 
 /// Retracción "serpiente": construye la trayectoria (centros del cuerpo
 /// cola→cabeza ++ carril recto más allá del borde) y, a progreso [progress],
@@ -35,29 +36,15 @@ class SnakeExitPainter extends CustomPainter {
         (p.row - minRow + 0.5) * cell,
       );
 
-  Offset _dirUnit() => switch (headDirection) {
-        Direction.up => const Offset(0, -1),
-        Direction.down => const Offset(0, 1),
-        Direction.left => const Offset(-1, 0),
-        Direction.right => const Offset(1, 0),
-      };
-
-  int _laneCells() {
-    final h = cells.last;
-    return switch (headDirection) {
-      Direction.right => cols - 1 - h.col,
-      Direction.left => h.col,
-      Direction.down => rows - 1 - h.row,
-      Direction.up => h.row,
-    };
-  }
+  int _laneCells() =>
+      cellsToEdge(cells.last, headDirection, cols: cols, rows: rows);
 
   @override
   void paint(Canvas canvas, Size size) {
     if (cells.isEmpty) return;
 
     final traj = <Offset>[for (final p in cells) _center(p)];
-    final unit = _dirUnit();
+    final unit = directionUnit(headDirection);
     final headC = traj.last;
     final beyond = cells.length + _laneCells() + 1; // margen para salir entero
     for (var i = 1; i <= beyond; i++) {

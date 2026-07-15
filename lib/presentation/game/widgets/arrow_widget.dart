@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../domain/arrows/entities/arrow.dart';
-import '../../../domain/game_core/value_objects/direction.dart';
 import '../painters/arrow_painter.dart';
+import '../direction_projection.dart';
 
 /// Pieza visual del tablero: pinta la flecha y, si está bloqueada, hace un
 /// "shake" hacia su dirección de salida. NO captura toques (el hit-testing por
@@ -52,13 +52,6 @@ class _ArrowWidgetState extends State<ArrowWidget>
     super.dispose();
   }
 
-  (double, double) _dirUnit() => switch (widget.arrow.direction) {
-        Direction.up => (0, -1),
-        Direction.down => (0, 1),
-        Direction.left => (-1, 0),
-        Direction.right => (1, 0),
-      };
-
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
@@ -67,9 +60,9 @@ class _ArrowWidgetState extends State<ArrowWidget>
         builder: (context, child) {
           final t = _shake.value;
           final magnitude = math.sin(t * math.pi * 4) * (1 - t) * 7;
-          final (ux, uy) = _dirUnit();
+          final unit = directionUnit(widget.arrow.direction);
           return Transform.translate(
-            offset: Offset(ux * magnitude, uy * magnitude),
+            offset: Offset(unit.dx * magnitude, unit.dy * magnitude),
             child: child,
           );
         },

@@ -22,4 +22,12 @@ class AuthRemoteDataSource {
     });
     return (res.data as Map)['token'] as String;
   }
+
+  /// GET /auth/me: perfil del usuario autenticado (`{ id, username, email }`).
+  /// El interceptor firma la llamada con el token vivo. Devuelve el JSON crudo;
+  /// el mapeo a dominio y de errores es tarea del repositorio adaptador.
+  Future<Map<String, dynamic>> me() async {
+    final res = await _dio.get('/auth/me');
+    return (res.data as Map).cast<String, dynamic>();
+  }
 }

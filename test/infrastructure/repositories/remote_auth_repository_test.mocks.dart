@@ -85,4 +85,14 @@ class MockAuthRemoteDataSource extends _i1.Mock
           ),
         )),
       ) as _i3.Future<String>);
+
+  @override
+  _i3.Future<Map<String, dynamic>> me() => (super.noSuchMethod(
+        Invocation.method(
+          #me,
+          [],
+        ),
+        returnValue:
+            _i3.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      ) as _i3.Future<Map<String, dynamic>>);
 }

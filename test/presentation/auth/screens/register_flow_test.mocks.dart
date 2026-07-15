@@ -6,12 +6,14 @@
 import 'dart:async' as _i4;
 
 import 'package:dartz/dartz.dart' as _i2;
+import 'package:flutter_arrow_maze/domain/auth/entities/user_profile.dart'
+    as _i8;
 import 'package:flutter_arrow_maze/domain/auth/failures/auth_failure.dart'
     as _i5;
 import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_repository.dart'
     as _i3;
 import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_token_storage.dart'
-    as _i8;
+    as _i9;
 import 'package:flutter_arrow_maze/domain/auth/value_objects/auth_token.dart'
     as _i6;
 import 'package:flutter_arrow_maze/domain/auth/value_objects/email.dart' as _i7;
@@ -105,12 +107,30 @@ class MockIAuthRepository extends _i1.Mock implements _i3.IAuthRepository {
           ),
         )),
       ) as _i4.Future<_i2.Either<_i5.AuthFailure, _i6.AuthToken>>);
+
+  @override
+  _i4.Future<_i2.Either<_i5.AuthFailure, _i8.UserProfile>> me() =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #me,
+          [],
+        ),
+        returnValue:
+            _i4.Future<_i2.Either<_i5.AuthFailure, _i8.UserProfile>>.value(
+                _FakeEither_0<_i5.AuthFailure, _i8.UserProfile>(
+          this,
+          Invocation.method(
+            #me,
+            [],
+          ),
+        )),
+      ) as _i4.Future<_i2.Either<_i5.AuthFailure, _i8.UserProfile>>);
 }
 
 /// A class which mocks [IAuthTokenStorage].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockIAuthTokenStorage extends _i1.Mock implements _i8.IAuthTokenStorage {
+class MockIAuthTokenStorage extends _i1.Mock implements _i9.IAuthTokenStorage {
   MockIAuthTokenStorage() {
     _i1.throwOnMissingStub(this);
   }

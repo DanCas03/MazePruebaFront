@@ -1651,3 +1651,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (panel de cuenta con username/email/progreso + cerrar sesión; fragmento de dominio: entidad UserProfile y método me() en IAuthRepository).
 **Resultado obtenido:** Nueva entidad `lib/domain/auth/entities/user_profile.dart` (`UserProfile { String id, Username username, Email email }`, Equatable, Dart puro) que reutiliza los VOs `Username`/`Email` para arrastrar sus invariantes. `IAuthRepository` gana `Future<Either<AuthFailure, UserProfile>> me()`, documentando el mapeo 401→InvalidCredentials / red→NetworkFailure. Test AAA `test/domain/auth/entities/user_profile_test.dart` (3 casos: acceso a campos, igualdad por valor, desigualdad por id) — verde 3/3. La impl del puerto y los mocks se completan en el fragmento 2.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 079 — front#78 (fragmento 2) — Infraestructura: me() en data source y repo
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Implementar el puerto `IAuthRepository.me()` contra `GET /auth/me` (back#44): llamada HTTP en el data source remoto y mapeo a dominio + errores en el repositorio adaptador.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de infraestructura: AuthRemoteDataSource.me() + RemoteAuthRepository.me()).
+**Resultado obtenido:** `AuthRemoteDataSource.me()` hace `GET /auth/me` (firmado por el interceptor) y devuelve el JSON crudo `{id, username, email}`. `RemoteAuthRepository.me()` lo mapea a `UserProfile` (construyendo los VOs Username/Email) y traduce errores en `_mapMe`: red→NetworkFailure, 401→InvalidCredentials, 404/otros→UnexpectedFailure; un payload malformado (VO que rechaza el valor) se degrada a UnexpectedFailure sin tumbar la pantalla. Tests AAA: +1 en el data source (GET + parseo) y +5 en el repo (éxito con mapeo a VOs, 401, red, 404, payload malformado). Mocks regenerados (build_runner) para las 5 clases que mockean IAuthRepository/AuthRemoteDataSource. Suites de auth reverificadas verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

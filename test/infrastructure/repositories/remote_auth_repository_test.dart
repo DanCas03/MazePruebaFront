@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
+import 'package:flutter_arrow_maze/domain/auth/entities/user_profile.dart';
 import 'package:flutter_arrow_maze/domain/auth/failures/auth_failure.dart';
 import 'package:flutter_arrow_maze/domain/auth/value_objects/auth_token.dart';
 import 'package:flutter_arrow_maze/domain/auth/value_objects/email.dart';
@@ -75,5 +76,47 @@ void main() {
     when(remote.register(any, any, any)).thenThrow(Exception('boom'));
     final result = await repo.register(email, 'player_01', 'secret12');
     expect(result, const Left<AuthFailure, AuthToken>(UnexpectedFailure()));
+  });
+
+  test('me returns Right(UserProfile) mapping the raw fields to VOs', () async {
+    // Arrange
+    when(remote.me()).thenAnswer((_) async =>
+        {'id': 'u-1', 'username': 'player_01', 'email': 'a@b.com'});
+    // Act
+    final result = await repo.me();
+    // Assert
+    expect(result.isRight(), isTrue);
+    result.map((p) {
+      expect(p.id, 'u-1');
+      expect(p.username.value, 'player_01');
+      expect(p.email.value, 'a@b.com');
+    });
+  });
+
+  test('me maps 401 to InvalidCredentials', () async {
+    when(remote.me()).thenThrow(_dioError(status: 401));
+    final result = await repo.me();
+    expect(result, const Left<AuthFailure, UserProfile>(InvalidCredentials()));
+  });
+
+  test('me maps connectionError to NetworkFailure', () async {
+    when(remote.me()).thenThrow(_dioError(type: DioExceptionType.connectionError));
+    final result = await repo.me();
+    expect(result, const Left<AuthFailure, UserProfile>(NetworkFailure()));
+  });
+
+  test('me maps 404 (user gone) to UnexpectedFailure', () async {
+    when(remote.me()).thenThrow(_dioError(status: 404));
+    final result = await repo.me();
+    expect(result, const Left<AuthFailure, UserProfile>(UnexpectedFailure()));
+  });
+
+  test('me degrades a malformed payload to UnexpectedFailure', () async {
+    // El VO Username rechaza un valor fuera de política -> ArgumentError,
+    // que el repo captura como fallo inesperado en vez de tumbar la pantalla.
+    when(remote.me()).thenAnswer(
+        (_) async => {'id': 'u-1', 'username': 'x', 'email': 'a@b.com'});
+    final result = await repo.me();
+    expect(result, const Left<AuthFailure, UserProfile>(UnexpectedFailure()));
   });
 }

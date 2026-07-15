@@ -9,7 +9,9 @@ import 'package:mockito/mockito.dart';
 import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
 import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/infrastructure/data_sources/local/level_cache_data_source.dart';
 import 'package:flutter_arrow_maze/infrastructure/data_sources/remote/level_remote_data_source.dart';
 import 'package:flutter_arrow_maze/infrastructure/repositories/remote_level_repository.dart';
@@ -244,37 +246,86 @@ void main() {
     });
   });
 
-  group('listLevelIds', () {
-    test('should_return_ids_and_write_through_when_network_succeeds', () async {
-      // Arrange
+  group('listCatalog', () {
+    test('should_return_entries_and_write_through_when_network_succeeds',
+        () async {
+      // Arrange — el back marca la sección; ausente ⇒ campaña (aditivo).
       when(remote.fetchLevelIds()).thenAnswer((_) async => [
-            {'levelId': 'level-01'},
+            {'levelId': 'level-01', 'section': 'campaign'},
             {'levelId': 'level-02'},
           ]);
       // Act
-      final result = await repo.listLevelIds();
+      final result = await repo.listCatalog();
       // Assert — el valor es un List crudo (no Equatable): compararlo por
       // elementos con fold, no con la igualdad por identidad de dartz.
       expect(result.isRight(), isTrue);
       result.fold(
         (_) => fail('expected Right'),
-        (ids) => expect(ids, [LevelId('level-01'), LevelId('level-02')]),
+        (entries) => expect(entries, [
+          CatalogEntry(id: LevelId('level-01'), section: LevelSection.campaign),
+          CatalogEntry(id: LevelId('level-02'), section: LevelSection.campaign),
+        ]),
       );
+      // La caché sigue guardando SOLO los ids (no la sección).
       verify(cache.writeCatalog(['level-01', 'level-02'])).called(1);
     });
 
-    test('should_return_cached_ids_when_network_fails_and_cache_hit', () async {
-      // Arrange
+    test('should_parse_themed_section_when_present', () async {
+      // Arrange — un nivel de campaña y uno temático.
+      when(remote.fetchLevelIds()).thenAnswer((_) async => [
+            {'levelId': 'l-007', 'section': 'campaign'},
+            {'levelId': 't-smiley', 'section': 'themed'},
+          ]);
+      // Act
+      final result = await repo.listCatalog();
+      // Assert — la sección temática se preserva; la campaña por defecto.
+      result.fold(
+        (_) => fail('expected Right'),
+        (entries) => expect(entries, [
+          CatalogEntry(id: LevelId('l-007'), section: LevelSection.campaign),
+          CatalogEntry(id: LevelId('t-smiley'), section: LevelSection.themed),
+        ]),
+      );
+    });
+
+    test('should_default_to_campaign_when_section_is_absent_or_unknown',
+        () async {
+      // Arrange — sin clave `section` y con un valor desconocido: ambos degradan
+      // a campaña (aditivo/tolerante, LevelSection.fromWire).
+      when(remote.fetchLevelIds()).thenAnswer((_) async => [
+            {'levelId': 'level-01'},
+            {'levelId': 'level-02', 'section': 'seasonal'},
+          ]);
+      // Act
+      final result = await repo.listCatalog();
+      // Assert
+      result.fold(
+        (_) => fail('expected Right'),
+        (entries) => expect(
+          entries.map((e) => e.section),
+          [LevelSection.campaign, LevelSection.campaign],
+        ),
+      );
+    });
+
+    test(
+        'should_return_cached_entries_as_campaign_when_network_fails_and_cache_hit',
+        () async {
+      // Arrange — la caché solo guarda ids: offline degrada todo a campaña (los
+      // temáticos quedan ocultos, aceptable v1).
       when(remote.fetchLevelIds())
           .thenThrow(_dioError(type: DioExceptionType.connectionError));
       when(cache.readCatalog()).thenReturn(['level-01', 'level-02']);
       // Act
-      final result = await repo.listLevelIds();
+      final result = await repo.listCatalog();
       // Assert
       expect(result.isRight(), isTrue);
       result.fold(
         (_) => fail('expected Right'),
-        (ids) => expect(ids, [LevelId('level-01'), LevelId('level-02')]),
+        (entries) => expect(entries, [
+          CatalogEntry(id: LevelId('level-01'), section: LevelSection.campaign),
+          CatalogEntry(id: LevelId('level-02'), section: LevelSection.campaign),
+        ]),
       );
     });
 
@@ -285,11 +336,11 @@ void main() {
           .thenThrow(_dioError(type: DioExceptionType.connectionError));
       when(cache.readCatalog()).thenReturn(null);
       // Act
-      final result = await repo.listLevelIds();
+      final result = await repo.listCatalog();
       // Assert
       expect(
         result,
-        const Left<LevelFailure, List<LevelId>>(LevelUnavailable()),
+        const Left<LevelFailure, List<CatalogEntry>>(LevelUnavailable()),
       );
     });
 
@@ -300,7 +351,7 @@ void main() {
             {'nope': 1},
           ]);
       // Act
-      final result = await repo.listLevelIds();
+      final result = await repo.listCatalog();
       // Assert
       expect(result.isLeft(), isTrue);
       result.fold(

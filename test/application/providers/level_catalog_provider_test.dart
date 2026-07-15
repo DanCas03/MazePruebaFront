@@ -12,15 +12,21 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
 import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 
 import 'level_catalog_provider_test.mocks.dart';
 
 @GenerateMocks([ILevelRepository, ILoggerService])
-/// Ids del Catálogo en orden de juego (fixture compartida entre casos).
-final ids = [LevelId('level-01'), LevelId('level-02')];
+/// Catálogo en orden de juego (fixture compartida entre casos): dos entradas de
+/// campaña con ids opacos.
+final entries = [
+  CatalogEntry(id: LevelId('level-01'), section: LevelSection.campaign),
+  CatalogEntry(id: LevelId('level-02'), section: LevelSection.campaign),
+];
 
 /// Nivel mínimo válido (>= 1 flecha) para stubear `getLevel` durante el prefetch.
 Level _level() => Level(
@@ -56,7 +62,7 @@ void main() {
       final repo = MockILevelRepository();
       final logger = MockILoggerService();
       final level = _level();
-      when(repo.listLevelIds()).thenAnswer((_) async => Right(ids));
+      when(repo.listCatalog()).thenAnswer((_) async => Right(entries));
       when(repo.getLevel(any)).thenAnswer((_) async => Right(level));
       final c = _container(repo, logger);
 
@@ -65,7 +71,7 @@ void main() {
 
       // Assert — el catálogo carga; tras drenar la cola, el prefetch (disparado
       // con `unawaited` DESPUÉS de resolver el future) corrió por cada id.
-      expect(result, ids);
+      expect(result, entries);
       await pumpEventQueue();
       verify(repo.getLevel(LevelId('level-01'))).called(1);
       verify(repo.getLevel(LevelId('level-02'))).called(1);
@@ -75,7 +81,7 @@ void main() {
       // Arrange
       final repo = MockILevelRepository();
       final logger = MockILoggerService();
-      when(repo.listLevelIds())
+      when(repo.listCatalog())
           .thenAnswer((_) async => Left(const LevelUnavailable()));
       final c = _container(repo, logger);
 
@@ -94,7 +100,7 @@ void main() {
       final repo = MockILevelRepository();
       final logger = MockILoggerService();
       final level = _level();
-      when(repo.listLevelIds()).thenAnswer((_) async => Right(ids));
+      when(repo.listCatalog()).thenAnswer((_) async => Right(entries));
       when(repo.getLevel(LevelId('level-01')))
           .thenAnswer((_) async => Left(const LevelUnavailable()));
       when(repo.getLevel(LevelId('level-02')))
@@ -105,7 +111,7 @@ void main() {
       final result = await c.read(levelCatalogProvider.future);
 
       // Assert — un prefetch fallido NO rompe la carga; se emite 1 warn exacto.
-      expect(result, ids);
+      expect(result, entries);
       await pumpEventQueue();
       verify(logger.warn(any, any)).called(1);
     });
@@ -115,7 +121,7 @@ void main() {
       final repo = MockILevelRepository();
       final logger = MockILoggerService();
       final level = _level();
-      when(repo.listLevelIds())
+      when(repo.listCatalog())
           .thenAnswer((_) async => Left(const LevelUnavailable()));
       final c = _container(repo, logger);
       await expectLater(
@@ -125,15 +131,15 @@ void main() {
       expect(c.read(levelCatalogProvider), isA<AsyncError>());
 
       // Act — el back se recupera y la UI reintenta con `refresh()`.
-      when(repo.listLevelIds()).thenAnswer((_) async => Right(ids));
+      when(repo.listCatalog()).thenAnswer((_) async => Right(entries));
       when(repo.getLevel(any)).thenAnswer((_) async => Right(level));
       c.read(levelCatalogProvider.notifier).refresh();
       final result = await c.read(levelCatalogProvider.future);
       await pumpEventQueue();
 
       // Assert — el estado ahora lleva los ids.
-      expect(result, ids);
-      expect(c.read(levelCatalogProvider).valueOrNull, ids);
+      expect(result, entries);
+      expect(c.read(levelCatalogProvider).valueOrNull, entries);
     });
   });
 }

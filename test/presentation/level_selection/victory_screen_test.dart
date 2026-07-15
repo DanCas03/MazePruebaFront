@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_colors.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
@@ -34,11 +36,12 @@ int _filledStars(WidgetTester tester) => tester
 /// reales.
 Widget _appUnderTest({
   required VictoryArgs? args,
-  required List<LevelId> catalogIds,
+  List<LevelId> catalogIds = const [],
+  List<CatalogEntry>? catalogEntries,
   List<RouteSettings>? pushed,
 }) {
   return ProviderScope(
-    overrides: [stubCatalogOverride(ids: catalogIds)],
+    overrides: [stubCatalogOverride(ids: catalogIds, entries: catalogEntries)],
     child: MaterialApp(
       theme: AppTheme.dark(),
       locale: const Locale('en'),
@@ -142,6 +145,58 @@ void main() {
       // Assert: navega a la selección de niveles.
       expect(pushed, hasLength(1));
       expect(pushed.single.name, AppRouter.levelSelection);
+    });
+
+    testWidgets(
+        'should_suppress_next_level_and_campaign_complete_for_a_themed_level',
+        (tester) async {
+      // Arrange & Act: el nivel jugado es temático (no está entre los de
+      // campaña del Catálogo). No tiene adyacencia de "siguiente nivel".
+      final catalog = <CatalogEntry>[
+        CatalogEntry(id: LevelId('level-01'), section: LevelSection.campaign),
+        CatalogEntry(id: LevelId('level-02'), section: LevelSection.campaign),
+        CatalogEntry(id: LevelId('t-smiley'), section: LevelSection.themed),
+      ];
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 't-smiley'),
+          catalogEntries: catalog,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert: ni CTA "Next Level" ni felicitación de campaña; solo el regreso.
+      expect(find.text('Next Level'), findsNothing);
+      expect(find.text("You've completed all levels!"), findsNothing);
+      expect(find.widgetWithText(TextButton, 'Back to Levels'), findsOneWidget);
+    });
+
+    testWidgets(
+        'should_offer_next_level_over_campaign_ids_when_themed_are_interleaved',
+        (tester) async {
+      // Arrange: la campaña es level-01 → level-02; el temático intercalado no
+      // debe contar como "siguiente" de level-01.
+      final pushed = <RouteSettings>[];
+      final catalog = <CatalogEntry>[
+        CatalogEntry(id: LevelId('level-01'), section: LevelSection.campaign),
+        CatalogEntry(id: LevelId('t-smiley'), section: LevelSection.themed),
+        CatalogEntry(id: LevelId('level-02'), section: LevelSection.campaign),
+      ];
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-01'),
+          catalogEntries: catalog,
+          pushed: pushed,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Act
+      await tester.tap(find.widgetWithText(FilledButton, 'Next Level'));
+      await tester.pumpAndSettle();
+
+      // Assert: el siguiente de campaña es level-02, saltando el temático.
+      expect(pushed.single.arguments, LevelId('level-02'));
     });
 
     testWidgets('should_render_score_moves_and_matching_filled_stars_when_won',

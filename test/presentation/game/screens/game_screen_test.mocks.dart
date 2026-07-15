@@ -11,8 +11,10 @@ import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart'
     as _i5;
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart'
     as _i3;
-import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart'
+import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart'
     as _i6;
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart'
+    as _i8;
 import 'package:mockito/mockito.dart' as _i1;
 
 // ignore_for_file: type=lint
@@ -48,26 +50,27 @@ class MockILevelRepository extends _i1.Mock implements _i3.ILevelRepository {
   }
 
   @override
-  _i4.Future<_i2.Either<_i5.LevelFailure, List<_i6.LevelId>>> listLevelIds() =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #listLevelIds,
-          [],
-        ),
-        returnValue:
-            _i4.Future<_i2.Either<_i5.LevelFailure, List<_i6.LevelId>>>.value(
-                _FakeEither_0<_i5.LevelFailure, List<_i6.LevelId>>(
-          this,
-          Invocation.method(
-            #listLevelIds,
-            [],
-          ),
-        )),
-      ) as _i4.Future<_i2.Either<_i5.LevelFailure, List<_i6.LevelId>>>);
+  _i4.Future<_i2.Either<_i5.LevelFailure, List<_i6.CatalogEntry>>>
+      listCatalog() => (super.noSuchMethod(
+            Invocation.method(
+              #listCatalog,
+              [],
+            ),
+            returnValue: _i4.Future<
+                    _i2.Either<_i5.LevelFailure, List<_i6.CatalogEntry>>>.value(
+                _FakeEither_0<_i5.LevelFailure, List<_i6.CatalogEntry>>(
+              this,
+              Invocation.method(
+                #listCatalog,
+                [],
+              ),
+            )),
+          ) as _i4
+              .Future<_i2.Either<_i5.LevelFailure, List<_i6.CatalogEntry>>>);
 
   @override
   _i4.Future<_i2.Either<_i5.LevelFailure, _i7.Level>> getLevel(
-          _i6.LevelId? id) =>
+          _i8.LevelId? id) =>
       (super.noSuchMethod(
         Invocation.method(
           #getLevel,

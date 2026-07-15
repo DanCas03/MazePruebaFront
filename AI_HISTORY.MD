@@ -1837,3 +1837,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
 **Resultado obtenido:** `game_screen.dart` añade `_ErrorsChip` en la AppBar (corazón + `s.strikes.remaining`, tooltip `l10n.errorsLeft`), presente durante todo `GamePlaying` y espejo visual de `_CountdownChip`. TDD: `_repoWithBoard` acepta `maxErrors`; test nuevo (chip arranca en 3, desciende a 2 tras un choque, sigue jugando), **10/10** en game_screen (RED verificado). `flutter analyze` limpio; suite completa **684/684**. README actualizado (condición de derrota: presupuesto por nivel + contador descendente). Seguimiento OPCIONAL (backend): servir `maxErrors` por nivel en `GET /levels/:id` para que difieran entre niveles; hasta entonces todos usan el default 5 (dificultad sin cambios). Nota: `undoMove` no revierte strikes (comportamiento previo intencional, fuera de alcance).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 095 — Generador por bandas (fragmento 1) — Helpers puros de bandas y cuotas
+
+**Tarea o problema abordado:** Primer fragmento del fix de densidad del generador (spec 2026-07-15-generator-band-density-design.md): helpers puros y testeables para particionar el tablero en bandas concéntricas y repartir cuotas proporcionales.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 1)
+**Resultado obtenido:** Nuevo `lib/infrastructure/generators/band_layout.dart` con dos funciones puras: `concentricBands(cols, rows)` (índice 0 = banda más interior; distancia al borde d=min(row,col,rows-1-row,cols-1-col); k=min(3,maxD+1) bandas de ancho igual; particiona todas las celdas sin solape) y `largestRemainderQuotas(total, sizes)` (reparto por mayor resto, suma exacta = total). Tests delegados a subagente (AAA, `should_..._when_...`): **7/7** verdes — 3 para `concentricBands` (partición 20×20, banda única 2×2, una banda por distancia 6×8) y 4 para `largestRemainderQuotas` (suma exacta, proporcionalidad [5,10,15], sizes en cero, total=0). Sin knobs públicos nuevos; no toca `generate()` ni el camino temático.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

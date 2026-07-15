@@ -1864,3 +1864,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 4)
 **Resultado obtenido:** Confirmado RED (2/2) con el generador nuevo. Script efímero `tool/regen_goldens.dart` (creado, ejecutado, borrado — sin rastro en el árbol) reescribió `test/fixtures/golden_boards/cand-t1-s101.json` (tier 1, 6×8) y `cand-t5-s918.json` (tier 5 finale, 50×50) vía `produceCandidate(spec).json`. Doc-comment del test reescrito como *forward regression guard*: fija el output del generador por bandas para (tier, seed); si rompe sin cambio deliberado hay bug de reproducibilidad. Verificado GREEN 2/2. (Los nombres de group/test conservan la referencia histórica front#73 por alcance mínimo del plan.)
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 098 — Generador por bandas (fragmento 4) — README, suite completa y PR
+
+**Tarea o problema abordado:** Documentar la distribución homogénea en el README del modo "Generar nivel" y cerrar la feature con la suite completa verde.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 5)
+**Resultado obtenido:** Nota en README (§ GenerateBoardUseCase): `GraphBoardGenerator` coloca interior-primero por bandas concéntricas ⇒ densidad interior comparable al borde (sin anillo perimetral), determinismo intacto (mismo seed + config ⇒ mismo tablero), con enlace al spec. Suite completa **704/704** verde; `flutter analyze` sin issues. PR a `main` (el usuario decide el merge).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

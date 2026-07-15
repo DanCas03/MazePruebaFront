@@ -86,6 +86,10 @@
   "@campaignComplete": {
     "description": "Shown on the victory screen after clearing the last level in the catalog."
   },
+  "nextLevelLocked": "Complete the earlier levels to unlock the next one.",
+  "@nextLevelLocked": {
+    "description": "Shown on the victory screen when the next level's tier is still locked (earlier levels not completed)."
+  },
   "levelsLoadError": "Couldn't load levels",
   "@levelsLoadError": {
     "description": "Shown on the level selection screen when the catalog or progress fails to load."

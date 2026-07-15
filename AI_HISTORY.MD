@@ -1757,3 +1757,39 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "Fragmento 8: README (sección arquitectura: módulo space) + cierre. Greps de aceptación: cero switch/if sobre Direction fuera de RectSpace.step, codec y helper de proyección; cero aritmética dr/dc/bounds/adyacencia fuera del módulo space."
 **Resultado obtenido:** `README.md`: fila `game_core/` incluye `space/ (BoardSpace, RectSpace)` y un párrafo nuevo en `## Architecture` que introduce `BoardSpace`/`RectSpace`/`HoledRectSpace` (ADR-0005). Criterios de aceptación verificados: (1) grep `switch` + `Direction.` ⇒ exactamente `rect_space.dart` y `direction_projection.dart` (el codec ni siquiera hace switch — usa mapas de strings); (2) único `Direction.` fuera de los archivos permitidos = `graph_board_generator.dart:161` `Direction.values[rng.nextInt(...)]`, que es SELECCIÓN aleatoria de dirección (rango de RNG), no aritmética geométrica. `flutter analyze` limpio; suite completa **647/647**; golden boards 2/2; smoke del CLI real (`produce.dart` con `Isolate.run`) reproduce el golden byte-a-byte.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 086 — front#81 (fragmento 1) — Servicio de dominio CampaignProgression
+
+**Tarea o problema abordado:** Bug #81: la pantalla de victoria ofrecía "Next Level" por pura adyacencia del Catálogo, saltándose `TierGating` — al ganar el último nivel de un Tier desbloqueado entrando fuera de orden, desbloqueaba/entraba al primer nivel del Tier siguiente aún bloqueado. Se necesita mover la decisión "qué sigue y si es jugable" al dominio.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** Nuevo `lib/domain/board/services/campaign_progression.dart` (Dart puro, hermano de `TierGating`) con un `sealed NextLevelOutcome` de 4 casos exhaustivos (`NextLevelUnlocked(levelId)`, `NextLevelLocked`, `CampaignComplete`, `NotInCampaign`) y `CampaignProgression.resolve(currentId, catalog, progress)`. Deriva el Tier de cada nivel de campaña por POSICIÓN (mismo criterio que `LevelSelectionController`), cuenta el nivel recién ganado como completado (robusto ante la carrera con la persistencia fire-and-forget) y consulta `TierGating.isLevelUnlocked` para el candidato siguiente. TDD: `test/domain/board/services/campaign_progression_test.dart` **6/6** (RED verificado antes de implementar), incluida la regresión del bug (cruce de frontera de Tier con previos incompletos ⇒ `NextLevelLocked`).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 087 — front#81 (fragmento 2) — Provider nextLevelOutcomeProvider
+
+**Tarea o problema abordado:** Exponer la progresión gating-aware a la presentación como fachada reactiva, sin que la pantalla de victoria toque infraestructura ni recomponga la adyacencia a mano.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** Nuevo `lib/application/providers/next_level_provider.dart`: `nextLevelOutcomeProvider` = `FutureProvider.autoDispose.family<NextLevelOutcome, LevelId>` que compone `levelCatalogProvider.future` + `levelProgressRepositoryProvider.getAll()` y delega en `CampaignProgression(TierGating())`. No requiere override en `main` (se autocompone leyendo providers ya sobreescritos allí — DIP transitiva). TDD: `test/application/providers/next_level_provider_test.dart` **3/3** con `ProviderContainer` + `FakeLevelProgressRepository` (RED verificado). El nivel recién ganado se cuenta como completado, así el gating no depende de la carrera con la persistencia fire-and-forget del observer.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 088 — front#81 (fragmento 3) — String l10n nextLevelLocked (en/es)
+
+**Tarea o problema abordado:** Mensaje para el caso nuevo `NextLevelLocked` en la pantalla de victoria: cuando el siguiente nivel pertenece a un Tier aún bloqueado, en vez de un CTA que llevaría a un nivel bloqueado se muestra el requisito.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** `lib/l10n/app_en.arb` y `app_es.arb`: clave `nextLevelLocked` ("Complete the earlier levels to unlock the next one." / "Completa los niveles anteriores para desbloquear el siguiente."). `flutter gen-l10n` regenera los getters (archivos `app_localizations*.dart` son build artifacts gitignoreados, no se versionan). Solo los `.arb` entran al commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 089 — front#81 (fragmento 4) — VictoryScreen respeta el gating + cierre
+
+**Tarea o problema abordado:** El fix real del bug #81 en la UI: la pantalla de victoria ofrecía "Next Level" incondicionalmente por adyacencia del Catálogo, saltándose `TierGating` y permitiendo entrar a un nivel de un Tier bloqueado (con efecto cascada: persistía `completed:true` de ese nivel, corrompiendo el gating y encadenando la campaña).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** `lib/presentation/level_selection/victory_screen.dart` sustituye el cálculo inline de adyacencia (fuga de lógica a presentación) por `ref.watch(nextLevelOutcomeProvider(args.levelId))` y un `switch` exhaustivo sobre el `sealed NextLevelOutcome`: `NextLevelUnlocked`→CTA que navega al id resuelto; `NextLevelLocked`→mensaje de requisito (`l10n.nextLevelLocked`); `CampaignComplete`→felicitación; `NotInCampaign`/loading→nada. Se eliminan los imports de `levelCatalogProvider`/`CatalogEntry`/`LevelSection` (ya no se recompone la adyacencia aquí). TDD: `test/presentation/level_selection/victory_screen_test.dart` — harness overridea `levelProgressRepositoryProvider` con `FakeLevelProgressRepository`; 2 tests nuevos (bloqueado ⇒ sin CTA + mensaje + sin navegación; desbloqueado tras completar previos ⇒ navega al Tier siguiente), RED verificado antes del fix. **9/9** en la pantalla, **677/677** suite completa, `flutter analyze` limpio. README actualizado (§Progresión y §Themed section). Nota: la defensa en profundidad en `GameController.loadLevel` (guarda para futuros deep links) queda como follow-up opcional — el fix de la pantalla ya cierra la única ruta de bypass existente.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

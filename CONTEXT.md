@@ -20,12 +20,20 @@ _Avoid_: rotación, orientación, giro.
 
 **ArrowBoard** (Tablero):
 Aggregate root y único punto de acceso al estado del tablero (lista de `Arrow` + `cols`/`rows`).
-Nadie toca un `Arrow` desde fuera del tablero.
+Nadie toca un `Arrow` desde fuera del tablero. El Tablero son flechas *sobre* un BoardSpace.
 _Avoid_: grid, grilla, matriz de celdas, board de celdas.
 
+**BoardSpace** (Espacio del tablero):
+La geometría del tablero como concepto propio: qué celdas existen, cuáles son adyacentes,
+qué es un carril recto y dónde está la **frontera** por la que una flecha sale. Es el único
+intérprete de las direcciones. El espacio de la campaña es rectangular (`cols`×`rows`); un
+espacio distinto (agujereado, 3D) cambia la geometría sin cambiar la mecánica de juego.
+_Avoid_: grid, plano, matriz, dimensiones sueltas como sinónimo de geometría.
+
 **exit path** (carril de salida):
-Celdas libres que la cabeza debe recorrer en línea recta hasta el borde para que la flecha
-salga. Si todas están libres de otras flechas, la flecha puede salir.
+Celdas que la cabeza debe recorrer en línea recta hasta la frontera del espacio para que la
+flecha salga (en el tablero rectangular, el borde). Si todas están libres de otras flechas,
+la flecha puede salir.
 _Avoid_: camino de movimiento, ruta del jugador.
 
 **Exit / Remove** (salida / remoción):

@@ -1538,3 +1538,12 @@
 
 Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section-paint-seam`. Falta el criterio E2E del brief (sección temática end-to-end contra el back en Docker), que depende de aplicar el `prisma db push` + seed de back#31 (ver [[ola0-5050-prs]]).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 071 — Sesión C2 (#69): diseño BoardSpace / 3D-readiness
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Grilling del candidato C2 reservado en #69: la aritmética 2D está fugada en los call sites (3 clones de `exitPath`, direction→delta 5×, adyacencia/bounds inline) y una variación del espacio (3D como estresor de examen) costaría ~25 archivos entre ambos artefactos. Definir la estructura mínima que haga baratas esas variaciones sin código especulativo.
+**Herramienta de IA utilizada:** Claude Code (Fable 5) — /improve-codebase-architecture → /grill-with-docs (/grilling + /domain-modeling + /codebase-design)
+**Prompt o instrucción proporcionada:** > "trae el issue #69 del front y vamos a definir como se va a estructurar el problema… el sistema debe ser lo suficientemente desacoplable que si se quiere agregar la funcionalidad de hacer un tablero 3D debe ser posible… no debe ser el único caso…"
+**Resultado obtenido:** Decisiones D1–D5 registradas en ADR-0005 (workspace `docs/adr/`): eje protegido = geometría del espacio; módulo profundo **BoardSpace** con seam real (interfaz + `RectSpace` de producción + `HoledRectSpace` de certificación solo-tests, que extiende `RectSpace` sobreescribiendo solo `contains`); `Direction` queda enum cerrado sin vector (el compilador como checklist de la migración 3D); `ArrowBoard` sostiene el espacio; `Arrow` pasa a dato puro; wire y painters intactos (los 3 switches de presentación se consolidan en un helper de proyección). Implementación diferida tras el batch (D5): issue #73 (bloqueado por #65/#66/#68); espejo back en MazePruebaBack#36 (bloqueado por back#32). Glosario: nuevo término **BoardSpace (Espacio del tablero)**; "exit path" generaliza borde→frontera.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

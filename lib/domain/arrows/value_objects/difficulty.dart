@@ -1,8 +1,9 @@
 /// Preset de dificultad que el jugador elige al generar un tablero (front#36).
 /// Concentra las constantes documentadas del mapeo dificultad → densidad de
 /// flechas, largo máximo de camino doblado y presupuesto de tiempo por celda.
-/// Espejo de la filosofía de [LevelBlueprint]: la política de dificultad vive
-/// en el dominio en un solo lugar testeable; el generador solo genera.
+/// La política de dificultad vive en el dominio en un solo lugar testeable; el
+/// generador solo genera. (La curva de PRODUCCIÓN de la campaña es su análoga,
+/// la Rampa en `tool/level_production/`.)
 enum Difficulty {
   easy(fillRatio: 0.40, maxPathLen: 3, secondsPerCell: 3.0),
   medium(fillRatio: 0.55, maxPathLen: 6, secondsPerCell: 2.0),

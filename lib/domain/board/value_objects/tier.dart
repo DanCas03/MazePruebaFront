@@ -1,8 +1,9 @@
 /// Escalón de dificultad de la rampa curada (dominio puro). La curación agrupa
 /// los niveles oficiales en 5 Tiers (3 niveles cada uno); el Tier es la unidad
 /// de agrupación visual y la unidad de gating (un Tier se desbloquea al
-/// completar el anterior). No confundir con `LevelBlueprint`, que traduce el
-/// número de nivel a dimensiones concretas del tablero.
+/// completar el anterior). No confundir con la Rampa de producción
+/// (`tool/level_production/`), que traduce un tier a dimensiones concretas del
+/// tablero al fabricar candidatos.
 enum Tier {
   one,
   two,

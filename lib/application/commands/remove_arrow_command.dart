@@ -28,8 +28,7 @@ class RemoveArrowCommand implements ICommand {
     if (_removedArrow == null) return board;
     return ArrowBoard(
       arrows: [...board.arrows, _removedArrow!],
-      cols: board.cols,
-      rows: board.rows,
+      space: board.space,
     );
   }
 }

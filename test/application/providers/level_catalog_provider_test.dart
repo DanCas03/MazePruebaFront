@@ -19,6 +19,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 
 import 'level_catalog_provider_test.mocks.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 
 @GenerateMocks([ILevelRepository, ILoggerService])
 /// Catálogo en orden de juego (fixture compartida entre casos): dos entradas de
@@ -39,8 +40,7 @@ Level _level() => Level(
             headDirection: Direction.right,
           ),
         ],
-        cols: 4,
-        rows: 4,
+        space: RectSpace(4, 4),
       ),
     );
 

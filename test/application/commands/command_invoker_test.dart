@@ -1,11 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
 import 'package:flutter_arrow_maze/application/commands/remove_arrow_command.dart';
-import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 void main() {
   late CommandInvoker sut;
@@ -13,13 +14,13 @@ void main() {
   setUp(() => sut = CommandInvoker());
 
   ArrowBoard makeBoard() {
-    final arrow = Arrow.straight(
+    final arrow = straightArrow(
       id: const ArrowId('a1'),
       tail: Position(row: 0, col: 0),
       direction: Direction.right,
       length: 2,
     );
-    return ArrowBoard(arrows: [arrow], cols: 4, rows: 4);
+    return ArrowBoard(arrows: [arrow], space: RectSpace(4, 4));
   }
 
   group('CommandInvoker', () {
@@ -40,19 +41,19 @@ void main() {
 
     test('undo delegates to the command, restoring onto the current board', () {
       // Arrange — start from a two-arrow board and remove a1.
-      final a1 = Arrow.straight(
+      final a1 = straightArrow(
         id: const ArrowId('a1'),
         tail: Position(row: 0, col: 0),
         direction: Direction.right,
         length: 2,
       );
-      final a2 = Arrow.straight(
+      final a2 = straightArrow(
         id: const ArrowId('a2'),
         tail: Position(row: 2, col: 0),
         direction: Direction.right,
         length: 2,
       );
-      final board = ArrowBoard(arrows: [a1, a2], cols: 4, rows: 4);
+      final board = ArrowBoard(arrows: [a1, a2], space: RectSpace(4, 4));
       final cmd = RemoveArrowCommand(const ArrowId('a1'));
       final afterRemove = sut.executeCommand(cmd, board);
       expect(afterRemove.arrows.map((a) => a.id), [const ArrowId('a2')]);

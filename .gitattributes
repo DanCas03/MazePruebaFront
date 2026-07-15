@@ -1,0 +1,6 @@
+# Golden generator fixtures must stay LF on every platform: produceCandidate
+# emits '\n'-separated JSON, and golden_boards_regression_test.dart compares it
+# byte-for-byte against these files as checked out. Without this, core.autocrlf
+# would materialize them as CRLF on a fresh checkout and the determinism guard
+# would fail everywhere but the machine that captured them (front#73, ADR-0005).
+test/fixtures/golden_boards/*.json text eol=lf

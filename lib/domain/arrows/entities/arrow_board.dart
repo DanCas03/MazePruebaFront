@@ -1,19 +1,27 @@
 import 'package:equatable/equatable.dart';
 import 'arrow.dart';
 import '../value_objects/arrow_id.dart';
+import '../../game_core/space/board_space.dart';
+import '../../game_core/space/rect_space.dart';
 import '../../game_core/value_objects/position.dart';
 
 // Aggregate Root: único punto de acceso al estado del tablero de flechas.
 class ArrowBoard extends Equatable {
   final List<Arrow> arrows;
-  final int cols;
-  final int rows;
+  final BoardSpace space;
 
   const ArrowBoard({
     required this.arrows,
-    required this.cols,
-    required this.rows,
+    required this.space,
   });
+
+  // cols/rows delegados (ADR-0005 D4): todo espacio concreto de HOY (RectSpace
+  // y su único subtipo HoledRectSpace) tiene bounding box rectangular, así que
+  // exponer cols/rows aquí evita tocar cada widget/encoder que ya los lee. No
+  // es parte del contrato de BoardSpace — un espacio no-rectangular futuro
+  // rompería este cast a propósito (documentado, no implementado: ADR-0005 §8).
+  int get cols => (space as RectSpace).cols;
+  int get rows => (space as RectSpace).rows;
 
   // Caché de ocupación por instancia (#64): ArrowBoard es inmutable, así que
   // el Set de celdas ocupadas se computa lazy UNA vez por instancia en lugar
@@ -31,16 +39,10 @@ class ArrowBoard extends Equatable {
 
   bool get isCleared => arrows.isEmpty;
 
-  // Permite a los consumidores distinguir "id ausente" de "salida bloqueada"
-  // sin exponer la búsqueda interna ni iterar la lista de arrows fuera del AR.
   bool contains(ArrowId id) => _findById(id) != null;
 
-  /// La flecha con [id], o null. Expone la búsqueda interna como query pública
-  /// sin que los consumidores iteren `arrows` fuera del aggregate root.
   Arrow? arrowById(ArrowId id) => _findById(id);
 
-  /// La flecha que ocupa la celda [pos], o null si está vacía. Es la base del
-  /// hit-testing por celda (agnóstico de la forma de la flecha).
   Arrow? arrowAt(Position pos) {
     for (final a in arrows) {
       if (a.cells.contains(pos)) return a;
@@ -55,13 +57,7 @@ class ArrowBoard extends Equatable {
     return null;
   }
 
-  /// True si alguna celda del cuerpo de [arrow] coincide con una celda ya
-  /// ocupada por otra flecha del tablero. Base para impedir que dos flechas
-  /// se coloquen superpuestas (cada celda pertenece a una sola flecha).
   bool overlaps(Arrow arrow) {
-    // Se consulta el caché total y se descartan las celdas de la PROPIA
-    // flecha (la copia que vive en el tablero, si existe): equivale a la
-    // antigua reconstrucción "ocupado excluyendo id" sin rehacer el Set.
     final ownCells = _findById(arrow.id)?.cells.toSet() ?? const <Position>{};
     return arrow.cells.any((c) => _occupied.contains(c) && !ownCells.contains(c));
   }
@@ -73,19 +69,18 @@ class ArrowBoard extends Equatable {
     // las celdas de la PROPIA flecha nunca bloquean su salida (una serpiente
     // doblada puede tener cuerpo geométricamente delante de la cabeza).
     final ownCells = arrow.cells.toSet();
-    return arrow
-        .exitPath(cols, rows)
+    return space
+        .exitLane(arrow.head, arrow.headDirection)
         .every((p) => !_occupied.contains(p) || ownCells.contains(p));
   }
 
   ArrowBoard removeArrow(ArrowId id) {
     return ArrowBoard(
       arrows: arrows.where((a) => a.id != id).toList(),
-      cols: cols,
-      rows: rows,
+      space: space,
     );
   }
 
   @override
-  List<Object?> get props => [arrows, cols, rows];
+  List<Object?> get props => [arrows, space];
 }

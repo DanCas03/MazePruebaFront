@@ -22,6 +22,8 @@ import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart
 import 'package:flutter_arrow_maze/domain/game_core/services/i_ticker.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 // ── Dobles de test hechos a mano (sin build_runner) ──────────────────────────
 
@@ -56,7 +58,7 @@ class _FakeSolutionRepo implements ISolutionRepository {
   }
 }
 
-Arrow _arrow(String id, int col) => Arrow.straight(
+Arrow _arrow(String id, int col) => straightArrow(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
@@ -65,7 +67,7 @@ Arrow _arrow(String id, int col) => Arrow.straight(
 
 /// Tablero 4x4 con dos flechas.
 ArrowBoard _twoArrowBoard() =>
-    ArrowBoard(arrows: [_arrow('a0', 0), _arrow('a2', 2)], cols: 4, rows: 4);
+    ArrowBoard(arrows: [_arrow('a0', 0), _arrow('a2', 2)], space: RectSpace(4, 4));
 
 Level _level(String id) =>
     Level(id: LevelId(id), board: _twoArrowBoard());

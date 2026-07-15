@@ -18,8 +18,10 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/generator_config.
 import 'package:flutter_arrow_maze/domain/game_core/services/i_ticker.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
-Arrow _arrow(String id, int col) => Arrow.straight(
+Arrow _arrow(String id, int col) => straightArrow(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
@@ -28,12 +30,12 @@ Arrow _arrow(String id, int col) => Arrow.straight(
 
 /// Tablero 4x4 con una flecha: al quitarla queda limpio → victoria.
 ArrowBoard _oneArrowBoard() =>
-    ArrowBoard(arrows: [_arrow('arrow-0', 0)], cols: 4, rows: 4);
+    ArrowBoard(arrows: [_arrow('arrow-0', 0)], space: RectSpace(4, 4));
 
 /// Tablero 4x4 con dos flechas rectas en la misma fila: la primera está
 /// bloqueada por la segunda → cada toque es un choque (no se despeja).
 ArrowBoard _twoArrowBoard() => ArrowBoard(
-    arrows: [_arrow('arrow-0', 0), _arrow('arrow-2', 2)], cols: 4, rows: 4);
+    arrows: [_arrow('arrow-0', 0), _arrow('arrow-2', 2)], space: RectSpace(4, 4));
 
 /// Generador falso: registra las semillas con las que se le llama y devuelve el
 /// tablero que dicte [boardFor] (o uno de una flecha por defecto).

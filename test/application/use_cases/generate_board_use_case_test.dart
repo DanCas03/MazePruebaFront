@@ -11,6 +11,7 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/generator_config.
 import 'package:flutter_arrow_maze/infrastructure/generators/graph_board_generator.dart';
 
 import 'generate_board_use_case_test.mocks.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 
 @GenerateMocks([ILevelGenerator, ILoggerService])
 void main() {
@@ -18,7 +19,7 @@ void main() {
   late MockILoggerService logger;
   late GenerateBoardUseCase useCase;
 
-  const stubBoard = ArrowBoard(arrows: [], cols: 6, rows: 6);
+  const stubBoard = ArrowBoard(arrows: [], space: RectSpace(6, 6));
 
   setUp(() {
     generator = MockILevelGenerator();

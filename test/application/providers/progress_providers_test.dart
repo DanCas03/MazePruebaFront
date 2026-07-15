@@ -24,9 +24,11 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 
 import 'progress_providers_test.mocks.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 @GenerateMocks([ILevelRepository, RemoveArrowUseCase])
-Arrow _arrow(String id, int col) => Arrow.straight(
+Arrow _arrow(String id, int col) => straightArrow(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
@@ -35,7 +37,7 @@ Arrow _arrow(String id, int col) => Arrow.straight(
 
 /// Tablero 4x4 con una sola flecha (al quitarla queda limpio → victoria).
 ArrowBoard _oneArrowBoard() =>
-    ArrowBoard(arrows: [_arrow('arrow-0', 0)], cols: 4, rows: 4);
+    ArrowBoard(arrows: [_arrow('arrow-0', 0)], space: RectSpace(4, 4));
 
 void _stubLevel(MockILevelRepository repo, ArrowBoard board) =>
     when(repo.getLevel(any)).thenAnswer(
@@ -128,13 +130,12 @@ void main() {
     final uc = MockRemoveArrowUseCase();
     final twoArrows = ArrowBoard(
       arrows: [_arrow('arrow-0', 0), _arrow('arrow-1', 2)],
-      cols: 4,
-      rows: 4,
+      space: RectSpace(4, 4),
     );
     _stubLevel(repo, twoArrows);
     // Quitar arrow-0 deja el tablero con arrow-1 (sigue GamePlaying).
     when(uc.execute(any, any)).thenReturn(
-        Right(ArrowBoard(arrows: [_arrow('arrow-1', 2)], cols: 4, rows: 4)));
+        Right(ArrowBoard(arrows: [_arrow('arrow-1', 2)], space: RectSpace(4, 4))));
     final spy = _SpyProgressRepository();
     final c = _container(repo, uc, spy);
     c.read(levelCompletionObserverProvider);

@@ -1642,3 +1642,75 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "Actualizar README.md (§ Tooling) con la subsección de producción de niveles temáticos: máscaras, CLI, confinamiento por región, orden detalle-primero, cobertura/preview, sin límite de tiempo, fixtures congelados."
 **Resultado obtenido:** Nueva subsección `### Producción de niveles temáticos — Máscaras + CLI (front#68)` en `README.md` bajo `## Tooling`, tras la de candidatos: formato `.mask`, comando del CLI, confinamiento flecha↔región + `paintRole`/`palette` (ADR 0004), orden detalle-primero, ocupación global/solubilidad, reintento de semillas + cobertura + preview ANSI, sin `timeLimitSec` en v1, y ubicación de los 3 fixtures congelados con su comando reproducible. Suite completa del front verificada: `flutter analyze` 0 issues + `flutter test` 625/625 verdes.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 078 — front#73 (fragmento 1) — Golden boards del generador
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Fijar el output del generador de candidatos como fixtures de regresión ANTES del refactor BoardSpace (front#73, ADR-0005), para garantizar reproducibilidad byte-a-byte del generador durante toda la migración. Se eligieron un tier chico (tier 1, seed 101 → 6×8) y el remate 50×50 (tier 5 finale, seed 918 → nivel 15), los pares que el manifest de provenance del back protege.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 0/1: capturar golden boards del generador/CLI actual con pares (tier, seed) del manifest del back (mínimo un tier chico y t5-s918) y escribir un test que asserta igualdad exacta post-refactor. Si el golden rompe, el refactor tiene un bug de reproducibilidad — no re-capturar el golden."
+**Resultado obtenido:** Fixtures congelados `test/fixtures/golden_boards/cand-t1-s101.json` (6×8) y `cand-t5-s918.json` (50×50) capturados con `dart run tool/level_production/produce.dart` sobre el generador actual (Dart SDK 3.12.0). Nuevo test `test/tool/level_production/golden_boards_regression_test.dart` que llama a `produceCandidate` directamente (no shell) y asserta igualdad byte-a-byte contra el fixture — test de caracterización, verde de entrada (2/2). Hallazgo verificado durante la captura: los fixtures commiteados en `tool/candidates/*.json` están DESACTUALIZADOS (predatan la resiembra back#32: dims y campo `order` distintos), por lo que no servían de golden; se congelaron fixtures frescos. Determinismo cross-verificado: dos capturas independientes del mismo (tier, seed) resultaron byte-idénticas. Se agregó `.gitattributes` (`test/fixtures/golden_boards/*.json text eol=lf`) porque `core.autocrlf=true` habría materializado el golden como CRLF en un checkout limpio mientras `produceCandidate` emite LF, rompiendo el guard fuera de la máquina de captura.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 079 — front#73 (fragmento 2) — BoardSpace + RectSpace
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Crear el módulo profundo de geometría del tablero (ADR-0005 D1/D2): interfaz abstracta `BoardSpace` (primitivas `contains`/`step` + template methods `areAdjacent`/`exitLane`, más `directions`/`cellCount`/`allCells`) y su única implementación de producción `RectSpace`, que concentra el ÚNICO switch dirección→delta del artefacto. Espeja la interfaz TS del back (back#36, PR #43), contrato compartido por ambos artefactos.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 1: lib/domain/**/space/: BoardSpace + RectSpace + contract tests. RectSpace(cols, rows) es el único switch dirección→delta, dentro de step, guardado por contains; devuelve null, no excepciones (Position lanza con negativos: chequeá antes de construir). Value equality (Equatable). allCells en orden canónico row-major (parte del contrato)."
+**Resultado obtenido:** `lib/domain/game_core/space/board_space.dart` (abstract, `extends Equatable`; `areAdjacent`/`exitLane` como template methods sobre `step`, de modo que `HoledRectSpace` los hereda gratis) y `rect_space.dart` (`step` con el switch dirección→(dr,dc), chequeo de negativos antes de `Position(...)`, guardado por `contains`; `allCells` `sync*` row-major; `props=[cols,rows]`). Suite de contrato reutilizable `runBoardSpaceContractTests(label, build, {insideNearOrigin, insideAwayFromEdges})` en `test/support/` (la reusará Task 3 contra `HoledRectSpace` sin cambios) + `test/domain/game_core/space/rect_space_test.dart` (contrato + casos rectangulares). `flutter analyze` limpio (3 items, 0 issues); `rect_space_test` 14/14; golden boards (Task 1) sigue 2/2.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 080 — front#73 (fragmento 3) — HoledRectSpace + contract-test compartido
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Materializar el segundo adapter de certificación (ADR-0005 D2/D7) que prueba que el seam de `BoardSpace` es real (un adapter = seam hipotético; dos = real). Vive SOLO en `test/`: `HoledRectSpace`, un `RectSpace` con celdas removidas donde el agujero es frontera (la flecha sale por ahí). Correr la MISMA suite de contrato contra ambos espacios sin editar una línea del contrato.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 2: HoledRectSpace en test/ + contract-test compartido corriendo contra ambos espacios. HoledRectSpace extiende RectSpace sobreescribiendo ÚNICAMENTE contains (set de agujeros). El carril termina en el agujero: el agujero es frontera y la flecha sale por ahí."
+**Resultado obtenido:** `test/support/holed_rect_space.dart`: extiende `RectSpace`, sobreescribe SOLO `contains` (`super.contains(pos) && !holes.contains(pos)`) y `props` (`[...super.props, holes]`); hereda `step`/`exitLane`/`allCells`/`areAdjacent` sin tocarlos — por eso el carril se corta en el agujero gratis. `allCells`/`cellCount` deliberadamente NO restan agujeros: no es producción, es la prueba de que el resto del dominio corre sobre cualquier `BoardSpace` sin cambios. `holed_rect_space_test.dart` invoca `runBoardSpaceContractTests` (los 6 casos compartidos corren por segunda vez contra `HoledRectSpace`, sin cambiar el contrato) + 3 casos de agujero. `flutter test` 9/9 verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 081 — front#73 (fragmento 4) — Arrow dato puro + ArrowBoard sostiene el espacio
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Cambio de forma del agregado (ADR-0005 D4/D6): `ArrowBoard` deja de tener `cols`/`rows` como estado y recibe `space: BoardSpace`; `Arrow` pasa a dato puro (mueren `Arrow.exitPath` y `Arrow.straight`). Como Dart compila el árbol completo, TODOS los call sites migran en el mismo fragmento (atómico): 4 en `lib/` + ~43 en `test/`, más 38 usos de `Arrow.straight`.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 3: Arrow → dato puro + ArrowBoard sostiene el espacio (cache intacta) + migración de tests de exitPath. cols/rows quedan getters delegados; canExit/arrowAt/occupancy consultan el espacio; la cache Expando de ocupación (front#64) se conserva. Los tests de exitPath de arrow_test.dart migran a los tests del espacio."
+**Resultado obtenido:** `Arrow` sin `exitPath` ni `Arrow.straight` (dato puro). `ArrowBoard` con `space: BoardSpace`, getters `cols`/`rows` delegados (`(space as RectSpace).cols`) para no tocar widgets/encoder que solo LEEN, cache Expando de ocupación (#64) intacta, `canExit` ahora llama `space.exitLane(arrow.head, arrow.headDirection)`. `test/support/arrow_fixtures.dart` con `straightArrow(...)` (el único consumidor de la antigua factory era test/). Call sites de producción migrados: `remove_arrow_command`, `game_controller` (reusan `board.space`), `level_json_decoder` (construye `RectSpace(cols, rows)` desde el wire — wire intacto), `graph_board_generator` (parche mínimo: `RectSpace(cols,rows).exitLane(...)` en el assert + 2 returns; Task 5 lo reescribe a fondo). 23 archivos de test migrados (`ArrowBoard(cols:,rows:)`→`space: RectSpace(...)`, `Arrow.straight(`→`straightArrow(`). Tests de `exitPath` de `arrow_test.dart` eliminados (cubiertos por `rect_space_test.dart`); el caso "canExit sigue headDirection, no el último segmento del cuerpo" reubicado en `arrow_board_test.dart`. `flutter analyze` limpio; suite completa **645/645** verde, incluido el golden de generador (t5 finale byte-idéntico ⇒ determinismo preservado).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 082 — front#73 (fragmento 5) — Generador migrado a BoardSpace, golden verde
+
+**Tarea o problema abordado:** Eliminar la tercera reimplementación de la aritmética de carril y adyacencia del generador (`_lane` privado + los bounds manuales de `_freeNeighbors`), migrándola a `space.exitLane`/`space.step`/`space.directions` SIN cambiar el orden de llamadas a `Random` ni el orden de candidatos (si cambiara, el golden rompería). Este era el fragmento de mayor riesgo de determinismo.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 4: Generador vía space.step/exitLane/allCells/cellCount (mueren los clones) — golden boards verdes. Prueba de determinismo antes de editar: mismo orden de RNG, mismo orden de candidatos."
+**Resultado obtenido:** `graph_board_generator.dart` reescrito: muere `_lane` (⇒ `space.exitLane`), `_freeNeighbors` itera `space.directions` + `space.step` en vez de bounds a mano. Prueba de determinismo verificada célula a célula antes de editar: `Direction.values` = `up,down,left,right` = orden de los `if` de bounds previos; `space.step(p,dir) != null` ⇔ el bound manual de esa dirección; `space.exitLane` = `_lane`; ninguna llamada a `rng.nextInt` se agrega/quita/reordena (el muestreo de cabeza sigue usando `rng.nextInt(rows)`/`rng.nextInt(cols)` como RANGO, no como geometría). `space` se construye una vez por `generate`/`generateThemed` y se pasa a los helpers. `flutter analyze` limpio; tests del generador (incl. determinismo y perf 50×50) verdes; **golden boards byte-idéntico (2/2)**; suite completa **645/645**.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 083 — front#73 (fragmento 6) — Helper de proyección de presentación
+
+**Tarea o problema abordado:** Consolidar los 3 switches dirección→pantalla que vivían duplicados en `arrow_painter`, `snake_exit_painter` y `arrow_widget` en UN helper de proyección presentation-side (ADR-0005 D4), sin cambiar el comportamiento visual (los tests de painters/widgets deben pasar sin tocarlos). Los painters/widgets siguen recibiendo primitivas (cols/rows/Position/Direction), nunca un `BoardSpace`.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 5: Presentación: helper único de proyección; painters/widgets con comportamiento idéntico. El hit-test píxel→celda queda en board_widget (proyección legítimamente 2D)."
+**Resultado obtenido:** Nuevo `lib/presentation/game/direction_projection.dart` con `directionUnit(dir)→Offset`, `directionAngle(dir)→double` (valores literales `0.0`/`math.pi`/`math.pi/2`/`-math.pi/2` idénticos, NO derivados por atan2 — garantiza doubles bit-idénticos) y `cellsToEdge(head, dir, {cols, rows})→int` (equivalente numérico a `RectSpace.exitLane(...).length`). `arrow_painter` usa `directionAngle`; `snake_exit_painter` borra `_dirUnit` (⇒ `directionUnit`) y colapsa `_laneCells` a `cellsToEdge`; `arrow_widget` borra su `_dirUnit` de tuplas (⇒ `directionUnit`) y quita el import de `Direction` ya no usado. `flutter analyze` limpio; tests de painters/widgets **22/22** SIN cambios (píxel-idéntico); suite completa **645/645**. El hit-test píxel→celda queda en `board_widget` (proyección legítimamente 2D, fuera del alcance).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 084 — front#73 (fragmento 7) — Certificación OCP sobre HoledRectSpace
+
+**Tarea o problema abordado:** Prueba decisiva (ADR-0005 D2/D7): correr el MISMO `ArrowBoard`/`Arrow` sobre un espacio agujereado (`HoledRectSpace`) usando solo la API pública existente, sin editar una línea de consumidor. Si compila y pasa, la extensibilidad prometida por `BoardSpace` queda DEMOSTRADA, no solo documentada (OCP).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 7: Test de certificación OCP: el mismo ArrowBoard sobre HoledRectSpace sin editar consumidores (carril que termina en agujero ⇒ sale; carril ocupado ⇒ bloqueado)."
+**Resultado obtenido:** `test/domain/entities/arrow_board_holed_space_certification_test.dart`: agujero en (2,4), flecha en (2,1) hacia la derecha ⇒ `canExit` true (el agujero es frontera, la flecha sale por ahí); con un bloqueador en (2,3) ⇒ `canExit` false. `flutter test` 2/2. `git status` confirma que NO se tocó ningún archivo de `lib/` — solo el test nuevo. La abstracción está cerrada para extensión (OCP demostrado, no especulado).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 085 — front#73 (fragmento 8) — README + verificación final de criterios de aceptación
+
+**Tarea o problema abordado:** Documentar el módulo `BoardSpace` en el README (sección de arquitectura) y verificar de punta a punta los criterios de aceptación del issue #73.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "Fragmento 8: README (sección arquitectura: módulo space) + cierre. Greps de aceptación: cero switch/if sobre Direction fuera de RectSpace.step, codec y helper de proyección; cero aritmética dr/dc/bounds/adyacencia fuera del módulo space."
+**Resultado obtenido:** `README.md`: fila `game_core/` incluye `space/ (BoardSpace, RectSpace)` y un párrafo nuevo en `## Architecture` que introduce `BoardSpace`/`RectSpace`/`HoledRectSpace` (ADR-0005). Criterios de aceptación verificados: (1) grep `switch` + `Direction.` ⇒ exactamente `rect_space.dart` y `direction_projection.dart` (el codec ni siquiera hace switch — usa mapas de strings); (2) único `Direction.` fuera de los archivos permitidos = `graph_board_generator.dart:161` `Direction.values[rng.nextInt(...)]`, que es SELECCIÓN aleatoria de dirección (rango de RNG), no aritmética geométrica. `flutter analyze` limpio; suite completa **647/647**; golden boards 2/2; smoke del CLI real (`produce.dart` con `Isolate.run`) reproduce el golden byte-a-byte.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

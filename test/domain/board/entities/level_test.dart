@@ -7,6 +7,7 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_level_exception.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 
 // Board 4x4 con una sola flecha recta (0,0)->(0,1) mirando a la derecha:
 // suficiente para satisfacer la invariante "al menos una flecha" de Level.
@@ -21,8 +22,7 @@ ArrowBoard _boardWithOneArrow() => ArrowBoard(
           headDirection: Direction.right,
         ),
       ],
-      cols: 4,
-      rows: 4,
+      space: RectSpace(4, 4),
     );
 
 void main() {
@@ -54,7 +54,7 @@ void main() {
     test('should_throw_InvalidLevelException_when_board_has_no_arrows', () {
       // Arrange
       final id = LevelId('1');
-      final emptyBoard = ArrowBoard(arrows: const [], cols: 4, rows: 4);
+      final emptyBoard = ArrowBoard(arrows: const [], space: RectSpace(4, 4));
       // Act
       Level act() => Level(id: id, board: emptyBoard);
       // Assert
@@ -119,8 +119,7 @@ void main() {
             headDirection: Direction.right,
           ),
         ],
-        cols: 4,
-        rows: 4,
+        space: RectSpace(4, 4),
       );
       final levelA =
           Level(id: id, board: _boardWithOneArrow(), timeLimitSec: 30);

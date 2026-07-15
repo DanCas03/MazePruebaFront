@@ -18,7 +18,6 @@ import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.d
 import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
 import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
-import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
@@ -38,6 +37,8 @@ import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../../support/arrow_fixtures.dart';
 
 // ── Dobles de test hechos a mano ─────────────────────────────────────────────
 
@@ -93,16 +94,15 @@ class _NoopProgressRepository implements ILevelProgressRepository {
 }
 
 ArrowBoard _twoArrowBoard() => ArrowBoard(
-      cols: 4,
-      rows: 4,
+      space: RectSpace(4, 4),
       arrows: [
-        Arrow.straight(
+        straightArrow(
           id: const ArrowId('a0'),
           tail: Position(row: 0, col: 0),
           direction: Direction.right,
           length: 2,
         ),
-        Arrow.straight(
+        straightArrow(
           id: const ArrowId('a2'),
           tail: Position(row: 0, col: 2),
           direction: Direction.right,

@@ -24,9 +24,11 @@ import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart'
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 
 import 'leaderboard_providers_test.mocks.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 @GenerateMocks([ILevelRepository, RemoveArrowUseCase])
-Arrow _arrow(String id, int col) => Arrow.straight(
+Arrow _arrow(String id, int col) => straightArrow(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
@@ -35,7 +37,7 @@ Arrow _arrow(String id, int col) => Arrow.straight(
 
 /// Tablero 4x4 con una sola flecha (al quitarla queda limpio → victoria).
 ArrowBoard _oneArrowBoard() =>
-    ArrowBoard(arrows: [_arrow('arrow-0', 0)], cols: 4, rows: 4);
+    ArrowBoard(arrows: [_arrow('arrow-0', 0)], space: RectSpace(4, 4));
 
 /// Stub del puerto remoto (front#8): `getLevel` responde un [Level] con el
 /// [board] dado; el levelId del run lo fija loadLevel, no el id del stub.

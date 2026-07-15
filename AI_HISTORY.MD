@@ -1766,3 +1766,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
 **Resultado obtenido:** Nuevo `lib/domain/board/services/campaign_progression.dart` (Dart puro, hermano de `TierGating`) con un `sealed NextLevelOutcome` de 4 casos exhaustivos (`NextLevelUnlocked(levelId)`, `NextLevelLocked`, `CampaignComplete`, `NotInCampaign`) y `CampaignProgression.resolve(currentId, catalog, progress)`. Deriva el Tier de cada nivel de campaña por POSICIÓN (mismo criterio que `LevelSelectionController`), cuenta el nivel recién ganado como completado (robusto ante la carrera con la persistencia fire-and-forget) y consulta `TierGating.isLevelUnlocked` para el candidato siguiente. TDD: `test/domain/board/services/campaign_progression_test.dart` **6/6** (RED verificado antes de implementar), incluida la regresión del bug (cruce de frontera de Tier con previos incompletos ⇒ `NextLevelLocked`).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 087 — front#81 (fragmento 2) — Provider nextLevelOutcomeProvider
+
+**Tarea o problema abordado:** Exponer la progresión gating-aware a la presentación como fachada reactiva, sin que la pantalla de victoria toque infraestructura ni recomponga la adyacencia a mano.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** Nuevo `lib/application/providers/next_level_provider.dart`: `nextLevelOutcomeProvider` = `FutureProvider.autoDispose.family<NextLevelOutcome, LevelId>` que compone `levelCatalogProvider.future` + `levelProgressRepositoryProvider.getAll()` y delega en `CampaignProgression(TierGating())`. No requiere override en `main` (se autocompone leyendo providers ya sobreescritos allí — DIP transitiva). TDD: `test/application/providers/next_level_provider_test.dart` **3/3** con `ProviderContainer` + `FakeLevelProgressRepository` (RED verificado). El nivel recién ganado se cuenta como completado, así el gating no depende de la carrera con la persistencia fire-and-forget del observer.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

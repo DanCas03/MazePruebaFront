@@ -1758,7 +1758,42 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Resultado obtenido:** `README.md`: fila `game_core/` incluye `space/ (BoardSpace, RectSpace)` y un párrafo nuevo en `## Architecture` que introduce `BoardSpace`/`RectSpace`/`HoledRectSpace` (ADR-0005). Criterios de aceptación verificados: (1) grep `switch` + `Direction.` ⇒ exactamente `rect_space.dart` y `direction_projection.dart` (el codec ni siquiera hace switch — usa mapas de strings); (2) único `Direction.` fuera de los archivos permitidos = `graph_board_generator.dart:161` `Direction.values[rng.nextInt(...)]`, que es SELECCIÓN aleatoria de dirección (rango de RNG), no aritmética geométrica. `flutter analyze` limpio; suite completa **647/647**; golden boards 2/2; smoke del CLI real (`produce.dart` con `Isolate.run`) reproduce el golden byte-a-byte.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
-## Entrada 086 — front#83 (fragmento 1) — Presupuesto de errores por nivel (dominio)
+## Entrada 086 — front#81 (fragmento 1) — Servicio de dominio CampaignProgression
+
+**Tarea o problema abordado:** Bug #81: la pantalla de victoria ofrecía "Next Level" por pura adyacencia del Catálogo, saltándose `TierGating` — al ganar el último nivel de un Tier desbloqueado entrando fuera de orden, desbloqueaba/entraba al primer nivel del Tier siguiente aún bloqueado. Se necesita mover la decisión "qué sigue y si es jugable" al dominio.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** Nuevo `lib/domain/board/services/campaign_progression.dart` (Dart puro, hermano de `TierGating`) con un `sealed NextLevelOutcome` de 4 casos exhaustivos (`NextLevelUnlocked(levelId)`, `NextLevelLocked`, `CampaignComplete`, `NotInCampaign`) y `CampaignProgression.resolve(currentId, catalog, progress)`. Deriva el Tier de cada nivel de campaña por POSICIÓN (mismo criterio que `LevelSelectionController`), cuenta el nivel recién ganado como completado (robusto ante la carrera con la persistencia fire-and-forget) y consulta `TierGating.isLevelUnlocked` para el candidato siguiente. TDD: `test/domain/board/services/campaign_progression_test.dart` **6/6** (RED verificado antes de implementar), incluida la regresión del bug (cruce de frontera de Tier con previos incompletos ⇒ `NextLevelLocked`).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 087 — front#81 (fragmento 2) — Provider nextLevelOutcomeProvider
+
+**Tarea o problema abordado:** Exponer la progresión gating-aware a la presentación como fachada reactiva, sin que la pantalla de victoria toque infraestructura ni recomponga la adyacencia a mano.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** Nuevo `lib/application/providers/next_level_provider.dart`: `nextLevelOutcomeProvider` = `FutureProvider.autoDispose.family<NextLevelOutcome, LevelId>` que compone `levelCatalogProvider.future` + `levelProgressRepositoryProvider.getAll()` y delega en `CampaignProgression(TierGating())`. No requiere override en `main` (se autocompone leyendo providers ya sobreescritos allí — DIP transitiva). TDD: `test/application/providers/next_level_provider_test.dart` **3/3** con `ProviderContainer` + `FakeLevelProgressRepository` (RED verificado). El nivel recién ganado se cuenta como completado, así el gating no depende de la carrera con la persistencia fire-and-forget del observer.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 088 — front#81 (fragmento 3) — String l10n nextLevelLocked (en/es)
+
+**Tarea o problema abordado:** Mensaje para el caso nuevo `NextLevelLocked` en la pantalla de victoria: cuando el siguiente nivel pertenece a un Tier aún bloqueado, en vez de un CTA que llevaría a un nivel bloqueado se muestra el requisito.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** `lib/l10n/app_en.arb` y `app_es.arb`: clave `nextLevelLocked` ("Complete the earlier levels to unlock the next one." / "Completa los niveles anteriores para desbloquear el siguiente."). `flutter gen-l10n` regenera los getters (archivos `app_localizations*.dart` son build artifacts gitignoreados, no se versionan). Solo los `.arb` entran al commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 089 — front#81 (fragmento 4) — VictoryScreen respeta el gating + cierre
+
+**Tarea o problema abordado:** El fix real del bug #81 en la UI: la pantalla de victoria ofrecía "Next Level" incondicionalmente por adyacencia del Catálogo, saltándose `TierGating` y permitiendo entrar a un nivel de un Tier bloqueado (con efecto cascada: persistía `completed:true` de ese nivel, corrompiendo el gating y encadenando la campaña).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** `lib/presentation/level_selection/victory_screen.dart` sustituye el cálculo inline de adyacencia (fuga de lógica a presentación) por `ref.watch(nextLevelOutcomeProvider(args.levelId))` y un `switch` exhaustivo sobre el `sealed NextLevelOutcome`: `NextLevelUnlocked`→CTA que navega al id resuelto; `NextLevelLocked`→mensaje de requisito (`l10n.nextLevelLocked`); `CampaignComplete`→felicitación; `NotInCampaign`/loading→nada. Se eliminan los imports de `levelCatalogProvider`/`CatalogEntry`/`LevelSection` (ya no se recompone la adyacencia aquí). TDD: `test/presentation/level_selection/victory_screen_test.dart` — harness overridea `levelProgressRepositoryProvider` con `FakeLevelProgressRepository`; 2 tests nuevos (bloqueado ⇒ sin CTA + mensaje + sin navegación; desbloqueado tras completar previos ⇒ navega al Tier siguiente), RED verificado antes del fix. **9/9** en la pantalla, **677/677** suite completa, `flutter analyze` limpio. README actualizado (§Progresión y §Themed section). Nota: la defensa en profundidad en `GameController.loadLevel` (guarda para futuros deep links) queda como follow-up opcional — el fix de la pantalla ya cierra la única ruta de bypass existente.
+
+## Entrada 090 — front#83 (fragmento 1) — Presupuesto de errores por nivel (dominio)
 
 **Tarea o problema abordado:** Punto C: "contador de errores máximo por nivel que va descendiendo por cada error". La mecánica de choques existía pero con máximo GLOBAL hardcodeado (5), ascendente y sin mostrarse en partida. Modelar el presupuesto por nivel y la vista descendente en el dominio.
 **Fecha:** 2026-07-15
@@ -1767,7 +1802,7 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Resultado obtenido:** `StrikeCount` gana `max` por instancia (default `defaultMax=5`) y un getter `remaining = (max-value).clamp(0,max)` — el contador DESCENDENTE que ve el jugador; el modelo interno sigue contando choques cometidos (el scoring los usa como `collisions`). `isFatal`/`increment` preservan `max`; `props` incluye `max`. `Level` gana `maxErrors` (default `StrikeCount.defaultMax`, invariante `> 0` → `InvalidLevelException`), en `props`. TDD: nuevo `test/domain/game_core/value_objects/strike_count_test.dart` (6) + 5 casos nuevos en `level_test.dart` (default/valor/cero/negativo/igualdad), **24/24** (RED verificado). Decisión: un único origen del "5" (`StrikeCount.defaultMax`), referenciado por `Level`; el default de generados (sin `Level`) sale del mismo sitio.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
-## Entrada 087 — front#83 (fragmento 2) — Wire decode/encode de maxErrors
+## Entrada 091 — front#83 (fragmento 2) — Wire decode/encode de maxErrors
 
 **Tarea o problema abordado:** Transportar el presupuesto por nivel en el wire contract de forma aditiva/tolerante, sin romper clientes ni goldens existentes.
 **Fecha:** 2026-07-15
@@ -1776,7 +1811,7 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Resultado obtenido:** `LevelJsonDecoder` decodifica `maxErrors` con `_optionalInt(...) ?? StrikeCount.defaultMax` (ausente ⇒ default; no-int ⇒ FormatException, contrato roto). `LevelJsonEncoder.toMap`/`encode` ganan `int? maxErrors` opcional, emitido `if (maxErrors != null)` (igual que `timeLimitSec`/`order`): no pasarlo conserva el JSON de campaña original y mantiene los golden boards byte-idénticos. TDD: 4 casos nuevos en `level_json_decoder_test.dart` (default por ausencia, decode del valor, no-int lanza, round-trip preserva el presupuesto), **19/19** (RED verificado). La propiedad inversa se conserva porque el encoder es primitive-based: el caller elige qué campos emitir (como ya ocurría con palette/timeLimitSec).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
-## Entrada 088 — front#83 (fragmento 3) — GameController inicializa strikes desde Level.maxErrors
+## Entrada 092 — front#83 (fragmento 3) — GameController inicializa strikes desde Level.maxErrors
 
 **Tarea o problema abordado:** Conectar el presupuesto por nivel al bucle de partida: el contador debe arrancar en `level.maxErrors` y perder al agotarlo (no al 5 hardcodeado), exponiendo el presupuesto al HUD desde la carga.
 **Fecha:** 2026-07-15
@@ -1785,7 +1820,7 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Resultado obtenido:** `GameController._startLevel` cambia `const StrikeCount(0)` por `StrikeCount(0, max: level.maxErrors)` y pasa `strikes: _strikes` al `GamePlaying` inicial (antes el estado de arranque no llevaba strikes → el HUD no podía derivar los restantes). Las dos reconstrucciones de `GamePlaying` de la demo de pista pasan `StrikeCount(0, max: level.maxErrors)` para que el chip sea coherente durante la reproducción. Los tableros generados siguen con el default (`StrikeCount(0)` = `defaultMax`), sin `Level`. TDD: `_stubLevel` acepta `maxErrors`; 2 tests nuevos (presupuesto expuesto como `remaining` al cargar; pérdida al 3.er choque con `maxErrors:3`, no al 5.º), **29/29** en game_controller + hint (RED verificado; los tests de default 5 siguen verdes).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
-## Entrada 089 — front#83 (fragmento 4) — String l10n errorsLeft (en/es)
+## Entrada 093 — front#83 (fragmento 4) — String l10n errorsLeft (en/es)
 
 **Tarea o problema abordado:** Etiqueta de tooltip/semántica para el chip descendente de errores del HUD.
 **Fecha:** 2026-07-15
@@ -1794,7 +1829,7 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Resultado obtenido:** `app_en.arb`/`app_es.arb`: clave `errorsLeft` ("Errors left" / "Errores restantes"). `flutter gen-l10n` regenera los getters (los `app_localizations*.dart` son build artifacts gitignoreados). Solo los `.arb` entran al commit.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
-## Entrada 090 — front#83 (fragmento 5) — Chip descendente de errores en el HUD + cierre
+## Entrada 094 — front#83 (fragmento 5) — Chip descendente de errores en el HUD + cierre
 
 **Tarea o problema abordado:** Mostrar en partida el contador de errores descendente (lo que faltaba de la feature: la mecánica ya existía pero nunca se veía durante el juego).
 **Fecha:** 2026-07-15

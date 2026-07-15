@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_colors.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
 import '../../support/level_selection_fakes.dart';
+
+LevelProgress _done(String id) =>
+    LevelProgress(levelId: LevelId(id), completed: true);
 
 VictoryArgs _args({
   String level = 'level-01',
@@ -38,10 +43,17 @@ Widget _appUnderTest({
   required VictoryArgs? args,
   List<LevelId> catalogIds = const [],
   List<CatalogEntry>? catalogEntries,
+  List<LevelProgress> progress = const [],
   List<RouteSettings>? pushed,
 }) {
   return ProviderScope(
-    overrides: [stubCatalogOverride(ids: catalogIds, entries: catalogEntries)],
+    overrides: [
+      stubCatalogOverride(ids: catalogIds, entries: catalogEntries),
+      // El CTA "Next Level" ahora respeta el gating (front#81): la pantalla lee
+      // el progreso local para decidir si el siguiente Tier está abierto.
+      levelProgressRepositoryProvider
+          .overrideWithValue(FakeLevelProgressRepository(progress)),
+    ],
     child: MaterialApp(
       theme: AppTheme.dark(),
       locale: const Locale('en'),
@@ -197,6 +209,61 @@ void main() {
 
       // Assert: el siguiente de campaña es level-02, saltando el temático.
       expect(pushed.single.arguments, LevelId('level-02'));
+    });
+
+    // Catálogo de 6 niveles de campaña ⇒ Tier.one = 1..3, Tier.two = 4..6.
+    final twoTierIds = [for (var i = 1; i <= 6; i++) LevelId('level-0$i')];
+
+    testWidgets(
+        'should_hide_next_level_and_show_lock_message_when_next_tier_is_locked',
+        (tester) async {
+      // Arrange & Act: se gana el ÚLTIMO del Tier.one (level-03) SIN haber
+      // completado los niveles 1 y 2 (entrada fuera de orden). El siguiente
+      // (level-04) es del Tier.two, que sigue bloqueado. Regresión del bug #81.
+      final pushed = <RouteSettings>[];
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-03'),
+          catalogIds: twoTierIds,
+          progress: const [],
+          pushed: pushed,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert: NO se ofrece "Next Level"; se muestra el requisito de desbloqueo.
+      expect(find.text('Next Level'), findsNothing);
+      expect(
+        find.text('Complete the earlier levels to unlock the next one.'),
+        findsOneWidget,
+      );
+      expect(pushed, isEmpty);
+    });
+
+    testWidgets(
+        'should_offer_next_level_when_previous_levels_unlock_the_next_tier',
+        (tester) async {
+      // Arrange: niveles 1 y 2 completados; se gana el 3 (último del Tier.one).
+      // Con el 3 recién ganado, el Tier.two abre ⇒ level-04 es jugable.
+      final pushed = <RouteSettings>[];
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-03'),
+          catalogIds: twoTierIds,
+          progress: [_done('level-01'), _done('level-02')],
+          pushed: pushed,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Act
+      await tester.tap(find.widgetWithText(FilledButton, 'Next Level'));
+      await tester.pumpAndSettle();
+
+      // Assert: navega al primer nivel del Tier.two (level-04).
+      expect(pushed, hasLength(1));
+      expect(pushed.single.name, AppRouter.game);
+      expect(pushed.single.arguments, LevelId('level-04'));
     });
 
     testWidgets('should_render_score_moves_and_matching_filled_stars_when_won',

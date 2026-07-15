@@ -1561,3 +1561,18 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - `test/tool/level_production/mask_spec_test.dart`: 12 tests AAA — máscara válida de 2 regiones (nombre, dimensiones, celdas por región, fondo en ninguna región), getter `palette`, y los 10 casos de error.
 - Verificación: `flutter test test/tool/level_production/mask_spec_test.dart` → 12/12 verdes; `flutter analyze` sobre ambos archivos → 0 issues.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 073 — front#68 (fragmento 2) — Generación confinada por región (generateThemed)
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Segundo fragmento de front#68: extender `GraphBoardGenerator` con generación temática confinada por región SIN alterar el comportamiento de `generate(...)` (hay tests de determinismo y perf que fijan la salida exacta del camino de campaña). Cada región (`ThemedRegionSpec`: role, cells, arrowCount, maxPathLen) confina los CUERPOS de sus flechas y las etiqueta con `paintRole` (ADR 0004); el carril de salida sigue siendo de tablero completo (puede cruzar regiones, mecánicamente válido e intencional) y la ocupación es GLOBAL entre regiones, preservando el invariante DAG: el tablero entero se vacía en orden inverso de colocación.
+**Herramienta de IA utilizada:** Claude Code (fable 5) — rol frontend-architect
+**Prompt o instrucción proporcionada:** > "Add region-confined themed generation to the generator, WITHOUT changing the behavior of the existing generate(...). Refactor the private helpers additively with an optional `allowedBody` param — when null, every code path including the exact sequence of rng.nextInt calls must be identical to today. Add generateThemed (NOT on the ILevelGenerator port) with a global occupied set across regions."
+**Resultado obtenido:**
+- `lib/infrastructure/generators/graph_board_generator.dart`:
+  - Nuevo tipo top-level `ThemedRegionSpec{role, cells, arrowCount, maxPathLen}`.
+  - Refactor aditivo preservando determinismo: `_randomBentArrow(..., {Set<Position>? allowedBody, String? paintRole})` (construye con `paintRole`, carril `_lane` intacto de tablero completo), `_randomHeadWithClearLane(..., {allowedBody})` (con `allowedBody == null` mantiene el muestreo actual byte a byte — misma secuencia de rng; con región, muestrea la cabeza desde `allowedBody.toList()` en los mismos 20 intentos con el mismo chequeo de carril contra `occupied`), `_freeNeighbors(..., {allowedBody})` (filtro adicional de pertenencia a la región).
+  - Nuevo método público `generateThemed({cols, rows, regions, seed})`: `occupied` GLOBAL entre regiones (misma disciplina ocupación+carril que `generate` → DAG global), índice incremental de ids entre regiones, degradación con gracia por región vía `_logger?.warn` (AOP). No se toca el puerto `ILevelGenerator`.
+- `test/infrastructure/generators/graph_board_themed_test.dart` (AAA, 6 tests): confinamiento por rol como property test (seeds 0..20, dos regiones disjuntas 12×12), paintRole no nulo y perteneciente a los roles, sin overlap de celdas, vaciado en orden inverso de colocación (DAG global), determinismo (mismo seed ⇒ tableros Equatable-iguales), y `generate(...)` intacto (paintRole null en campaña).
+- Verificación: `flutter test test/infrastructure/generators/ test/infrastructure/serialization/level_generation_determinism_test.dart` → 28/28 verdes (incluye los tests existentes de determinismo/perf que fijan la salida del camino null: sin regresión); `flutter analyze` sobre ambos archivos → 0 issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

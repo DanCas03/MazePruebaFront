@@ -32,11 +32,12 @@ void main() {
         rows: GeneratorConfig.maxDimension,
       );
 
-      // Assert — los extremos del rango (4 y 10) son válidos, inclusive.
+      // Assert — los extremos del rango (4 y 50) son válidos, inclusive.
+      // El techo subió a 50 en front#66 (viewport de zoom/pan): el preset XL.
       expect(min.cols, 4);
       expect(min.rows, 4);
-      expect(max.cols, 10);
-      expect(max.rows, 10);
+      expect(max.cols, 50);
+      expect(max.rows, 50);
     });
 
     test('should_reject_cols_below_range_with_domain_failure', () {
@@ -71,13 +72,13 @@ void main() {
       // Assert — el mensaje es semántico: dice QUÉ dimensión falló, el rango
       // permitido y el valor recibido (diagnóstico sin depurador).
       expect(
-        () => valid(rows: 11),
+        () => valid(rows: 51),
         throwsA(
           isA<InvalidGeneratorConfigException>().having(
             (e) => e.message,
             'message',
-            allOf(contains('rows'), contains('4'), contains('10'),
-                contains('11')),
+            allOf(contains('rows'), contains('4'), contains('50'),
+                contains('51')),
           ),
         ),
       );

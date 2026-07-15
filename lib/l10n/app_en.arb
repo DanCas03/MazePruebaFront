@@ -154,6 +154,18 @@
   "@configuratorTitle": {
     "description": "Title of the generated-board configurator screen (front#37)."
   },
+  "configPresets": "Quick sizes",
+  "@configPresets": {
+    "description": "Label of the board size preset chips (S/M/L/XL) in the configurator (front#66)."
+  },
+  "configPresetTooltip": "{cols}×{rows}",
+  "@configPresetTooltip": {
+    "description": "Tooltip/subtitle showing a preset's dimensions (front#66).",
+    "placeholders": {
+      "cols": { "type": "int" },
+      "rows": { "type": "int" }
+    }
+  },
   "configColumns": "Columns",
   "@configColumns": {
     "description": "Label of the columns selector in the configurator."

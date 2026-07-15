@@ -70,5 +70,20 @@ void main() {
       await tester.pump();
       expect(_playButton(tester).onPressed, isNotNull);
     });
+
+    testWidgets('el preset XL fija el tablero en 50×50 (front#66)',
+        (tester) async {
+      await tester.pumpWidget(_appUnderTest());
+
+      // Por defecto S (6×8): ningún selector muestra 50.
+      expect(find.text('50'), findsNothing);
+
+      // Tocar el chip XL aplica 50×50 a ambos steppers de una sola vez.
+      await tester.tap(find.text('XL · 50×50'));
+      await tester.pump();
+
+      // Los dos selectores numéricos (columnas y filas) muestran 50.
+      expect(find.text('50'), findsNWidgets(2));
+    });
   });
 }

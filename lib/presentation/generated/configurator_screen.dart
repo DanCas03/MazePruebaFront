@@ -45,6 +45,15 @@ class ConfiguratorScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           children: [
+            Text(l10n.configPresets,
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            _PresetSelector(
+              selectedCols: form.cols,
+              selectedRows: form.rows,
+              onSelected: controller.setSize,
+            ),
+            const SizedBox(height: 24),
             _DimensionSelector(
               label: l10n.configColumns,
               value: form.cols,
@@ -117,6 +126,48 @@ class ConfiguratorScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Presets de tamaño del tablero (front#66). Atajos de un toque a los tamaños
+/// canónicos S/M/L/XL (hasta 50×50, el final de campaña / ADR 0003), sin obligar
+/// al jugador a pulsar el stepper decenas de veces. El stepper fino sigue
+/// disponible para tamaños intermedios. La fuente de los tamaños es esta tabla.
+typedef _Preset = ({String label, int cols, int rows});
+
+const List<_Preset> _kSizePresets = [
+  (label: 'S', cols: 6, rows: 8),
+  (label: 'M', cols: 10, rows: 12),
+  (label: 'L', cols: 25, rows: 25),
+  (label: 'XL', cols: 50, rows: 50),
+];
+
+class _PresetSelector extends StatelessWidget {
+  final int selectedCols;
+  final int selectedRows;
+  final void Function(int cols, int rows) onSelected;
+
+  const _PresetSelector({
+    required this.selectedCols,
+    required this.selectedRows,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final p in _kSizePresets)
+          ChoiceChip(
+            label: Text('${p.label} · ${l10n.configPresetTooltip(p.cols, p.rows)}'),
+            selected: selectedCols == p.cols && selectedRows == p.rows,
+            onSelected: (_) => onSelected(p.cols, p.rows),
+          ),
+      ],
     );
   }
 }

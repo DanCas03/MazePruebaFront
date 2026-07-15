@@ -50,6 +50,19 @@ void main() {
     })).called(1);
   });
 
+  test('me GETs /auth/me and returns the raw profile map', () async {
+    // Arrange
+    when(dio.get('/auth/me')).thenAnswer((_) async => okResponse('/auth/me',
+        {'id': 'u-1', 'username': 'player_01', 'email': 'a@b.com'}));
+    // Act
+    final data = await dataSource.me();
+    // Assert
+    expect(data['id'], 'u-1');
+    expect(data['username'], 'player_01');
+    expect(data['email'], 'a@b.com');
+    verify(dio.get('/auth/me')).called(1);
+  });
+
   test('propagates DioException from login', () async {
     // Arrange
     when(dio.post('/auth/login', data: anyNamed('data'))).thenThrow(

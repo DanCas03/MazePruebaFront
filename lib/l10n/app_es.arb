@@ -74,5 +74,12 @@
   "generatedAnotherBoard": "Otro tablero",
   "generatedRepeat": "Repetir",
   "generatedChangeParams": "Cambiar parámetros",
-  "generatedExit": "Salir"
+  "generatedExit": "Salir",
+  "accountTooltip": "Cuenta",
+  "accountTitle": "Tu cuenta",
+  "accountStarsTotal": "{count} estrellas",
+  "accountLevelsCompleted": "{count} niveles completados",
+  "accountSignOut": "Cerrar sesión",
+  "accountLoadError": "No se pudo cargar tu perfil",
+  "accountRetry": "Reintentar"
 }

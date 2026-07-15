@@ -1,19 +1,22 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
+import '../widgets/account_panel.dart';
 
 /// Pantalla inicial de Arrow Maze: logo flotante, titulo, tagline y CTA.
 /// Solo presentacion: navega por nombre de ruta (AppRouter) sin conocer la
-/// clase destino, manteniendo el desacople entre pantallas.
-class HomeScreen extends StatelessWidget {
+/// clase destino, manteniendo el desacople entre pantallas. Es `ConsumerWidget`
+/// para poder abrir el panel de cuenta (front#78), que consume providers.
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Container(
@@ -27,6 +30,17 @@ class HomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Stack(
             children: [
+              // front#78: acceso a la cuenta (perfil + cerrar sesión). Espejo
+              // top-left del icono de ajustes (top-right).
+              Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.account_circle,
+                      color: AppColors.onSurfaceMuted),
+                  tooltip: l10n.accountTooltip,
+                  onPressed: () => AccountPanel.show(context),
+                ),
+              ),
               Align(
                 alignment: Alignment.topRight,
                 child: IconButton(

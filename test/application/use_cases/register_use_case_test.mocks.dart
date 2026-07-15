@@ -6,6 +6,8 @@
 import 'dart:async' as _i4;
 
 import 'package:dartz/dartz.dart' as _i2;
+import 'package:flutter_arrow_maze/domain/auth/entities/user_profile.dart'
+    as _i8;
 import 'package:flutter_arrow_maze/domain/auth/failures/auth_failure.dart'
     as _i5;
 import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_repository.dart'
@@ -103,4 +105,22 @@ class MockIAuthRepository extends _i1.Mock implements _i3.IAuthRepository {
           ),
         )),
       ) as _i4.Future<_i2.Either<_i5.AuthFailure, _i6.AuthToken>>);
+
+  @override
+  _i4.Future<_i2.Either<_i5.AuthFailure, _i8.UserProfile>> me() =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #me,
+          [],
+        ),
+        returnValue:
+            _i4.Future<_i2.Either<_i5.AuthFailure, _i8.UserProfile>>.value(
+                _FakeEither_0<_i5.AuthFailure, _i8.UserProfile>(
+          this,
+          Invocation.method(
+            #me,
+            [],
+          ),
+        )),
+      ) as _i4.Future<_i2.Either<_i5.AuthFailure, _i8.UserProfile>>);
 }

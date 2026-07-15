@@ -1643,6 +1643,49 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Resultado obtenido:** Nueva subsección `### Producción de niveles temáticos — Máscaras + CLI (front#68)` en `README.md` bajo `## Tooling`, tras la de candidatos: formato `.mask`, comando del CLI, confinamiento flecha↔región + `paintRole`/`palette` (ADR 0004), orden detalle-primero, ocupación global/solubilidad, reintento de semillas + cobertura + preview ANSI, sin `timeLimitSec` en v1, y ubicación de los 3 fixtures congelados con su comando reproducible. Suite completa del front verificada: `flutter analyze` 0 issues + `flutter test` 625/625 verdes.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
+## Entrada 078 — front#78 (fragmento 1) — Dominio: UserProfile + puerto me()
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Modelar el perfil del usuario autenticado en el dominio del front para el panel de cuenta (front#78), y ampliar el puerto de auth con la lectura del perfil remoto (`GET /auth/me`, back#44).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (panel de cuenta con username/email/progreso + cerrar sesión; fragmento de dominio: entidad UserProfile y método me() en IAuthRepository).
+**Resultado obtenido:** Nueva entidad `lib/domain/auth/entities/user_profile.dart` (`UserProfile { String id, Username username, Email email }`, Equatable, Dart puro) que reutiliza los VOs `Username`/`Email` para arrastrar sus invariantes. `IAuthRepository` gana `Future<Either<AuthFailure, UserProfile>> me()`, documentando el mapeo 401→InvalidCredentials / red→NetworkFailure. Test AAA `test/domain/auth/entities/user_profile_test.dart` (3 casos: acceso a campos, igualdad por valor, desigualdad por id) — verde 3/3. La impl del puerto y los mocks se completan en el fragmento 2.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 079 — front#78 (fragmento 2) — Infraestructura: me() en data source y repo
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Implementar el puerto `IAuthRepository.me()` contra `GET /auth/me` (back#44): llamada HTTP en el data source remoto y mapeo a dominio + errores en el repositorio adaptador.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de infraestructura: AuthRemoteDataSource.me() + RemoteAuthRepository.me()).
+**Resultado obtenido:** `AuthRemoteDataSource.me()` hace `GET /auth/me` (firmado por el interceptor) y devuelve el JSON crudo `{id, username, email}`. `RemoteAuthRepository.me()` lo mapea a `UserProfile` (construyendo los VOs Username/Email) y traduce errores en `_mapMe`: red→NetworkFailure, 401→InvalidCredentials, 404/otros→UnexpectedFailure; un payload malformado (VO que rechaza el valor) se degrada a UnexpectedFailure sin tumbar la pantalla. Tests AAA: +1 en el data source (GET + parseo) y +5 en el repo (éxito con mapeo a VOs, 401, red, 404, payload malformado). Mocks regenerados (build_runner) para las 5 clases que mockean IAuthRepository/AuthRemoteDataSource. Suites de auth reverificadas verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 080 — front#78 (fragmento 3) — Aplicación: use case + read model + providers
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Exponer a la presentación el perfil del usuario y los totales de progreso como vistas reactivas, sin filtrar dominio/infraestructura a la UI (front#78).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de aplicación: GetCurrentUserUseCase, providers de perfil y totales de progreso derivados del progreso local).
+**Resultado obtenido:** `GetCurrentUserUseCase.execute()` delega en `IAuthRepository.me()`. Read model `ProgressTotals` (`lib/application/read_models/`) con factory `from(List<LevelProgress>)` que reduce el progreso a `totalStars` (Σ bestStars??0) y `completedLevels` (conteo de completados). `account_providers.dart`: `getCurrentUserUseCaseProvider`, `currentUserProvider` (FutureProvider.autoDispose que desenvuelve el Either lanzando el AuthFailure en Left → AsyncValue.error) y `progressTotalsProvider` (autoDispose sobre `getAll()`). Ambos `autoDispose` para re-consultar al reabrir el panel. Tests AAA: use case (éxito/fallo, mockito), `ProgressTotals.from` puro (vacío, mezcla, null=0) y wiring de ambos providers vía ProviderContainer con fakes. 8/8 verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 081 — front#78 (fragmento 4) — l10n: cadenas del panel de cuenta
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Externalizar (en/es) las cadenas del panel de cuenta para no dejar literales hard-codeados en la presentación (front#78, criterio de aceptación de localización).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de l10n: claves del panel de cuenta).
+**Resultado obtenido:** 7 claves nuevas en `app_en.arb` (plantilla, con metadata + placeholders `int`) y `app_es.arb`: `accountTooltip`, `accountTitle`, `accountStarsTotal` ({count}), `accountLevelsCompleted` ({count}), `accountSignOut`, `accountLoadError`, `accountRetry`. `flutter gen-l10n` regenera `AppLocalizations` con los 7 getters (el `.dart` generado está gitignored, no se versiona). Consumidas por el widget del panel en el fragmento 5.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 082 — front#78 (fragmento 5) — Presentación: icono de cuenta + AccountPanel
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Punto de entrada de cuenta en la pantalla inicial: icono que abre un panel (bottom sheet) con perfil (username/email), totales de progreso y cerrar sesión, cumpliendo la regla de capas (presentación solo consume providers de application) (front#78).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "vamos con el issue front#78" (fragmento de presentación: icono en HomeScreen + widget AccountPanel como modal bottom sheet).
+**Resultado obtenido:** `HomeScreen` pasa de `StatelessWidget` a `ConsumerWidget` y gana un `IconButton(Icons.account_circle)` en `Alignment.topLeft` (espejo del de ajustes) que llama `AccountPanel.show(context)`. Nuevo `lib/presentation/home/widgets/account_panel.dart`: `ConsumerWidget` que hace `watch` de `currentUserProvider` (loading→spinner / error→mensaje+reintento que invalida el provider / data→avatar+username+email) y `progressTotalsProvider` (chips de estrellas ⭐ y niveles completados ✓); el botón Cerrar sesión lee el `AuthController`, cierra el sheet y llama `signOut()` — el `AuthGate` conmuta a `LoginScreen`. Widget tests AAA: (1) tap Cerrar sesión → LoginScreen + estado Unauthenticated; (2) el panel muestra los totales locales. `flutter analyze` 0 issues; suite completa 650/650 verde. README (§ Account panel) actualizado.
 ## Entrada 078 — front#73 (fragmento 1) — Golden boards del generador
 
 **Fecha:** 2026-07-15

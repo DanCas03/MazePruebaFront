@@ -1775,3 +1775,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
 **Resultado obtenido:** Nuevo `lib/application/providers/next_level_provider.dart`: `nextLevelOutcomeProvider` = `FutureProvider.autoDispose.family<NextLevelOutcome, LevelId>` que compone `levelCatalogProvider.future` + `levelProgressRepositoryProvider.getAll()` y delega en `CampaignProgression(TierGating())`. No requiere override en `main` (se autocompone leyendo providers ya sobreescritos allí — DIP transitiva). TDD: `test/application/providers/next_level_provider_test.dart` **3/3** con `ProviderContainer` + `FakeLevelProgressRepository` (RED verificado). El nivel recién ganado se cuenta como completado, así el gating no depende de la carrera con la persistencia fire-and-forget del observer.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 088 — front#81 (fragmento 3) — String l10n nextLevelLocked (en/es)
+
+**Tarea o problema abordado:** Mensaje para el caso nuevo `NextLevelLocked` en la pantalla de victoria: cuando el siguiente nivel pertenece a un Tier aún bloqueado, en vez de un CTA que llevaría a un nivel bloqueado se muestra el requisito.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** `lib/l10n/app_en.arb` y `app_es.arb`: clave `nextLevelLocked` ("Complete the earlier levels to unlock the next one." / "Completa los niveles anteriores para desbloquear el siguiente."). `flutter gen-l10n` regenera los getters (archivos `app_localizations*.dart` son build artifacts gitignoreados, no se versionan). Solo los `.arb` entran al commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

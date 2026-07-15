@@ -1602,3 +1602,17 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - Efecto medido: cara feliz `features` 0% → 86–97%; conejo `eye` 0% → 83–100%, `pink` 27% → 88–92%. Todas las regiones reciben flechas.
 - Verificación: `flutter test test/tool/level_production/themed_producer_test.dart` → 8/8 verdes (golden byte-estable intacto); `flutter analyze` → 0 issues.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 076 — front#68 (fragmento 4b) — Las 3 máscaras y los fixtures temáticos certificados
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Derivar las 3 figuras del apartado temático (ADR 0004 dec. 4: mínimo 3) como specs `.mask` reviewables y producir sus fixtures congelados, solubles por construcción. Máscaras derivadas por el asistente/curador (sin visión por computadora), curadas por vista previa.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect / domain-modeler
+**Prompt o instrucción proporcionada:** > "Diseña las 3 máscaras canónicas (corazón del arrowmaze1.webp; cara feliz y conejo icónicos), córrelas por el CLI y produce 3 fixtures validados + previews para curación."
+**Resultado obtenido:**
+- `tool/level_production/masks/heart.mask` (16×14, 1 región `heart` #FF4D6D), `happy_face.mask` (16×16, `face` #FFD23F + `features` #2B2B2B para ojos+boca; variante curada con el usuario por vista previa), `bunny.mask` (16×20, `fur` #F5F5F5 + `pink` #FF9EB5 orejas/nariz + `eye` #2B2B2B). Grids rectangulares, glyph `.` = fondo sin flechas (la figura flota sobre tablero vacío).
+- Comando reproducible: `dart run tool/level_production/produce_themed.dart --masks-dir tool/level_production/masks --out tool/level_production/themed --seeds 0..150 --maxlen 8`.
+- 3 fixtures congelados en `tool/level_production/themed/`: `themed-heart.json` (seed 11, 23 flechas, heart 91% ✓ objetivo), `themed-happy_face.json` (seed 31, 38 flechas, face 81% / features 100%), `themed-bunny.json` (seed 11, 37 flechas, fur 86% / pink 88% / eye 100%), cada uno con `palette` de roles y `paintRole` por flecha (ADR 0004), sin `order` ni `timeLimitSec` (temático v1 sin límite). Vistas previas ANSI (`*.preview.txt`) y `manifest-themed.md` para curación.
+- Certificación: los 3 pasan `validateCandidate` por construcción (no vacío + sin solape + se vacían en orden de colocación inverso ⇒ el orden inverso limpia el tablero); cada `paintRole` existe en `palette`; cada flecha confinada a su región (garantía de `generateThemed`).
+- Justificación de cobertura < objetivo: `face` (región grande y llena) y `fur`/`pink` se estancan en 79–88% porque las celdas interiores no tienen lane recto libre al borde una vez colocada parte de la figura — límite inherente de la invariante de solubilidad; la figura se reconoce a ese nivel de relleno. `heart` (convexa) sí alcanza 0.9. Reportado en el manifest.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

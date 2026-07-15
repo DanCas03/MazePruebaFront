@@ -252,7 +252,7 @@ class GameController extends AsyncNotifier<GameState> {
       final data = _currentLevelData;
       if (data == null) return;
       currentBoard =
-          ArrowBoard(arrows: const [], cols: data.board.cols, rows: data.board.rows);
+          ArrowBoard(arrows: const [], space: data.board.space);
       currentMoves = current.moves.value;
     } else {
       return;

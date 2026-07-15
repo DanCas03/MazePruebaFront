@@ -24,9 +24,11 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 
 import 'game_controller_test.mocks.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 @GenerateMocks([ILevelRepository, RemoveArrowUseCase])
-Arrow _arrow(String id, int col) => Arrow.straight(
+Arrow _arrow(String id, int col) => straightArrow(
       id: ArrowId(id),
       tail: Position(row: 0, col: col),
       direction: Direction.right,
@@ -35,11 +37,11 @@ Arrow _arrow(String id, int col) => Arrow.straight(
 
 /// Tablero 4x4 con dos flechas (no se vacía al quitar una).
 ArrowBoard _twoArrowBoard() =>
-    ArrowBoard(arrows: [_arrow('arrow-0', 0), _arrow('arrow-2', 2)], cols: 4, rows: 4);
+    ArrowBoard(arrows: [_arrow('arrow-0', 0), _arrow('arrow-2', 2)], space: RectSpace(4, 4));
 
 /// Tablero 4x4 con una sola flecha (al quitarla queda limpio → victoria).
 ArrowBoard _oneArrowBoard() =>
-    ArrowBoard(arrows: [_arrow('arrow-0', 0)], cols: 4, rows: 4);
+    ArrowBoard(arrows: [_arrow('arrow-0', 0)], space: RectSpace(4, 4));
 
 ProviderContainer _container(MockILevelRepository repo, MockRemoveArrowUseCase uc) {
   final c = ProviderContainer(overrides: [

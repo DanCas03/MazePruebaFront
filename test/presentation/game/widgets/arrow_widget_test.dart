@@ -5,8 +5,9 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import '../../../support/arrow_fixtures.dart';
 
-Arrow _arrow() => Arrow.straight(
+Arrow _arrow() => straightArrow(
       id: const ArrowId('arrow-0'),
       tail: Position(row: 0, col: 0),
       direction: Direction.right,

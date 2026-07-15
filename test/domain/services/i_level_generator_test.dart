@@ -1,10 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
-import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 /// Generador stub que implementa el puerto (nueva firma con maxPathLen y seed opcional):
 /// verifica que el contrato es sustituible (LSP) y respeta la firma de generate.
@@ -19,14 +20,14 @@ class _StubLevelGenerator implements ILevelGenerator {
   }) {
     final arrows = List.generate(
       arrowCount,
-      (i) => Arrow.straight(
+      (i) => straightArrow(
         id: ArrowId('a$i'),
         tail: Position(row: i, col: 0),
         direction: Direction.right,
         length: 2, // mínimo 2 según nueva regla
       ),
     );
-    return ArrowBoard(arrows: arrows, cols: cols, rows: rows);
+    return ArrowBoard(arrows: arrows, space: RectSpace(cols, rows));
   }
 }
 

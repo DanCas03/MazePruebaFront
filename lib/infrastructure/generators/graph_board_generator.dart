@@ -4,6 +4,7 @@ import '../../domain/arrows/entities/arrow.dart';
 import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
+import '../../domain/game_core/space/rect_space.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
 
@@ -66,8 +67,8 @@ class GraphBoardGenerator implements ILevelGenerator {
       assert(candidate.cells.every((c) => !occupied.contains(c)),
           'candidate overlaps the incremental occupancy state');
       assert(
-          candidate
-              .exitPath(cols, rows)
+          RectSpace(cols, rows)
+              .exitLane(candidate.head, candidate.headDirection)
               .every((p) => !occupied.contains(p)),
           'candidate exit lane is blocked at placement time');
 
@@ -83,7 +84,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       );
     }
 
-    return ArrowBoard(arrows: placed, cols: cols, rows: rows);
+    return ArrowBoard(arrows: placed, space: RectSpace(cols, rows));
   }
 
   /// Genera un tablero temático (#68): cada [ThemedRegionSpec] confina los
@@ -139,7 +140,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       }
     }
 
-    return ArrowBoard(arrows: placed, cols: cols, rows: rows);
+    return ArrowBoard(arrows: placed, space: RectSpace(cols, rows));
   }
 
   /// Construye una flecha doblada: elige cabeza+dirección con carril de salida

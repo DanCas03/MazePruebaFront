@@ -11,6 +11,7 @@ import 'package:flutter_arrow_maze/infrastructure/generators/graph_board_generat
 import '../../../tool/level_production/candidate_producer.dart';
 import '../../../tool/level_production/ramp.dart';
 import '../../../tool/level_production/validation.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 
 void main() {
   group('CandidateSpec — identidad trazable', () {
@@ -74,8 +75,7 @@ void main() {
     test('hasNoOverlap es false y validateCandidate lanza si dos flechas comparten celda', () {
       final shared = Position(row: 0, col: 0);
       final board = ArrowBoard(
-        cols: 4,
-        rows: 4,
+        space: RectSpace(4, 4),
         arrows: [
           Arrow(
             id: const ArrowId('arrow-0'),
@@ -95,7 +95,7 @@ void main() {
     });
 
     test('validateCandidate lanza en un tablero vacío', () {
-      final empty = const ArrowBoard(cols: 4, rows: 4, arrows: []);
+      final empty = const ArrowBoard(space: RectSpace(4, 4), arrows: []);
       expect(() => validateCandidate(empty), throwsA(isA<CandidateValidationException>()));
     });
   });

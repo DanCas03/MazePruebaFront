@@ -237,7 +237,7 @@ void main() {
         final priorCells = <Position>{
           for (var j = 0; j < i; j++) ...board.arrows[j].cells,
         };
-        final laneCells = arrow.exitPath(board.cols, board.rows);
+        final laneCells = board.space.exitLane(arrow.head, arrow.headDirection);
         for (final cell in laneCells) {
           expect(priorCells.contains(cell), isFalse,
               reason:

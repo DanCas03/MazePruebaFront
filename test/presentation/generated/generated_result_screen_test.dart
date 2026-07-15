@@ -8,7 +8,6 @@ import 'package:flutter_arrow_maze/application/use_cases/generate_board_use_case
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
 import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
-import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/services/i_level_generator.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
@@ -18,6 +17,8 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/generated/generated_result_screen.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../support/arrow_fixtures.dart';
 
 class _FakeGenerator implements ILevelGenerator {
   @override
@@ -30,15 +31,14 @@ class _FakeGenerator implements ILevelGenerator {
   }) =>
       ArrowBoard(
         arrows: [
-          Arrow.straight(
+          straightArrow(
             id: const ArrowId('a0'),
             tail: Position(row: 0, col: 0),
             direction: Direction.right,
             length: 2,
           )
         ],
-        cols: cols,
-        rows: rows,
+        space: RectSpace(cols, rows),
       );
 }
 

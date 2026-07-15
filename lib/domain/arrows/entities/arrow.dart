@@ -8,6 +8,13 @@ import '../../game_core/value_objects/direction.dart';
 /// degenerado (sin curvas). `headDirection` es la dirección por la que la cabeza
 /// abandona el tablero (mecánica "serpiente": el cuerpo se retrae por su propio
 /// camino, así que la salida solo depende del carril recto frente a la cabeza).
+///
+/// Dato puro (ADR-0005 D2/D6): no conoce el espacio del tablero. El carril de
+/// salida es responsabilidad de `BoardSpace.exitLane` (ver
+/// `ArrowBoard.canExit`); construir una flecha recta para tests es
+/// responsabilidad de `straightArrow` en `test/support/arrow_fixtures.dart`
+/// (el único llamador de la antigua `Arrow.straight` era el propio código de
+/// test — la producción nunca la usó).
 class Arrow extends Equatable {
   final ArrowId id;
   final List<Position> cells;
@@ -26,45 +33,10 @@ class Arrow extends Equatable {
     this.paintRole,
   });
 
-  /// Conveniencia para flechas rectas: genera `length` celdas desde `tail` en
-  /// `direction`. Mantiene ergonómicos los call sites que no necesitan curvas.
-  factory Arrow.straight({
-    required ArrowId id,
-    required Position tail,
-    required Direction direction,
-    required int length,
-    String? paintRole,
-  }) {
-    assert(length >= 1, 'length must be >= 1');
-    final cells = List<Position>.generate(length, (i) => switch (direction) {
-          Direction.right => Position(row: tail.row, col: tail.col + i),
-          Direction.left => Position(row: tail.row, col: tail.col - i),
-          Direction.down => Position(row: tail.row + i, col: tail.col),
-          Direction.up => Position(row: tail.row - i, col: tail.col),
-        });
-    return Arrow(
-        id: id, cells: cells, headDirection: direction, paintRole: paintRole);
-  }
-
   Position get head => cells.last;
   Position get tail => cells.first;
   Direction get direction => headDirection; // compat para widgets/animaciones
   int get length => cells.length;
-
-  /// Celdas libres que debe recorrer la cabeza para salir del tablero.
-  List<Position> exitPath(int cols, int rows) {
-    final h = head;
-    return switch (headDirection) {
-      Direction.right => List.generate(
-          cols - 1 - h.col, (i) => Position(row: h.row, col: h.col + 1 + i)),
-      Direction.left => List.generate(
-          h.col, (i) => Position(row: h.row, col: h.col - 1 - i)),
-      Direction.down => List.generate(
-          rows - 1 - h.row, (i) => Position(row: h.row + 1 + i, col: h.col)),
-      Direction.up => List.generate(
-          h.row, (i) => Position(row: h.row - 1 - i, col: h.col)),
-    };
-  }
 
   @override
   List<Object?> get props => [id, cells, headDirection, paintRole];

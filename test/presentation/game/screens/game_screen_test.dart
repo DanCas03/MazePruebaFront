@@ -19,7 +19,6 @@ import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.d
 import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
-import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
@@ -39,6 +38,8 @@ import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.d
 import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 
 import 'game_screen_test.mocks.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import '../../../support/arrow_fixtures.dart';
 
 // El GameController remoto (front#8) se construye con un ILevelRepository; el
 // .mocks.dart co-localizado se genera con:
@@ -50,10 +51,9 @@ import 'game_screen_test.mocks.dart';
 /// Tablero 4×4 con una única flecha de salida libre: al taparla el tablero queda
 /// limpio y el juego transita a GameWon.
 ArrowBoard _singleArrowBoard() => ArrowBoard(
-      cols: 4,
-      rows: 4,
+      space: RectSpace(4, 4),
       arrows: [
-        Arrow.straight(
+        straightArrow(
           id: const ArrowId('a1'),
           tail: Position(row: 0, col: 0),
           direction: Direction.left,
@@ -66,18 +66,17 @@ ArrowBoard _singleArrowBoard() => ArrowBoard(
 /// segunda flecha en su carril: cada tap sobre 'a1' es un choque, de modo que 5
 /// taps llevan el juego a GameLost sin vaciar el tablero.
 ArrowBoard _blockedArrowBoard() => ArrowBoard(
-      cols: 4,
-      rows: 4,
+      space: RectSpace(4, 4),
       arrows: [
         // Sale hacia la derecha; su exitPath incluye (0,3).
-        Arrow.straight(
+        straightArrow(
           id: const ArrowId('a1'),
           tail: Position(row: 0, col: 0),
           direction: Direction.right,
           length: 2,
         ),
         // Ocupa (0,3) → bloquea la salida de 'a1'.
-        Arrow.straight(
+        straightArrow(
           id: const ArrowId('blk'),
           tail: Position(row: 0, col: 3),
           direction: Direction.right,

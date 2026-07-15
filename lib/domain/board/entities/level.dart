@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../arrows/entities/arrow_board.dart';
 import '../../core/exceptions/invalid_level_exception.dart';
+import '../../game_core/value_objects/strike_count.dart';
 import '../value_objects/level_id.dart';
 
 /// Nivel oficial de la campaña, servido por el back (wire contract, CONTEXT-MAP).
@@ -21,11 +22,18 @@ class Level extends Equatable {
   /// (front#67). Espejo de la decisión del back (back#31).
   final Map<String, String>? palette;
 
+  /// Presupuesto de errores del nivel (front#83): cuántos choques admite antes
+  /// de perder. El HUD lo muestra como un contador DESCENDENTE. Opcional en el
+  /// wire (aditivo/tolerante): ausente ⇒ [StrikeCount.defaultMax], que preserva
+  /// la dificultad actual de los niveles que aún no lo declaran.
+  final int maxErrors;
+
   Level({
     required this.id,
     required this.board,
     this.timeLimitSec,
     this.palette,
+    this.maxErrors = StrikeCount.defaultMax,
   }) {
     if (board.arrows.isEmpty) {
       throw const InvalidLevelException('a level must have at least one arrow');
@@ -34,8 +42,11 @@ class Level extends Equatable {
     if (limit != null && limit <= 0) {
       throw InvalidLevelException('timeLimitSec must be > 0, got $limit');
     }
+    if (maxErrors <= 0) {
+      throw InvalidLevelException('maxErrors must be > 0, got $maxErrors');
+    }
   }
 
   @override
-  List<Object?> get props => [id, board, timeLimitSec, palette];
+  List<Object?> get props => [id, board, timeLimitSec, palette, maxErrors];
 }

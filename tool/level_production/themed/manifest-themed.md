@@ -1,0 +1,18 @@
+# Manifiesto de niveles temáticos (front#68)
+
+Generado por `dart run tool/level_production/produce_themed.dart`.
+Curación: revisar `<levelId>.preview.txt` para juzgar si la figura se reconoce.
+
+## Lote — seeds 0..150 · objetivo 90% · maxlen 8
+
+| figura | dims | seed usado | flechas colocadas | cobertura por rol | objetivo alcanzado | timeLimitSec |
+|---|---|---|---|---|---|---|
+| themed-bunny | 16×20 | 11 | 37 | fur:86% pink:88% eye:100% | no | ninguno |
+| themed-happy_face | 16×16 | 31 | 38 | face:81% features:100% | no | ninguno |
+| themed-heart | 16×14 | 11 | 23 | heart:91% | sí | ninguno |
+
+Incidencias (regiones bajo objetivo / errores):
+- themed-bunny: región `fur` bajo objetivo (86% < 90%)
+- themed-bunny: región `pink` bajo objetivo (88% < 90%)
+- themed-happy_face: región `face` bajo objetivo (81% < 90%)
+

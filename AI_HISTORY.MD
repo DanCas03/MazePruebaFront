@@ -1564,3 +1564,81 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - README: sección «Viewport zoom/pan + XL boards (front#66)» bajo Player-generated boards, rango 4–50 y presets en el configurador.
 - Verificación: `flutter analyze` → 0 issues; suite completa `flutter test` verde tras el rebase sobre `origin/main`. El rebase fusionó LIMPIAMENTE `board_widget.dart` con el seam de color `ArrowColorResolver` de front#67: `BoardView` gana la cámara y el culling sin tocar la resolución de color (ahora `colorResolver.colorFor(arrow, state.palette)`). El commit aísla ESTRICTAMENTE los archivos de front#66; los duplicados sin commitear de front#65 que compartía el árbol se descartaron por quedar ya en `main` (PR #75).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 072 — front#68 (fragmento 1) — Mask spec parser
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Primer fragmento de front#68 (tooling de producción de niveles temáticos): un formato de texto `.mask` revisable en PR que describe la máscara de un nivel temático (nombre + leyenda glifo→rol/hex + grid de regiones de color por celda), y su parser puro en Dart. Sin visión por computadora ni dependencias nuevas; vive en `tool/` (fuera de `lib/`) y solo importa el VO `Position` del dominio.
+**Herramienta de IA utilizada:** Claude Code (fable 5) — rol frontend-architect
+**Prompt o instrucción proporcionada:** > "Fragment 1: build `tool/level_production/mask_spec.dart` — a parser for a reviewable `.mask` text spec (name / legend `GLYPH = role : #RRGGBB` / grid with `.` as reserved background) returning MaskSpec{name, cols, rows, regions} with a `palette` getter (role→hex, ADR 0004), throwing MaskParseException with assertable messages for every malformed input; plus AAA flutter_test coverage under `test/tool/`."
+**Resultado obtenido:**
+- `tool/level_production/mask_spec.dart`: tipos `MaskRegion` (glyph, role, hex, `Set<Position>` cells), `MaskSpec` (name, cols, rows, regions + getter `palette` role→hex para el campo `palette` del JSON de nivel, ADR 0004), `MaskParseException`, y `parseMaskSpec(String)`.
+- Formato aceptado: cabecera `name:` (requerida), bloque `legend:` con entradas `GLYPH = rol : #RRGGBB` (whitespace flexible, hex case-insensitive), `grid:` seguido de filas verbatim (solo se quita `\r` final); comentarios `#` y líneas en blanco ignorados; `.` reservado como fondo (celda vacía, sin región).
+- Validaciones (mensajes asertables): falta `name`; `empty grid`; grid `not rectangular`; `unknown region glyph` en el grid; `hex` inválido o ausente en la leyenda; `glyph` de más de un carácter; `.` en la leyenda (`reserved`); glifo `duplicate`; glifo de leyenda sin celdas en el grid (`no cells`).
+- `test/tool/level_production/mask_spec_test.dart`: 12 tests AAA — máscara válida de 2 regiones (nombre, dimensiones, celdas por región, fondo en ninguna región), getter `palette`, y los 10 casos de error.
+- Verificación: `flutter test test/tool/level_production/mask_spec_test.dart` → 12/12 verdes; `flutter analyze` sobre ambos archivos → 0 issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 073 — front#68 (fragmento 2) — Generación confinada por región (generateThemed)
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Segundo fragmento de front#68: extender `GraphBoardGenerator` con generación temática confinada por región SIN alterar el comportamiento de `generate(...)` (hay tests de determinismo y perf que fijan la salida exacta del camino de campaña). Cada región (`ThemedRegionSpec`: role, cells, arrowCount, maxPathLen) confina los CUERPOS de sus flechas y las etiqueta con `paintRole` (ADR 0004); el carril de salida sigue siendo de tablero completo (puede cruzar regiones, mecánicamente válido e intencional) y la ocupación es GLOBAL entre regiones, preservando el invariante DAG: el tablero entero se vacía en orden inverso de colocación.
+**Herramienta de IA utilizada:** Claude Code (fable 5) — rol frontend-architect
+**Prompt o instrucción proporcionada:** > "Add region-confined themed generation to the generator, WITHOUT changing the behavior of the existing generate(...). Refactor the private helpers additively with an optional `allowedBody` param — when null, every code path including the exact sequence of rng.nextInt calls must be identical to today. Add generateThemed (NOT on the ILevelGenerator port) with a global occupied set across regions."
+**Resultado obtenido:**
+- `lib/infrastructure/generators/graph_board_generator.dart`:
+  - Nuevo tipo top-level `ThemedRegionSpec{role, cells, arrowCount, maxPathLen}`.
+  - Refactor aditivo preservando determinismo: `_randomBentArrow(..., {Set<Position>? allowedBody, String? paintRole})` (construye con `paintRole`, carril `_lane` intacto de tablero completo), `_randomHeadWithClearLane(..., {allowedBody})` (con `allowedBody == null` mantiene el muestreo actual byte a byte — misma secuencia de rng; con región, muestrea la cabeza desde `allowedBody.toList()` en los mismos 20 intentos con el mismo chequeo de carril contra `occupied`), `_freeNeighbors(..., {allowedBody})` (filtro adicional de pertenencia a la región).
+  - Nuevo método público `generateThemed({cols, rows, regions, seed})`: `occupied` GLOBAL entre regiones (misma disciplina ocupación+carril que `generate` → DAG global), índice incremental de ids entre regiones, degradación con gracia por región vía `_logger?.warn` (AOP). No se toca el puerto `ILevelGenerator`.
+- `test/infrastructure/generators/graph_board_themed_test.dart` (AAA, 6 tests): confinamiento por rol como property test (seeds 0..20, dos regiones disjuntas 12×12), paintRole no nulo y perteneciente a los roles, sin overlap de celdas, vaciado en orden inverso de colocación (DAG global), determinismo (mismo seed ⇒ tableros Equatable-iguales), y `generate(...)` intacto (paintRole null en campaña).
+- Verificación: `flutter test test/infrastructure/generators/ test/infrastructure/serialization/level_generation_determinism_test.dart` → 28/28 verdes (incluye los tests existentes de determinismo/perf que fijan la salida del camino null: sin regresión); `flutter analyze` sobre ambos archivos → 0 issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 074 — front#68 (fragmento 3) — Productor de niveles temáticos + CLI
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Tercer fragmento de front#68: cerrar el pipeline mask → nivel temático congelado. Un productor PURO (`produceThemed`) convierte una `MaskSpec` en un JSON arrow-path solvable, reintentando semillas hasta que TODAS las regiones alcanzan una cobertura objetivo (o usando la mejor semilla vista), más un CLI (`produce_themed.dart`) que procesa máscaras `.mask` en lote y emite JSON + vista previa ANSI + manifiesto markdown para curación humana.
+**Herramienta de IA utilizada:** Claude Code (fable 5) — rol frontend-architect
+**Prompt o instrucción proporcionada:** > "Build a pure themed producer (mask → ThemedRegionSpec list with deliberate arrow oversupply → generateThemed per seed → validateCandidate → per-role coverage → best-of-seeds → LevelJsonEncoder with palette, NO order/timeLimitSec) plus an ANSI truecolor preview, a batch CLI mirroring produce.dart (--mask/--masks-dir, --out, --coverage, --seeds, --maxlen, manifest-themed.md, never crash the batch), and a golden-locked flutter_test suite."
+**Resultado obtenido:**
+- `tool/level_production/themed_producer.dart` (puro, sin dart:io): `ThemedResult{levelId, json, coveragePerRole, seedUsed, placedArrows, allRegionsMetTarget, preview}` y `produceThemed(MaskSpec, {coverageTarget = 0.9, maxPathLen = 4, seeds})`. Sobreoferta deliberada (`arrowCount = region.cells.length`, el generador se auto-limita por intentos), semillas EN ORDEN con `validateCandidate` por semilla (inválida ⇒ se salta), se corta en la PRIMERA semilla con todas las regiones en objetivo y si ninguna llega se usa la de mayor cobertura mínima. JSON sin `order` ni `timeLimitSec`: temático v1 no tiene límite y la AUSENCIA del campo (el encoder omite null) es la anotación. Preview ANSI truecolor: `█` celda ocupada, `░` hueco de cobertura en su color de región, espacio el fondo.
+- `tool/level_production/produce_themed.dart` (CLI, espejo de produce.dart): `--mask <file>` XOR `--masks-dir <dir>`, `--out` (default `out/themed`), `--coverage` (0.9), `--seeds A..B` (0..49), `--maxlen` (4), `-h/--help`; uso inválido ⇒ stderr + exit 64. Cada máscara corre en `Isolate.run` y un fallo se registra como incidencia sin tumbar el lote. Escribe `<levelId>.json`, `<levelId>.preview.txt` y apéndice por corrida en `manifest-themed.md` (figura, dims, seed usado, flechas, cobertura por rol, objetivo alcanzado sí/no, timeLimitSec "ninguno", más incidencias de regiones bajo objetivo).
+- `test/tool/level_production/themed_producer_test.dart` (AAA, 7 tests): GOLDEN byte-estable de una máscara mini 6×4 de 2 regiones con seed 0 (JSON verbatim capturado de una corrida real), ausencia de `order`/`timeLimitSec`, paintRole ∈ palette y palette == mask.palette (decodificado con dart:convert), coveragePerRole con roles correctos y valores en [0,1] más recomputación a mano covered/total desde el JSON, solubilidad (placedArrows > 0 sin lanzar) y determinismo (mismas semillas ⇒ JSON idéntico).
+- Verificación: `flutter test test/tool/level_production/themed_producer_test.dart` → 7/7 verdes; `flutter analyze` sobre los tres archivos → 0 issues; smoke del CLI sobre una máscara estrella 6×5 → `.json` + `.preview.txt` + `manifest-themed.md` escritos, incidencia de cobertura (89% < 90%) registrada, uso inválido ⇒ exit 64; artefactos `out/` eliminados antes del commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 075 — front#68 (fragmento 4a) — Orden de regiones detalle-primero en el productor temático
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Al correr el CLI sobre las máscaras reales (cara feliz, conejo) las regiones INTERIORES (ojos, boca) quedaban en 0% de cobertura: cero flechas colocadas. Causa raíz: `generateThemed` exige que cada flecha tenga su lane recto de salida al borde libre en el momento de colocarla (invariante de solubilidad — el tablero se vacía en orden inverso). El productor procesaba las regiones en el orden del legend; si la región exterior (cara, pelaje) se llenaba primero, toda flecha de una región interior tenía su lane bloqueado por celdas ya ocupadas ⇒ imposible de colocar ⇒ 0%.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect
+**Prompt o instrucción proporcionada:** > "Fix: procesar las regiones de menor a mayor tamaño (detalle-primero) para que los detalles interiores se coloquen sobre el tablero vacío (lanes libres) y la región grande rellene alrededor."
+**Resultado obtenido:**
+- `tool/level_production/themed_producer.dart`: antes de construir los `ThemedRegionSpec`, se ordena `mask.regions` por número de celdas ascendente (`orderedRegions`). Las regiones pequeñas (interiores) se generan primero, sobre el tablero aún vacío, garantizando lane de salida libre; la región grande rellena después. El orden global de ocupación + reserva de lane preserva la solubilidad en orden inverso (validado por `validateCandidate`), independientemente del orden de regiones.
+- `test/tool/level_production/themed_producer_test.dart`: nuevo test de regresión "orden detalle-primero" — una máscara 7×7 con una región `inner` 2×2 totalmente encerrada por `outer`; se afirma `coveragePerRole['inner'] > 0`, que sin el fix daría 0.
+- Efecto medido: cara feliz `features` 0% → 86–97%; conejo `eye` 0% → 83–100%, `pink` 27% → 88–92%. Todas las regiones reciben flechas.
+- Verificación: `flutter test test/tool/level_production/themed_producer_test.dart` → 8/8 verdes (golden byte-estable intacto); `flutter analyze` → 0 issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 076 — front#68 (fragmento 4b) — Las 3 máscaras y los fixtures temáticos certificados
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Derivar las 3 figuras del apartado temático (ADR 0004 dec. 4: mínimo 3) como specs `.mask` reviewables y producir sus fixtures congelados, solubles por construcción. Máscaras derivadas por el asistente/curador (sin visión por computadora), curadas por vista previa.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect / domain-modeler
+**Prompt o instrucción proporcionada:** > "Diseña las 3 máscaras canónicas (corazón del arrowmaze1.webp; cara feliz y conejo icónicos), córrelas por el CLI y produce 3 fixtures validados + previews para curación."
+**Resultado obtenido:**
+- `tool/level_production/masks/heart.mask` (16×14, 1 región `heart` #FF4D6D), `happy_face.mask` (16×16, `face` #FFD23F + `features` #2B2B2B para ojos+boca; variante curada con el usuario por vista previa), `bunny.mask` (16×20, `fur` #F5F5F5 + `pink` #FF9EB5 orejas/nariz + `eye` #2B2B2B). Grids rectangulares, glyph `.` = fondo sin flechas (la figura flota sobre tablero vacío).
+- Comando reproducible: `dart run tool/level_production/produce_themed.dart --masks-dir tool/level_production/masks --out tool/level_production/themed --seeds 0..150 --maxlen 8`.
+- 3 fixtures congelados en `tool/level_production/themed/`: `themed-heart.json` (seed 11, 23 flechas, heart 91% ✓ objetivo), `themed-happy_face.json` (seed 31, 38 flechas, face 81% / features 100%), `themed-bunny.json` (seed 11, 37 flechas, fur 86% / pink 88% / eye 100%), cada uno con `palette` de roles y `paintRole` por flecha (ADR 0004), sin `order` ni `timeLimitSec` (temático v1 sin límite). Vistas previas ANSI (`*.preview.txt`) y `manifest-themed.md` para curación.
+- Certificación: los 3 pasan `validateCandidate` por construcción (no vacío + sin solape + se vacían en orden de colocación inverso ⇒ el orden inverso limpia el tablero); cada `paintRole` existe en `palette`; cada flecha confinada a su región (garantía de `generateThemed`).
+- Justificación de cobertura < objetivo: `face` (región grande y llena) y `fur`/`pink` se estancan en 79–88% porque las celdas interiores no tienen lane recto libre al borde una vez colocada parte de la figura — límite inherente de la invariante de solubilidad; la figura se reconoce a ese nivel de relleno. `heart` (convexa) sí alcanza 0.9. Reportado en el manifest.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 077 — front#68 (fragmento 5) — README tooling temático
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** Documentar la funcionalidad pública nueva (producción de niveles temáticos) en el README del front, según la regla de control de versiones del proyecto.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "Actualizar README.md (§ Tooling) con la subsección de producción de niveles temáticos: máscaras, CLI, confinamiento por región, orden detalle-primero, cobertura/preview, sin límite de tiempo, fixtures congelados."
+**Resultado obtenido:** Nueva subsección `### Producción de niveles temáticos — Máscaras + CLI (front#68)` en `README.md` bajo `## Tooling`, tras la de candidatos: formato `.mask`, comando del CLI, confinamiento flecha↔región + `paintRole`/`palette` (ADR 0004), orden detalle-primero, ocupación global/solubilidad, reintento de semillas + cobertura + preview ANSI, sin `timeLimitSec` en v1, y ubicación de los 3 fixtures congelados con su comando reproducible. Suite completa del front verificada: `flutter analyze` 0 issues + `flutter test` 625/625 verdes.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -7,7 +7,7 @@ import '../../../domain/arrows/entities/arrow.dart';
 import '../../../domain/arrows/value_objects/arrow_id.dart';
 import '../../../domain/game_core/value_objects/position.dart';
 import '../../../application/state/game_controller.dart';
-import '../arrow_color.dart';
+import '../arrow_color_resolver.dart';
 import 'arrow_widget.dart';
 import 'exiting_arrow_widget.dart';
 
@@ -24,6 +24,7 @@ class BoardWidget extends ConsumerWidget {
     if (state is! GamePlaying) return const SizedBox.shrink();
     return BoardView(
       state: state,
+      colorResolver: ref.watch(arrowColorResolverProvider),
       onTapArrow: (id) =>
           ref.read(gameControllerProvider.notifier).tapArrow(id),
     );
@@ -39,7 +40,18 @@ class BoardView extends StatelessWidget {
   final GamePlaying state;
   final void Function(ArrowId arrowId) onTapArrow;
 
-  const BoardView({super.key, required this.state, required this.onTapArrow});
+  /// Seam de color (front#67): decide el Color de cada flecha. Default temático
+  /// que cae a identidad sin Instrucciones de pintado, así los call sites que no
+  /// lo inyectan (flujo generado, tests) pintan igual que antes. [BoardWidget] lo
+  /// inyecta desde `arrowColorResolverProvider`.
+  final ArrowColorResolver colorResolver;
+
+  const BoardView({
+    super.key,
+    required this.state,
+    required this.onTapArrow,
+    this.colorResolver = const ThemedArrowColorResolver(),
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +142,7 @@ class BoardView extends StatelessWidget {
         minCol: b.minCol,
         minRow: b.minRow,
         cell: cell,
-        color: arrowColorFor(arrow.id),
+        color: colorResolver.colorFor(arrow, state.palette),
         isBlocked: state.blockedArrow == arrow.id,
         blockedNonce: state.blockedNonce,
       ),
@@ -153,7 +165,7 @@ class BoardView extends StatelessWidget {
         cols: cols,
         rows: rows,
         cell: cell,
-        color: arrowColorFor(arrow.id),
+        color: colorResolver.colorFor(arrow, state.palette),
         nonce: nonce,
       ),
     );

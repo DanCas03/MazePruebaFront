@@ -17,6 +17,11 @@ class GamePlaying extends GameState {
   final MoveCount moves;
   final StrikeCount strikes; // choques acumulados; a los 5 → GameLost
 
+  // Instrucciones de pintado del nivel cargado (rol→hex), o null en campaña
+  // (front#67). Dato de presentación constante durante la partida: lo consume
+  // el seam de color en BoardView. Los tableros generados nunca lo llevan.
+  final Map<String, String>? palette;
+
   // Señales TRANSITORIAS de presentación (no son reglas de dominio):
   final ArrowId? blockedArrow; // última flecha tocada que no puede salir
   final int blockedNonce; // ++ por bloqueo → re-dispara el shake
@@ -34,6 +39,7 @@ class GamePlaying extends GameState {
     required this.board,
     required this.moves,
     this.strikes = const StrikeCount(0),
+    this.palette,
     this.blockedArrow,
     this.blockedNonce = 0,
     this.exitingArrow,

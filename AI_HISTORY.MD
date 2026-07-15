@@ -1470,3 +1470,18 @@
 - Tests nuevos (AAA, inglés como el resto del archivo) en `level_json_decoder_test.dart`: round-trip temático byte-a-byte contra el ejemplo del CONTEXT-MAP § Extensión temática; campaña decodifica palette/paintRole a null; y tres casos estrictos (palette no-objeto, valor de palette no-string, paintRole no-string → FormatException).
 - Verificación: `flutter analyze` (serialización) → 0 issues; suite completa `flutter test` → 575/575 verdes (+5 nuevos); tests de campaña/encoder existentes intactos.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 068 — front#67 (fragmento C) — seam de color ArrowColorResolver
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Tercer fragmento de front#67: la decisión de color deja de ser una llamada directa `arrowColorFor(id)` en `BoardView` y se vuelve un SEAM inyectable con dos adapters (OCP), para que los niveles temáticos dicten colores por rol sin tocar los painters (siguen recibiendo `Color` como primitiva) ni la campaña.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Fragment C: ArrowColorResolver seam with a default (identity/hash palette) and a themed adapter (paintRole→palette hex, falls back to identity on missing role/hex). GamePlaying carries the level palette; BoardView consumes the resolver via provider. Painters untouched."
+**Resultado obtenido:**
+- `lib/presentation/game/arrow_color_resolver.dart` (nuevo): `ArrowColorResolver` (interface `Color colorFor(Arrow, Map<String,String>? palette)`), `IdentityArrowColorResolver` (envuelve `arrowColorFor`, ignora la paleta → campaña byte-idéntica) y `ThemedArrowColorResolver` que COMPONE al identidad como fallback (rol ausente, rol fuera de paleta, o hex inválido → identidad). Helper `parseHexColor` (`#RRGGBB`/`#AARRGGBB` → Color opaco, null si inválido). `arrowColorResolverProvider` declarado en el mismo archivo (presentación-local: el resolver devuelve `Color`, tipo de presentación, así `core/di` no importa presentación).
+- `lib/application/state/game_state.dart`: `GamePlaying` gana `Map<String,String>? palette` (constante durante la partida; null en campaña y en tableros generados).
+- `lib/application/state/game_controller.dart`: los 8 sitios que reconstruyen `GamePlaying` propagan la paleta desde la fuente única `_currentLevelData?.palette` (y `level.palette`/`s.palette` en los helpers de pista/copia) — así ninguna reconstrucción intermedia pierde el color.
+- `lib/presentation/game/widgets/board_widget.dart`: `BoardView` gana `ArrowColorResolver colorResolver` (default temático que cae a identidad → los call sites que no lo inyectan, flujo generado y tests, pintan igual); `BoardWidget` inyecta el del provider. Los dos call sites de color usan `colorResolver.colorFor(arrow, state.palette)`. Import de `arrow_color.dart` reemplazado por el del resolver.
+- Tests nuevos (`test/presentation/game/arrow_color_resolver_test.dart`, AAA): identidad reproduce la paleta hash e ignora la paleta; temático resuelve rol→hex, y cae a identidad en los 4 casos de fallback (sin rol, paleta null, rol ausente, hex inválido); unit de `parseHexColor` (#RRGGBB, #AARRGGBB, longitud/hex inválido → null).
+- Verificación: `flutter analyze` (game/state/di) → 0 issues; suite completa `flutter test` → 584/584 verdes (+9 nuevos); board_widget y game_controller existentes intactos (el default del resolver preserva la campaña).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

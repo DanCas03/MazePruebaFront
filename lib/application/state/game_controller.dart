@@ -295,8 +295,9 @@ class GameController extends AsyncNotifier<GameState> {
     // Anti doble-clic: ya hay una petición o una reproducción en curso.
     if (current.hintLoading || current.hintPlaying) return;
     // Política: la pista solo existe en niveles elegibles (guarda defensiva; la
-    // UI ya oculta el botón fuera de ellos).
-    if (!_hintPolicy.isEligible(levelId)) return;
+    // UI ya oculta el botón fuera de ellos). Los temáticos (con Instrucciones de
+    // pintado) son siempre elegibles — señal por `palette`, no por el id.
+    if (!_hintPolicy.isEligible(levelId, themed: level.palette != null)) return;
 
     final run = ++_hintRun;
     // Sub-estado de carga: transforma la bombilla y bloquea el botón.

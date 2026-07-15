@@ -1504,3 +1504,19 @@
 - Tests nuevos/extendidos (AAA): `LevelSection.fromWire` (4), `CatalogEntry` igualdad (3), repo `listCatalog` (section themed/ausente/desconocida, offline→campaign), catálogo, controller (temáticos sin candado, no desplazan Tiers, estrellas temáticas), pantalla (bloque themed sin candados + navegación con id real; campaña-only sin header), victoria (supresión de next-level para temático + next-level de campaña saltando temáticos intercalados).
 - Verificación: `flutter analyze` → 0 issues; suite completa `flutter test` → 600/600 verdes (+16 nuevos); tests de campaña existentes intactos (solo se ajustó el tipo de valor del catálogo donde cambió de verdad).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 070 — front#67 (fragmento E) — HintPolicy consciente de sección
+
+**Fecha:** 2026-07-14
+**Tarea o problema abordado:** Último fragmento de front#67: la pista auto-resolutora debe estar disponible en los niveles temáticos. `HintPolicy.isEligible` decidía solo por `LevelId.number >= 7`; los ids temáticos (`t-…`) no son numéricos y `LevelId.number` cae a 1 (wart conocido), así que el umbral de campaña los excluía por accidente. Se hace la política consciente de sección usando `palette != null` como señal de temático (no el parseo del id).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — rol frontend-architect; skill arrowmaze-frontend
+**Prompt o instrucción proporcionada:** > "Fragment E: make HintPolicy section-aware — campaign keeps number>=7, themed is always eligible via a `themed` flag; signal is `palette != null` at the controller guard and the bulb-button gate. Add AAA unit tests."
+**Resultado obtenido:**
+- `lib/domain/board/services/hint_policy.dart`: `isEligible(LevelId id, {bool themed = false}) => themed || id.number >= minEligibleLevel`. Comentario documenta el porqué (Solución servible + evitar el wart de `LevelId.number` con `t-…`).
+- `lib/application/state/game_controller.dart` (`playHint`): la guarda defensiva pasa `themed: level.palette != null` (el nivel cargado ya porta la paleta, fragmento C).
+- `lib/presentation/game/screens/game_screen.dart`: el gate de render de la bombilla pasa `themed: s.palette != null` desde el `GamePlaying` observado.
+- Tests nuevos (`test/domain/board/services/hint_policy_test.dart`, AAA): campaña < 7 no elegible, >= 7 elegible; temático siempre elegible con `themed:true` pese a `number==1`; y el mismo id temático NO elegible tratado como campaña (`themed:false`) — prueba que decide el flag, no el id.
+- Verificación: `flutter analyze` (services/state/screens) → 0 issues; suite completa `flutter test` → 604/604 verdes (+4 nuevos); tests de pista existentes (controller/screen) intactos.
+
+Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section-paint-seam`. Falta el criterio E2E del brief (sección temática end-to-end contra el back en Docker), que depende de aplicar el `prisma db push` + seed de back#31 (ver [[ola0-5050-prs]]).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

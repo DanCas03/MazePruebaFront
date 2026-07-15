@@ -1,0 +1,22 @@
+# themed mask spec v1 — happy_face
+name: happy_face
+legend:
+  F = face : #FFD23F
+  D = features : #2B2B2B
+grid:
+.......FF.......
+....FFFFFFFF....
+...FFFFFFFFFF...
+..FFFFFFFFFFFF..
+.FFFFFFFFFFFFFF.
+.FFFDDDFFDDDFFF.
+.FFFDDDFFDDDFFF.
+FFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFF
+.FFDDFFFFFFDDFF.
+.FFDDFFFFFFDDFF.
+.FFFDDDFFDDDFFF.
+..FFFDDDDDDFFF..
+...FFFFFFFFFF...
+....FFFFFFFF....
+.......FF.......

@@ -22,6 +22,7 @@ import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_move_exception
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/strike_count.dart';
 
 import 'game_controller_test.mocks.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
@@ -87,9 +88,12 @@ class _FakeTicker implements ITicker {
 /// Stub del puerto remoto (front#8): `getLevel` responde un [Level] con el
 /// [board] dado; el límite de tiempo viene del propio Level, no de blueprints.
 void _stubLevel(MockILevelRepository repo, ArrowBoard board,
-        {int? timeLimitSec}) =>
-    when(repo.getLevel(any)).thenAnswer((_) async =>
-        Right(Level(id: LevelId('1'), board: board, timeLimitSec: timeLimitSec)));
+        {int? timeLimitSec, int maxErrors = StrikeCount.defaultMax}) =>
+    when(repo.getLevel(any)).thenAnswer((_) async => Right(Level(
+        id: LevelId('1'),
+        board: board,
+        timeLimitSec: timeLimitSec,
+        maxErrors: maxErrors)));
 
 void main() {
   test('loadLevel emite GamePlaying con el board remoto y 0 movimientos', () async {
@@ -270,6 +274,52 @@ void main() {
     final state = c.read(gameControllerProvider).valueOrNull;
     expect(state, isA<GamePlaying>());
     expect((state as GamePlaying).strikes.value, 0);
+  });
+
+  // ── Presupuesto de errores POR NIVEL (front#83) ─────────────────────────────
+
+  test('should_expose_per_level_error_budget_as_remaining_on_load', () async {
+    // Arrange — un nivel con presupuesto de 3 errores (no el default 5).
+    final repo = MockILevelRepository();
+    final uc = MockRemoveArrowUseCase();
+    _stubLevel(repo, _twoArrowBoard(), maxErrors: 3);
+    final c = _container(repo, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+
+    // Act
+    await notifier.loadLevel(LevelId('1'));
+
+    // Assert — el contador descendente arranca en el presupuesto del nivel.
+    final s = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(s.strikes.max, 3);
+    expect(s.strikes.remaining, 3);
+  });
+
+  test('should_lose_when_per_level_max_errors_reached', () async {
+    // Arrange — presupuesto de 3: el 3.er choque ya es fatal (no el 5.º).
+    final repo = MockILevelRepository();
+    final uc = MockRemoveArrowUseCase();
+    _stubLevel(repo, _twoArrowBoard(), maxErrors: 3);
+    when(uc.execute(any, any))
+        .thenReturn(Left(InvalidMoveException('blocked')));
+    final c = _container(repo, uc);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('1'));
+
+    // Act — dos choques: sigue jugando con 1 error restante.
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    final mid = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(mid.strikes.remaining, 1);
+
+    // Act — el tercer choque agota el presupuesto.
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+
+    // Assert — GameLost al alcanzar el máximo del nivel, no el default 5.
+    final state = c.read(gameControllerProvider).valueOrNull;
+    expect(state, isA<GameLost>());
+    expect((state as GameLost).strikes.remaining, 0);
+    expect(state.strikes.isFatal, isTrue);
   });
 
   test('undoMove restaura el tablero y decrementa movimientos', () async {

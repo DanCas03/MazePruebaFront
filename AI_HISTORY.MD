@@ -1775,3 +1775,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
 **Resultado obtenido:** `LevelJsonDecoder` decodifica `maxErrors` con `_optionalInt(...) ?? StrikeCount.defaultMax` (ausente ⇒ default; no-int ⇒ FormatException, contrato roto). `LevelJsonEncoder.toMap`/`encode` ganan `int? maxErrors` opcional, emitido `if (maxErrors != null)` (igual que `timeLimitSec`/`order`): no pasarlo conserva el JSON de campaña original y mantiene los golden boards byte-idénticos. TDD: 4 casos nuevos en `level_json_decoder_test.dart` (default por ausencia, decode del valor, no-int lanza, round-trip preserva el presupuesto), **19/19** (RED verificado). La propiedad inversa se conserva porque el encoder es primitive-based: el caller elige qué campos emitir (como ya ocurría con palette/timeLimitSec).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 088 — front#83 (fragmento 3) — GameController inicializa strikes desde Level.maxErrors
+
+**Tarea o problema abordado:** Conectar el presupuesto por nivel al bucle de partida: el contador debe arrancar en `level.maxErrors` y perder al agotarlo (no al 5 hardcodeado), exponiendo el presupuesto al HUD desde la carga.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `GameController._startLevel` cambia `const StrikeCount(0)` por `StrikeCount(0, max: level.maxErrors)` y pasa `strikes: _strikes` al `GamePlaying` inicial (antes el estado de arranque no llevaba strikes → el HUD no podía derivar los restantes). Las dos reconstrucciones de `GamePlaying` de la demo de pista pasan `StrikeCount(0, max: level.maxErrors)` para que el chip sea coherente durante la reproducción. Los tableros generados siguen con el default (`StrikeCount(0)` = `defaultMax`), sin `Level`. TDD: `_stubLevel` acepta `maxErrors`; 2 tests nuevos (presupuesto expuesto como `remaining` al cargar; pérdida al 3.er choque con `maxErrors:3`, no al 5.º), **29/29** en game_controller + hint (RED verificado; los tests de default 5 siguen verdes).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

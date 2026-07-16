@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../arrows/entities/arrow_board.dart';
 import '../../core/exceptions/invalid_level_exception.dart';
+import '../../game_core/value_objects/position.dart';
 import '../../game_core/value_objects/strike_count.dart';
 import '../value_objects/level_id.dart';
 
@@ -22,6 +23,11 @@ class Level extends Equatable {
   /// (front#67). Espejo de la decisión del back (back#31).
   final Map<String, String>? palette;
 
+  /// Silueta de figura (front#114): rol→celdas de su región de máscara. Dato
+  /// OPACO como [palette] — solo pintura, no afecta solubilidad ni mecánica.
+  /// Nulo en campaña. Lo consume el SilhouettePainter para rellenar la figura.
+  final Map<String, List<Position>>? silhouette;
+
   /// Presupuesto de errores del nivel (front#83): cuántos choques admite antes
   /// de perder. El HUD lo muestra como un contador DESCENDENTE. Opcional en el
   /// wire (aditivo/tolerante): ausente ⇒ [StrikeCount.defaultMax], que preserva
@@ -33,6 +39,7 @@ class Level extends Equatable {
     required this.board,
     this.timeLimitSec,
     this.palette,
+    this.silhouette,
     this.maxErrors = StrikeCount.defaultMax,
   }) {
     if (board.arrows.isEmpty) {
@@ -48,5 +55,5 @@ class Level extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, board, timeLimitSec, palette, maxErrors];
+  List<Object?> get props => [id, board, timeLimitSec, palette, silhouette, maxErrors];
 }

@@ -240,5 +240,36 @@ void main() {
       // Assert
       expect(result, isFalse);
     });
+
+    // front#114 — Silueta opaca: rol→celdas de su región de máscara, solo pintura.
+    test('stores silhouette when provided and defaults to null', () {
+      // Arrange
+      final withSilhouette = Level(
+        id: LevelId('t-x'),
+        board: ArrowBoard(
+          arrows: [
+            Arrow(
+              id: ArrowId('a0'),
+              headDirection: Direction.right,
+              cells: [Position(row: 0, col: 0), Position(row: 0, col: 1)],
+              paintRole: 'heart',
+            ),
+          ],
+          space: RectSpace(4, 4),
+        ),
+        palette: const {'heart': '#FF4D6D'},
+        silhouette: {
+          'heart': [Position(row: 0, col: 0), Position(row: 0, col: 1)],
+        },
+      );
+      final withoutSilhouette = Level(
+        id: LevelId('t-y'),
+        board: _boardWithOneArrow(),
+        silhouette: null,
+      );
+      // Act & Assert
+      expect(withSilhouette.silhouette!['heart'], hasLength(2));
+      expect(withoutSilhouette.silhouette, isNull);
+    });
   });
 }

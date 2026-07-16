@@ -1880,3 +1880,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 5)
 **Resultado obtenido:** Nota en README (§ GenerateBoardUseCase): `GraphBoardGenerator` coloca interior-primero por bandas concéntricas ⇒ densidad interior comparable al borde (sin anillo perimetral), determinismo intacto (mismo seed + config ⇒ mismo tablero), con enlace al spec. Suite completa **704/704** verde; `flutter analyze` sin issues. PR a `main` (el usuario decide el merge).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 099 — Fase 1 (#86): MaskedSpace de producción (caja + celdas activas)
+
+**Tarea o problema abordado:** Añadir el `BoardSpace` de producción cuyas celdas activas son un subconjunto arbitrario de una caja envolvente — el hermano de producción del doble test-only `HoledRectSpace` — para renderizar siluetas y, más adelante, máscaras arbitrarias (#88) sin tocar consumidores (OCP).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "resuelve el issues front#86"
+**Resultado obtenido:** `MaskedSpace` (`lib/domain/game_core/space/masked_space.dart`) extiende `RectSpace` (reusa el único switch dirección→delta del artefacto en `RectSpace.step`, ADR-0005 D2) y sobreescribe `contains` (= en-caja AND en-set), `cellCount` (= tamaño del set) y `allCells` (set activo en orden row-major); hereda `step`/`directions`/`bounds` (la caja cols×rows). Una celda enmascarada es frontera: `step` que aterriza en ella devuelve null, igual que un agujero de `HoledRectSpace`. Tests: la suite de contrato compartida corre sobre `MaskedSpace`, más focos (step a celda enmascarada → frontera; `exitLane` termina en el borde de la máscara; `allCells`/`cellCount`/`bounds`), y una certificación OCP gemela de la de `HoledRectSpace` que prueba `ArrowBoard.canExit` sobre `MaskedSpace` sin cambiar Arrow/ArrowBoard. **15/15** verde en los nuevos archivos, **249** dominio verde; `flutter analyze` sin issues. Rama `feat/#86-masked-space`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

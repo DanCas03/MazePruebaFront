@@ -266,6 +266,69 @@ void main() {
       expect(pushed.single.arguments, LevelId('level-04'));
     });
 
+    testWidgets(
+        'should_keep_home_in_stack_so_back_arrow_persists_after_back_to_levels',
+        (tester) async {
+      // Arrange: reproducimos la pila real Home → LevelSelection → Victory. La
+      // ruta de niveles se sirve con un Scaffold+AppBar SIN `leading` (idéntico
+      // en comportamiento al de LevelSelectionScreen), de modo que la flecha de
+      // retorno auto-implícita aparece si y solo si `Navigator.canPop()` es true.
+      final navKey = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            stubCatalogOverride(ids: ids),
+            levelProgressRepositoryProvider
+                .overrideWithValue(FakeLevelProgressRepository(const [])),
+          ],
+          child: MaterialApp(
+            navigatorKey: navKey,
+            theme: AppTheme.dark(),
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: const [Locale('es'), Locale('en')],
+            initialRoute: AppRouter.home,
+            onGenerateRoute: (settings) {
+              switch (settings.name) {
+                case AppRouter.levelSelection:
+                  return MaterialPageRoute<void>(
+                    settings: settings,
+                    builder: (_) =>
+                        Scaffold(appBar: AppBar(title: const Text('levels'))),
+                  );
+                case AppRouter.victory:
+                  return MaterialPageRoute<void>(
+                    settings: RouteSettings(
+                        name: settings.name, arguments: _args(level: 'level-01')),
+                    builder: (_) => const VictoryScreen(),
+                  );
+                case AppRouter.home:
+                default:
+                  return MaterialPageRoute<void>(
+                    settings: settings,
+                    builder: (_) => const Scaffold(body: Text('home')),
+                  );
+              }
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      navKey.currentState!.pushNamed(AppRouter.levelSelection);
+      await tester.pumpAndSettle();
+      navKey.currentState!.pushNamed(AppRouter.victory);
+      await tester.pumpAndSettle();
+
+      // Act: pulsar "Back to Levels".
+      await tester.tap(find.widgetWithText(TextButton, 'Back to Levels'));
+      await tester.pumpAndSettle();
+
+      // Assert: Home permanece bajo la selección de niveles, así que la flecha
+      // de retorno sigue visible (regresión de la flecha que desaparecía).
+      expect(navKey.currentState!.canPop(), isTrue);
+      expect(find.byType(BackButton), findsOneWidget);
+    });
+
     testWidgets('should_render_score_moves_and_matching_filled_stars_when_won',
         (tester) async {
       // Arrange & Act: victoria con 2 de 3 estrellas, score y moves conocidos.

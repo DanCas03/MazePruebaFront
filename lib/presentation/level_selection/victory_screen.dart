@@ -120,10 +120,13 @@ class VictoryScreen extends ConsumerWidget {
               },
               const SizedBox(height: 8),
               TextButton(
+                // Conserva Home bajo la selección de niveles (predicate a la ruta
+                // raíz, no `(_) => false`), para que la flecha de retorno
+                // auto-implícita del AppBar siga visible al volver.
                 onPressed: () => Navigator.pushNamedAndRemoveUntil(
                   context,
                   AppRouter.levelSelection,
-                  (_) => false,
+                  ModalRoute.withName(AppRouter.home),
                 ),
                 child: Text(l10n.backToLevels, style: TextStyle(color: muted)),
               ),

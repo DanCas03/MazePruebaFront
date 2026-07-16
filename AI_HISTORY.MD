@@ -1881,7 +1881,25 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Resultado obtenido:** Nota en README (§ GenerateBoardUseCase): `GraphBoardGenerator` coloca interior-primero por bandas concéntricas ⇒ densidad interior comparable al borde (sin anillo perimetral), determinismo intacto (mismo seed + config ⇒ mismo tablero), con enlace al spec. Suite completa **704/704** verde; `flutter analyze` sin issues. PR a `main` (el usuario decide el merge).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
 
-## Entrada 099 — Fase 1 (#86): MaskedSpace de producción (caja + celdas activas)
+## Entrada 099 — BoardSurfacePainter consciente del espacio (front#87, Fase 1)
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** El panel+rejilla del tablero se pintaba como rectángulo fijo (DecoratedBox + _GridPainter), bloqueando siluetas. Se crea BoardSurfacePainter con camino de caja llena (píxel-idéntico) y camino enmascarado (solo celdas existentes vía `contains`, rejilla solo entre vecinas existentes).
+**Herramienta de IA utilizada:** Claude Code (Fable 5)
+**Prompt o instrucción proporcionada:** > "Tomemos el 87 y realicemos un plan para su implementación" (ejecución del plan docs/superpowers/plans/2026-07-15-front87-space-aware-render.md, Task 1)
+**Resultado obtenido:** lib/presentation/game/painters/board_surface_painter.dart + 5 tests de canvas (paints/paintsExactlyCountTimes). Decisión clave: discriminar caja llena recorriendo `contains` sobre el bounding box — `cellCount` mentiría con HoledRectSpace (no resta agujeros por diseño).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 100 — BoardView renderiza y hit-testea vía BoardSpace (front#87, Fase 1)
+
+**Fecha:** 2026-07-15
+**Tarea o problema abordado:** BoardView asumía un rectángulo cols×rows (panel Positioned.fill + _GridPainter + hit-test clampeado), bloqueando siluetas. Ahora dimensiona por `space.bounds`, pinta con BoardSurfacePainter, rechaza toques sobre celdas inexistentes vía `space.contains` y trabaja en coordenadas del marco (origen = esquina del bounding box, listo para el recorte de front#88).
+**Herramienta de IA utilizada:** Claude Code (Fable 5)
+**Prompt o instrucción proporcionada:** > "Tomemos el 87 y realicemos un plan para su implementación" (ejecución del plan docs/superpowers/plans/2026-07-15-front87-space-aware-render.md, Task 2)
+**Resultado obtenido:** board_widget.dart reescrito (muere _GridPainter), 3 tests de widget con HoledRectSpace (pintado solo de celdas existentes; rechazo del toque ANTES de arrowAt — probado con flecha patológica sobre el agujero), regresión RectSpace verde sin editar tests. Limitación documentada: la animación de salida cruza celdas ausentes hasta el borde de la caja (cosmético, revisar con front#88).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 101 — Fase 1 (#86): MaskedSpace de producción (caja + celdas activas)
 
 **Tarea o problema abordado:** Añadir el `BoardSpace` de producción cuyas celdas activas son un subconjunto arbitrario de una caja envolvente — el hermano de producción del doble test-only `HoledRectSpace` — para renderizar siluetas y, más adelante, máscaras arbitrarias (#88) sin tocar consumidores (OCP).
 **Fecha:** 2026-07-15

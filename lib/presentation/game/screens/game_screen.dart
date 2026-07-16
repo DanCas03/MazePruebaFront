@@ -105,7 +105,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         }
       }
 
-      if (state is GameWon) {
+      // front#98: navegación terminal IDEMPOTENTE. Se dispara solo en el BORDE
+      // de transición hacia el estado terminal (`prev is! GameWon`), no ante
+      // "el estado ES GameWon". GameState no tiene igualdad por valor, así que
+      // cada re-emisión del async value estando ya en victoria (p. ej. tras el
+      // POST del score) es una instancia nueva; sin la guarda de borde el
+      // listener re-ejecutaría pushReplacement y apilaría una segunda pantalla.
+      // El mismo blindaje aplica a la transición simétrica GameLost → derrota.
+      if (state is GameWon && prevState is! GameWon) {
         audio.play(GameSound.victory);
         audio.stopMusic();
         // La victoria viaja con el nivel (para "Next Level") y las métricas ya
@@ -121,7 +128,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             stars: state.stars.value,
           ),
         );
-      } else if (state is GameLost) {
+      } else if (state is GameLost && prevState is! GameLost) {
         audio.play(GameSound.defeat);
         audio.stopMusic();
         // La derrota lleva el LevelId para que el CTA "Retry" recargue el nivel.

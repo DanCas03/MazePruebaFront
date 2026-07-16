@@ -13,9 +13,12 @@ import 'package:flutter_arrow_maze/presentation/game/widgets/board_widget.dart';
 
 import '../../../support/arrow_fixtures.dart';
 
-/// Nivel temático 4×4 con dos flechas: la silueta derivada por el dominio son
-/// SUS 4 celdas, no la caja de 16.
+/// Nivel temático 4×4 cuyas dos flechas dejan celdas interiores SIN ocupar —el
+/// caso que producía agujeros a mitad de tablero (front#99). Con la silueta
+/// previa (#88) esas celdas quedaban sin pintar; ahora el nivel se monta sobre
+/// su caja rectangular completa, así que las 16 celdas son superficie.
 ///   arrow-0: (0,0)-(0,1)   arrow-2: (2,2)-(2,3)
+/// Interiores vacíos como (1,1),(1,2),(2,0) eran agujeros bajo la silueta.
 ArrowBoard _themedBoard() => ArrowBoard(
       arrows: [
         straightArrow(
@@ -32,7 +35,7 @@ ArrowBoard _themedBoard() => ArrowBoard(
         ),
       ],
       space: RectSpace(4, 4),
-    ).withSilhouetteSpace();
+    );
 
 Future<List<ArrowId>> _pump(WidgetTester tester) async {
   final taps = <ArrowId>[];
@@ -56,30 +59,34 @@ Finder _surfacePaint() => find.byWidgetPredicate(
     (w) => w is CustomPaint && w.painter is BoardSurfacePainter);
 
 void main() {
-  testWidgets('a themed level paints only the figure cells, not the full box',
+  testWidgets(
+      'a themed board paints the full box (no unpainted mid-board holes)',
       (tester) async {
     // Arrange / Act
     await _pump(tester);
 
-    // Assert — se rellenan las 4 celdas de la silueta (no las 16 de la caja).
+    // Assert — al ser la caja completa, la superficie se pinta por el camino de
+    // panel lleno (un único RRect redondeado), NO celda a celda: no queda ni un
+    // `drawRect` suelto que delataría agujeros interiores.
     expect(tester.renderObject(_surfacePaint()),
-        paintsExactlyCountTimes(#drawRect, 4));
+        paintsExactlyCountTimes(#drawRect, 0));
   });
 
-  testWidgets('a tap off the figure is rejected; a tap on a figure arrow routes',
+  testWidgets('an interior cell with no arrow is painted surface, not a hole',
       (tester) async {
     // Arrange
     final taps = await _pump(tester);
 
-    // Act — (3,3) queda FUERA de la silueta; (0,0) es la cabeza de arrow-0.
-    await tester.tapAt(const Offset(350, 350));
+    // Act — (1,1) NO tiene flecha: antes era un agujero (tap vetado por estar
+    // fuera de la silueta); ahora es superficie pintada, así que el tap se
+    // acepta sobre la celda pero no enruta ninguna flecha (no hay ninguna allí).
+    await tester.tapAt(const Offset(150, 150));
     await tester.pump();
     expect(taps, isEmpty);
 
+    // (0,0) es la cabeza de arrow-0: la mecánica de las flechas sigue intacta.
     await tester.tapAt(const Offset(50, 50));
     await tester.pump();
-
-    // Assert
     expect(taps, [const ArrowId('arrow-0')]);
   });
 }

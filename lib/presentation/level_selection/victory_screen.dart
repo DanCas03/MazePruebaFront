@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/providers/leaderboard_providers.dart';
 import '../../application/providers/next_level_provider.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
@@ -36,8 +37,13 @@ class VictoryScreen extends ConsumerWidget {
     final muted =
         isDark ? AppColors.onSurfaceMuted : AppColors.lightOnSurfaceMuted;
 
-    final starCount = args?.stars ?? 0;
-    final score = args?.score ?? 0;
+    // Reconciliación con el resultado CANÓNICO (ADR 0006): mientras el POST
+    // /scores no responda (o si falla), se muestra el preview cliente de
+    // GameWon; en cuanto resuelve, el reemplazo es silencioso (sin spinner,
+    // decisión Q11).
+    final canonical = ref.watch(canonicalResultProvider);
+    final starCount = canonical?.stars.value ?? args?.stars ?? 0;
+    final score = canonical?.score.value ?? args?.score ?? 0;
     final moves = args?.moves ?? 0;
 
     // "Qué sigue" lo decide el dominio (gating incluido): la pantalla solo pinta

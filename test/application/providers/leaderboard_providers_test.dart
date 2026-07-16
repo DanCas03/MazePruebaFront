@@ -6,7 +6,9 @@ import 'package:mockito/mockito.dart';
 
 import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
 import 'package:flutter_arrow_maze/application/providers/leaderboard_providers.dart';
+import 'package:flutter_arrow_maze/application/providers/progress_providers.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
+import 'package:flutter_arrow_maze/application/use_cases/record_level_completion_use_case.dart';
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
 import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
 import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart';
@@ -14,14 +16,19 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
+import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/repositories/i_level_repository.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart';
 
 import 'leaderboard_providers_test.mocks.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
@@ -51,8 +58,18 @@ void _stubLevel(MockILevelRepository repo, ArrowBoard board) =>
 class _SpyLeaderboardRepository implements ILeaderboardRepository {
   final List<ScoreEntry> submitted = [];
 
+  /// Resultado canónico devuelto en éxito; configurable por test para cubrir
+  /// la reconciliación (`canonicalResultProvider`).
+  CanonicalResult response = CanonicalResult(
+    score: Score(9999),
+    stars: const Stars.three(),
+  );
+
   @override
-  Future<void> submitScore(ScoreEntry entry) async => submitted.add(entry);
+  Future<CanonicalResult> submitScore(ScoreEntry entry) async {
+    submitted.add(entry);
+    return response;
+  }
 
   // No usado en estas pruebas (envío): el puerto es cohesivo escritura+lectura.
   @override
@@ -76,16 +93,42 @@ class _NoopLogger implements ILoggerService {
   void warn(String message, String context) {}
 }
 
+/// Fake mínimo del repo de progreso: solo registra los `upsertAll` recibidos,
+/// para verificar el re-registro con los valores CANÓNICOS tras reconciliar.
+class _FakeProgressRepository implements ILevelProgressRepository {
+  final List<LevelProgress> upserted = [];
+  @override
+  Future<void> upsertAll(List<LevelProgress> progress) async =>
+      upserted.addAll(progress);
+  @override
+  Future<List<LevelProgress>> getAll() async => const [];
+  @override
+  Future<MoveCount?> getProgress(LevelId levelId) async => null;
+  @override
+  Future<void> saveProgress(LevelId levelId, MoveCount moves) async {}
+  @override
+  Future<void> markCompleted(LevelId levelId) async {}
+  @override
+  Future<bool> isCompleted(LevelId levelId) async => false;
+}
+
 ProviderContainer _container(
   MockILevelRepository repo,
   MockRemoveArrowUseCase uc,
-  _SpyLeaderboardRepository spyRepo,
-) {
+  _SpyLeaderboardRepository spyRepo, {
+  _FakeProgressRepository? progressRepo,
+}) {
   final c = ProviderContainer(overrides: [
     gameControllerProvider
         .overrideWith(() => GameController(repo, uc, CommandInvoker())),
     submitScoreUseCaseProvider
         .overrideWithValue(SubmitScoreUseCase(spyRepo, _NoopLogger())),
+    recordLevelCompletionUseCaseProvider.overrideWithValue(
+      RecordLevelCompletionUseCase(
+        progressRepo ?? _FakeProgressRepository(),
+        _NoopLogger(),
+      ),
+    ),
   ]);
   addTearDown(c.dispose);
   return c;
@@ -141,5 +184,38 @@ void main() {
     // Assert — guarda contra un levelId hardcodeado o perdido en el mapeo.
     expect(spyRepo.submitted.length, 1);
     expect(spyRepo.submitted.single.levelId, LevelId('3'));
+  });
+
+  test(
+      'reconcilia canonicalResultProvider con la respuesta del back y '
+      're-registra el progreso con los valores CANÓNICOS', () async {
+    // Arrange
+    final repo = MockILevelRepository();
+    final uc = MockRemoveArrowUseCase();
+    _stubLevel(repo, _oneArrowBoard());
+    when(uc.execute(any, any)).thenReturn(Right(_oneArrowBoard()));
+    final spyRepo = _SpyLeaderboardRepository()
+      ..response =
+          CanonicalResult(score: Score(4321), stars: const Stars.two());
+    final progressRepo = _FakeProgressRepository();
+    final c = _container(repo, uc, spyRepo, progressRepo: progressRepo);
+    c.read(scoreSubmissionObserverProvider);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('7'));
+    // Antes de ganar, no hay canónico resuelto.
+    expect(c.read(canonicalResultProvider), isNull);
+
+    // Act
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    await Future<void>.delayed(Duration.zero);
+
+    // Assert — el provider expone el canónico devuelto por el repo...
+    final canonical = c.read(canonicalResultProvider);
+    expect(canonical?.score.value, 4321);
+    expect(canonical?.stars.value, 2);
+    // ...y el progreso local se re-registra con esos mismos valores.
+    expect(progressRepo.upserted, hasLength(1));
+    expect(progressRepo.upserted.single.bestScore, 4321);
+    expect(progressRepo.upserted.single.bestStars, 2);
   });
 }

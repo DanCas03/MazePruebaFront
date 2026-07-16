@@ -33,14 +33,15 @@ class MockLeaderboardRemoteDataSource extends _i1.Mock
   }
 
   @override
-  _i3.Future<void> postScore(Map<String, dynamic>? body) => (super.noSuchMethod(
+  _i3.Future<Map<String, dynamic>> postScore(Map<String, dynamic>? body) =>
+      (super.noSuchMethod(
         Invocation.method(
           #postScore,
           [body],
         ),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+        returnValue:
+            _i3.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      ) as _i3.Future<Map<String, dynamic>>);
 
   @override
   _i3.Future<List<dynamic>> fetchLeaderboard(

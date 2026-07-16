@@ -1,4 +1,5 @@
 import '../../board/value_objects/level_id.dart';
+import '../../leaderboard/value_objects/canonical_result.dart';
 import '../entities/leaderboard_entry.dart';
 import '../entities/score_entry.dart';
 
@@ -6,10 +7,11 @@ import '../entities/score_entry.dart';
 /// ranking: escritura (`submitScore`, front#16) y lectura (`getLeaderboard`,
 /// front#17). La infraestructura decide el transporte (Dio).
 abstract interface class ILeaderboardRepository {
-  /// Envía el score de una partida ganada (`POST /scores`, back#7). Lanza si la
-  /// red falla; el use case de envío captura el error para no romper el flujo de
-  /// victoria (front#16).
-  Future<void> submitScore(ScoreEntry entry);
+  /// Envía las métricas crudas de una partida ganada (`POST /scores`, ADR
+  /// 0006) y devuelve el resultado CANÓNICO derivado por el back. Lanza si la
+  /// red falla o la respuesta es inválida; el use case de envío captura el
+  /// error para no romper el flujo de victoria (front#16).
+  Future<CanonicalResult> submitScore(ScoreEntry entry);
 
   /// Lee el ranking de un nivel (`GET /leaderboard/:levelId`, back#9), ya
   /// ordenado por score desc. [limit] acota el top-N solicitado (el back aplica

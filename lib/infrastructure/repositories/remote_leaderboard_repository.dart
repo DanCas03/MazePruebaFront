@@ -6,11 +6,12 @@ import '../../domain/game_core/value_objects/stars.dart';
 import '../../domain/leaderboard/entities/leaderboard_entry.dart';
 import '../../domain/leaderboard/entities/score_entry.dart';
 import '../../domain/leaderboard/repositories/i_leaderboard_repository.dart';
+import '../../domain/leaderboard/value_objects/canonical_result.dart';
 import '../data_sources/remote/leaderboard_remote_data_source.dart';
 
 /// Adapter: implementa el puerto mapeando entre el dominio y el shape JSON del
-/// back — envío al contrato back#7 (`_toJson`) y lectura del contrato back#9
-/// (`_fromJson`). Calca el estilo de `RemoteProgressRepository`.
+/// back — envío al contrato ADR 0006 (`_toRequestJson`) y lectura del
+/// contrato back#9 (`_fromJson`). Calca el estilo de `RemoteProgressRepository`.
 class RemoteLeaderboardRepository implements ILeaderboardRepository {
   final LeaderboardRemoteDataSource _dataSource;
   // AOP: puerto de logging inyectado (DIP) para reportar filas descartadas sin
@@ -19,8 +20,10 @@ class RemoteLeaderboardRepository implements ILeaderboardRepository {
   RemoteLeaderboardRepository(this._dataSource, this._log);
 
   @override
-  Future<void> submitScore(ScoreEntry entry) =>
-      _dataSource.postScore(_toJson(entry));
+  Future<CanonicalResult> submitScore(ScoreEntry entry) async {
+    final json = await _dataSource.postScore(_toRequestJson(entry));
+    return _toCanonicalResult(json);
+  }
 
   @override
   Future<List<LeaderboardEntry>> getLeaderboard(
@@ -48,13 +51,25 @@ class RemoteLeaderboardRepository implements ILeaderboardRepository {
     return List.unmodifiable(entries);
   }
 
-  Map<String, dynamic> _toJson(ScoreEntry e) => {
+  /// Métricas crudas del run (ADR 0006): el back deriva el resultado canónico
+  /// a partir de ellas. `previewScore` viaja solo con fines de auditoría/
+  /// telemetría; el back no lo usa para calcular el canónico.
+  Map<String, dynamic> _toRequestJson(ScoreEntry e) => {
         'levelId': e.levelId.value,
-        'score': e.score.value,
-        'stars': e.stars.value,
         'moves': e.moves.value,
         'timeSeconds': e.timeSeconds,
+        'collisions': e.collisions,
+        'previewScore': e.score.value,
       };
+
+  /// Parsea la respuesta del POST `{score, stars}` al resultado canónico.
+  /// Un campo faltante o `stars` fuera de `[1,3]` lanza (propaga al use case,
+  /// que decide cómo degradar).
+  CanonicalResult _toCanonicalResult(Map<String, dynamic> j) =>
+      CanonicalResult(
+        score: Score(j['score'] as int),
+        stars: Stars.fromValue(j['stars'] as int),
+      );
 
   LeaderboardEntry _fromJson(Map<String, dynamic> j) => LeaderboardEntry(
         id: j['id'] as String,

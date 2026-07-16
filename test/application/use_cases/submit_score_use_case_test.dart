@@ -10,6 +10,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart';
 
 import 'submit_score_use_case_test.mocks.dart';
 
@@ -31,23 +32,28 @@ void main() {
         stars: const Stars.three(),
         moves: const MoveCount(12),
         timeSeconds: 45,
+        collisions: 2,
       );
 
-  test('execute envía el score al repo cuando la red responde', () async {
+  test('execute devuelve el canónico cuando la red responde', () async {
     // Arrange
-    when(repository.submitScore(any)).thenAnswer((_) async {});
+    final canonical = CanonicalResult(score: Score(900), stars: const Stars.two());
+    when(repository.submitScore(any)).thenAnswer((_) async => canonical);
     // Act
-    await useCase.execute(entry());
+    final result = await useCase.execute(entry());
     // Assert
     verify(repository.submitScore(entry())).called(1);
+    expect(result, canonical);
   });
 
-  test('execute traga el error de red y lo loggea (no relanza)', () async {
+  test('execute devuelve null y loggea el error, sin relanzar (fallo de red)',
+      () async {
     // Arrange
     when(repository.submitScore(any)).thenThrow(Exception('red caída'));
     // Act — no debe lanzar
-    await useCase.execute(entry());
+    final result = await useCase.execute(entry());
     // Assert
+    expect(result, isNull);
     verify(logger.error(any, any, any)).called(1);
   });
 }

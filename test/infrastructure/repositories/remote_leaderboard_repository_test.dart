@@ -44,23 +44,28 @@ void main() {
         stars: const Stars.three(),
         moves: const MoveCount(12),
         timeSeconds: 45,
+        collisions: 2,
       );
 
-  test('submitScore postea el JSON del contrato back', () async {
+  test('submitScore postea EXACTAMENTE el contrato ADR 0006 y parsea el canónico',
+      () async {
     // Arrange
-    when(dataSource.postScore(any)).thenAnswer((_) async {});
+    when(dataSource.postScore(any))
+        .thenAnswer((_) async => {'score': 900, 'stars': 2});
     // Act
-    await repository.submitScore(entry());
+    final result = await repository.submitScore(entry());
     // Assert — se captura el Map y se compara en profundidad (el `==` de Map es
     // por identidad, así que no se puede pasar un literal directo a `verify`).
     final captured = verify(dataSource.postScore(captureAny)).captured.single;
     expect(captured, {
       'levelId': '7',
-      'score': 1200,
-      'stars': 3,
       'moves': 12,
       'timeSeconds': 45,
+      'collisions': 2,
+      'previewScore': 1200,
     });
+    expect(result.score.value, 900);
+    expect(result.stars.value, 2);
   });
 
   test('submitScore propaga el error del datasource', () async {
@@ -68,6 +73,22 @@ void main() {
     when(dataSource.postScore(any)).thenThrow(Exception('red caída'));
     // Act / Assert
     expect(() => repository.submitScore(entry()), throwsException);
+  });
+
+  test('submitScore lanza cuando la respuesta no trae los campos canónicos',
+      () async {
+    // Arrange — falta 'stars' por completo.
+    when(dataSource.postScore(any)).thenAnswer((_) async => {'score': 900});
+    // Act / Assert
+    expect(() => repository.submitScore(entry()), throwsA(isA<TypeError>()));
+  });
+
+  test('submitScore lanza cuando stars está fuera de la cota [1,3]', () async {
+    // Arrange
+    when(dataSource.postScore(any))
+        .thenAnswer((_) async => {'score': 900, 'stars': 9});
+    // Act / Assert
+    expect(() => repository.submitScore(entry()), throwsArgumentError);
   });
 
   Map<String, dynamic> row({

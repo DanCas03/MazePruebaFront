@@ -1,5 +1,23 @@
 # AI History — MazePruebaFront
 
+## Entrada 110 — feat(front): contrato nuevo del POST /scores y reconciliación canónica en la victoria (ADR 0006)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Task B2 del sprint de scoring/leaderboard global (ADR 0006, sesión de diseño 2026-07-16): tras B1 (`GameWon.collisions` + preview multiplicativo), cerrar el contrato remoto — `ScoreEntry` gana `collisions`, el POST envía las métricas crudas del run (`{levelId, moves, timeSeconds, collisions, previewScore}`) en vez del preview cliente, y el back responde el resultado CANÓNICO (`{score, stars}`) con el que se reconcilia la pantalla de victoria. Rol `frontend-architect` implementó producción; este rol (`qa-engineer`) cubrió el contrato nuevo y reparó todos los specs rotos por la firma.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol qa-engineer)
+**Prompt o instrucción proporcionada:** > "Cubre el contrato nuevo del submit (mockito): postea el body exacto y parsea `{score, stars}` a `CanonicalResult`; una respuesta inválida propaga; el use case devuelve el canónico o `null` sin relanzar; `ScoreEntry` valida `collisions >= 0`; widget test de `victory_screen` para preview vs canónico. Ajusta todos los specs rotos por la firma nueva del puerto."
+**Resultado obtenido:**
+- `test/domain/leaderboard/entities/score_entry_test.dart`: fixture con `collisions`, aserción de igualdad por ese campo y test nuevo `rechaza collisions negativo`.
+- `test/infrastructure/repositories/remote_leaderboard_repository_test.dart`: `submitScore` reescrito — verifica el body EXACTO `{levelId, moves, timeSeconds, collisions, previewScore}` (sin `score`/`stars` del preview) y que la respuesta `{score, stars}` se parsea a `CanonicalResult`; dos casos nuevos (`TypeError` si falta un campo canónico, `ArgumentError` si `stars` cae fuera de `[1,3]` vía `Stars.fromValue`).
+- `test/application/use_cases/submit_score_use_case_test.dart`: `execute` ahora se verifica devolviendo el `CanonicalResult` en éxito y `null` (+ `logger.error` llamado) en fallo de red, sin relanzar.
+- `test/application/providers/leaderboard_providers_test.dart`: `_SpyLeaderboardRepository.submitScore` migrado a `Future<CanonicalResult>` (antes `void`); `_container` ahora también override-ea `recordLevelCompletionUseCaseProvider` con un `_FakeProgressRepository` propio (antes lanzaba `UnimplementedError` porque `_submitAndReconcile` invoca ese use case tras reconciliar, y las dos pruebas existentes rompían silenciosamente vía Future no manejado). Test nuevo: `reconcilia canonicalResultProvider... y re-registra el progreso con los valores CANÓNICOS` — confirma que el provider expone el canónico devuelto por el repo y que `RecordLevelCompletionUseCase` recibe esos mismos valores (no el preview).
+- `test/presentation/game/screens/game_screen_test.dart` y `game_screen_hint_test.dart`: `_NoopLeaderboardRepository.submitScore` migrado a devolver un `CanonicalResult` dummy (antes `Future<void>`); ambos ya tenían `recordLevelCompletionUseCaseProvider` overrideado, sin ajustes adicionales.
+- `test/presentation/level_selection/victory_screen_test.dart`: `_appUnderTest` gana el parámetro `canonicalResult` (override de `canonicalResultProvider`, `null` por defecto = preview). Dos tests nuevos: con `canonicalResultProvider == null` se muestra el score/estrellas de `GameWon`/`VictoryArgs`; con el provider poblado, el canónico reemplaza al preview en pantalla.
+- Mocks regenerados (`build_runner build --delete-conflicting-outputs`): `get_leaderboard_use_case_test.mocks.dart`, `submit_score_use_case_test.mocks.dart` y `remote_leaderboard_repository_test.mocks.dart` (firma de `ILeaderboardRepository.submitScore` cambiada). El resto de `.mocks.dart` regenerados por el mismo comando no tuvo diff real (solo ruido CRLF/LF), así que quedan fuera del commit.
+- `README.md` §Score submission (front#16): reescrita para reflejar el envío de métricas crudas + `previewScore` de auditoría, el `CanonicalResult` devuelto por el POST, y la reconciliación silenciosa (sin spinner) en `VictoryScreen`.
+- Verificación: `flutter analyze` → sin issues. `flutter test` → 773/773 verde (suite completa).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 109 — feat(domain): Score preview multiplicativo y GameWon.collisions (ADR 0006)
 
 **Fecha:** 2026-07-16

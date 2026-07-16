@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_arrow_maze/application/providers/leaderboard_providers.dart';
 import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_colors.dart';
@@ -10,6 +11,9 @@ import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_section.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
@@ -45,6 +49,7 @@ Widget _appUnderTest({
   List<CatalogEntry>? catalogEntries,
   List<LevelProgress> progress = const [],
   List<RouteSettings>? pushed,
+  CanonicalResult? canonicalResult,
 }) {
   return ProviderScope(
     overrides: [
@@ -53,6 +58,8 @@ Widget _appUnderTest({
       // el progreso local para decidir si el siguiente Tier está abierto.
       levelProgressRepositoryProvider
           .overrideWithValue(FakeLevelProgressRepository(progress)),
+      // Reconciliación ADR 0006: por defecto sin canónico resuelto (preview).
+      canonicalResultProvider.overrideWith((ref) => canonicalResult),
     ],
     child: MaterialApp(
       theme: AppTheme.dark(),
@@ -345,6 +352,46 @@ void main() {
       expect(find.text('7 moves'), findsOneWidget);
       expect(find.byIcon(Icons.star), findsNWidgets(3));
       expect(_filledStars(tester), 2);
+    });
+
+    testWidgets(
+        'should_show_the_GameWon_preview_score_and_stars_when_canonical_is_null',
+        (tester) async {
+      // Arrange & Act: sin resultado canónico resuelto todavía (envío en
+      // tránsito o fallido) — se pinta el preview transportado por VictoryArgs.
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-01', score: 1234, stars: 2),
+          catalogIds: ids,
+          canonicalResult: null,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(find.text('Score: 1234'), findsOneWidget);
+      expect(_filledStars(tester), 2);
+    });
+
+    testWidgets(
+        'should_show_the_canonical_score_and_stars_when_reconciled_by_the_back',
+        (tester) async {
+      // Arrange & Act: el POST /scores ya resolvió — el canónico reemplaza en
+      // silencio al preview de GameWon (ADR 0006, decisión Q11: sin spinner).
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-01', score: 1234, stars: 2),
+          catalogIds: ids,
+          canonicalResult:
+              CanonicalResult(score: Score(999), stars: const Stars.three()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert — el canónico gana sobre el preview.
+      expect(find.text('Score: 999'), findsOneWidget);
+      expect(find.text('Score: 1234'), findsNothing);
+      expect(_filledStars(tester), 3);
     });
   });
 }

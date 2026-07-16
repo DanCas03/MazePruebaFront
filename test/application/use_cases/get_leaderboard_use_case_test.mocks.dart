@@ -3,16 +3,18 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i3;
+import 'dart:async' as _i4;
 
-import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart' as _i7;
+import 'package:flutter_arrow_maze/core/aspects/i_logger_service.dart' as _i8;
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart'
-    as _i6;
+    as _i7;
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart'
-    as _i5;
+    as _i6;
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart'
-    as _i4;
+    as _i5;
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart'
+    as _i3;
+import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart'
     as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 
@@ -30,28 +32,46 @@ import 'package:mockito/mockito.dart' as _i1;
 // ignore_for_file: camel_case_types
 // ignore_for_file: subtype_of_sealed_class
 
+class _FakeCanonicalResult_0 extends _i1.SmartFake
+    implements _i2.CanonicalResult {
+  _FakeCanonicalResult_0(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
 /// A class which mocks [ILeaderboardRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockILeaderboardRepository extends _i1.Mock
-    implements _i2.ILeaderboardRepository {
+    implements _i3.ILeaderboardRepository {
   MockILeaderboardRepository() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i3.Future<void> submitScore(_i4.ScoreEntry? entry) => (super.noSuchMethod(
+  _i4.Future<_i2.CanonicalResult> submitScore(_i5.ScoreEntry? entry) =>
+      (super.noSuchMethod(
         Invocation.method(
           #submitScore,
           [entry],
         ),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+        returnValue:
+            _i4.Future<_i2.CanonicalResult>.value(_FakeCanonicalResult_0(
+          this,
+          Invocation.method(
+            #submitScore,
+            [entry],
+          ),
+        )),
+      ) as _i4.Future<_i2.CanonicalResult>);
 
   @override
-  _i3.Future<List<_i5.LeaderboardEntry>> getLeaderboard(
-    _i6.LevelId? levelId, {
+  _i4.Future<List<_i6.LeaderboardEntry>> getLeaderboard(
+    _i7.LevelId? levelId, {
     int? limit,
   }) =>
       (super.noSuchMethod(
@@ -60,15 +80,15 @@ class MockILeaderboardRepository extends _i1.Mock
           [levelId],
           {#limit: limit},
         ),
-        returnValue: _i3.Future<List<_i5.LeaderboardEntry>>.value(
-            <_i5.LeaderboardEntry>[]),
-      ) as _i3.Future<List<_i5.LeaderboardEntry>>);
+        returnValue: _i4.Future<List<_i6.LeaderboardEntry>>.value(
+            <_i6.LeaderboardEntry>[]),
+      ) as _i4.Future<List<_i6.LeaderboardEntry>>);
 }
 
 /// A class which mocks [ILoggerService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockILoggerService extends _i1.Mock implements _i7.ILoggerService {
+class MockILoggerService extends _i1.Mock implements _i8.ILoggerService {
   MockILoggerService() {
     _i1.throwOnMissingStub(this);
   }

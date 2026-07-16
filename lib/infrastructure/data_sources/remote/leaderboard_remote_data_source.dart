@@ -8,8 +8,12 @@ class LeaderboardRemoteDataSource {
   final Dio _dio;
   LeaderboardRemoteDataSource(this._dio);
 
-  Future<void> postScore(Map<String, dynamic> body) async {
-    await _dio.post('/scores', data: body);
+  /// Envía las métricas crudas del run y devuelve el JSON de respuesta con el
+  /// resultado CANÓNICO (`{score, stars}`, ADR 0006).
+  Future<Map<String, dynamic>> postScore(Map<String, dynamic> body) async {
+    final response =
+        await _dio.post<Map<String, dynamic>>('/scores', data: body);
+    return response.data ?? const {};
   }
 
   /// Lee el ranking de un nivel (endpoint público). El `limit` opcional acota el

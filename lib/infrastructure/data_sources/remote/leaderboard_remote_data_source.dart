@@ -16,6 +16,14 @@ class LeaderboardRemoteDataSource {
     return response.data ?? const {};
   }
 
+  /// Lee el ranking GENERAL de jugadores (`GET /leaderboard`, ADR 0006;
+  /// autenticado — el back necesita saber quién pregunta para adjuntar la fila
+  /// `me`). Devuelve el JSON crudo `{top, me}`.
+  Future<Map<String, dynamic>> fetchGlobalLeaderboard() async {
+    final response = await _dio.get<Map<String, dynamic>>('/leaderboard');
+    return response.data ?? const {};
+  }
+
   /// Lee el ranking de un nivel (endpoint público). El `limit` opcional acota el
   /// top-N solicitado; el back aplica su propio default y máximo. Devuelve las
   /// filas crudas del JSON.

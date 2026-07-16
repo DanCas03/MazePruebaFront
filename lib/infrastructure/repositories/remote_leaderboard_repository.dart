@@ -3,6 +3,7 @@ import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
 import '../../domain/game_core/value_objects/score.dart';
 import '../../domain/game_core/value_objects/stars.dart';
+import '../../domain/leaderboard/entities/global_leaderboard.dart';
 import '../../domain/leaderboard/entities/leaderboard_entry.dart';
 import '../../domain/leaderboard/entities/score_entry.dart';
 import '../../domain/leaderboard/repositories/i_leaderboard_repository.dart';
@@ -50,6 +51,46 @@ class RemoteLeaderboardRepository implements ILeaderboardRepository {
     }
     return List.unmodifiable(entries);
   }
+
+  @override
+  Future<GlobalLeaderboard> getGlobalLeaderboard() async {
+    final json = await _dataSource.fetchGlobalLeaderboard();
+    // Misma degradación con gracia que `getLeaderboard`: una fila corrupta del
+    // top se salta loggeándola; un `me` corrupto degrada a `null` ("sin
+    // clasificar") en lugar de tumbar la pantalla entera.
+    final top = <GlobalLeaderboardEntry>[];
+    for (final row in (json['top'] as List<dynamic>? ?? const [])) {
+      try {
+        top.add(_globalEntryFromJson(row as Map<String, dynamic>));
+      } catch (e) {
+        _log.warn(
+          'Fila de leaderboard general inválida, se omite: $e',
+          'RemoteLeaderboardRepository',
+        );
+      }
+    }
+    GlobalLeaderboardEntry? me;
+    final rawMe = json['me'];
+    if (rawMe != null) {
+      try {
+        me = _globalEntryFromJson(rawMe as Map<String, dynamic>);
+      } catch (e) {
+        _log.warn(
+          'Fila propia del leaderboard general inválida, se omite: $e',
+          'RemoteLeaderboardRepository',
+        );
+      }
+    }
+    return GlobalLeaderboard(top: top, me: me);
+  }
+
+  GlobalLeaderboardEntry _globalEntryFromJson(Map<String, dynamic> j) =>
+      GlobalLeaderboardEntry(
+        username: j['username'] as String,
+        totalScore: j['totalScore'] as int,
+        totalStars: j['totalStars'] as int,
+        rank: j['rank'] as int,
+      );
 
   /// Métricas crudas del run (ADR 0006): el back deriva el resultado canónico
   /// a partir de ellas. `previewScore` viaja solo con fines de auditoría/

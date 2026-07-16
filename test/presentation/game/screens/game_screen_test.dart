@@ -34,6 +34,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/global_leaderboard.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
@@ -95,6 +96,10 @@ ArrowBoard _blockedArrowBoard() => ArrowBoard(
 /// Repo de leaderboard no-op: los widget tests activan el Observer de envío de
 /// score (front#16) pero no ejercen la red.
 class _NoopLeaderboardRepository implements ILeaderboardRepository {
+  @override
+  Future<GlobalLeaderboard> getGlobalLeaderboard() async =>
+      GlobalLeaderboard(top: const [], me: null);
+
   @override
   Future<CanonicalResult> submitScore(ScoreEntry entry) async =>
       CanonicalResult(score: Score(0), stars: const Stars.one());

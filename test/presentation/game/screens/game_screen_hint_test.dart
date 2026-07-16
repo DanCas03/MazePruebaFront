@@ -35,6 +35,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/global_leaderboard.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
@@ -72,6 +73,10 @@ class _FakeSolutionRepo implements ISolutionRepository {
 }
 
 class _NoopLeaderboardRepository implements ILeaderboardRepository {
+  @override
+  Future<GlobalLeaderboard> getGlobalLeaderboard() async =>
+      GlobalLeaderboard(top: const [], me: null);
+
   @override
   Future<CanonicalResult> submitScore(ScoreEntry entry) async =>
       CanonicalResult(score: Score(0), stars: const Stars.one());

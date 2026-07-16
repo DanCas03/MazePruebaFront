@@ -15,6 +15,7 @@ import 'application/state/generated_game_controller.dart';
 import 'application/state/level_selection_controller.dart';
 import 'application/commands/command_invoker.dart';
 import 'application/use_cases/generate_board_use_case.dart';
+import 'application/use_cases/get_global_leaderboard_use_case.dart';
 import 'application/use_cases/get_leaderboard_use_case.dart';
 import 'application/use_cases/remove_arrow_use_case.dart';
 import 'application/state/audio_settings_controller.dart';
@@ -247,6 +248,17 @@ void main() async {
               LoggerServiceAdapter(),
             ),
             LoggerServiceAdapter(),
+          ),
+        ),
+        // ADR 0006: ranking general de jugadores, con el mismo Dio firmado
+        // (el GET requiere JWT para adjuntar la fila propia). Las capas
+        // internas solo conocen el puerto ILeaderboardRepository.
+        getGlobalLeaderboardUseCaseProvider.overrideWithValue(
+          GetGlobalLeaderboardUseCase(
+            RemoteLeaderboardRepository(
+              LeaderboardRemoteDataSource(dio),
+              LoggerServiceAdapter(),
+            ),
           ),
         ),
       ],

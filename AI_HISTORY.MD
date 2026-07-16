@@ -1,5 +1,22 @@
 # AI History — MazePruebaFront
 
+## Entrada 111 — feat(front): pantalla del Leaderboard general desde el menú principal (ADR 0006)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Task B3 (última del sprint de scoring/leaderboard, ADR 0006): la pantalla marquee del ranking general de jugadores, consumiendo el `GET /leaderboard` del back (PR back#48) — `{top, me|null}` con totales de campaña (mejor score/estrellas por nivel) y `rank` en el cable. Directiva del usuario: pulido visual impecable, app-native.
+**Herramienta de IA utilizada:** Claude Code (Fable 5, roles frontend-architect + qa-engineer; el QA se ejecutó inline por caídas 529 del API en los despachos de subagente)
+**Prompt o instrucción proporcionada:** > "implementa la Task B3 (pantalla del leaderboard general, con pulido visual impecable) y luego monta el PR del front"
+**Resultado obtenido:**
+- `lib/domain/leaderboard/entities/global_leaderboard.dart` (nuevo): `GlobalLeaderboardEntry {username, totalScore, totalStars, rank}` (invariantes: rank ≥ 1, totales ≥ 0) y `GlobalLeaderboard {top inmutable, me?}` con `meIsInTop`. El `rank` viaja en el cable (no es posicional: `me` puede quedar fuera del top).
+- Puerto `ILeaderboardRepository` + `getGlobalLeaderboard()`; `LeaderboardRemoteDataSource.fetchGlobalLeaderboard()` (`GET /leaderboard`, JWT); `RemoteLeaderboardRepository.getGlobalLeaderboard()` con degradación con gracia (fila corrupta del top se salta con warn; `me` corrupto degrada a null = "sin clasificar").
+- `GetGlobalLeaderboardUseCase` + `getGlobalLeaderboardUseCaseProvider`/`globalLeaderboardProvider` (`FutureProvider.autoDispose`); composición en `main.dart` con el mismo Dio firmado.
+- `lib/presentation/leaderboard/screens/global_leaderboard_screen.dart` (nuevo): fondo radial continuo con Home, **podio top-3** (avatares-inicial con anillo/glow oro-plata-bronce — `AppColors.medalGold/Silver/Bronze` nuevos —, corona al nº 1, entrada fade+lift one-shot test-friendly), lista glass del 4º en adelante, fila propia resaltada in-place o **barra anclada** bajo la lista con badge "Tú", pie "sin clasificar" con `me == null`, pull-to-refresh + estados carga/error(retry)/vacío.
+- Ruta `AppRouter.globalLeaderboard = '/leaderboard/global'` (declarada antes del match de `/leaderboard`) y botón "Ranking" (`Icons.emoji_events`, acento dorado) en el Home bajo "Generar nivel". 8 claves l10n nuevas es/en (`globalLeaderboard*`, `homeLeaderboard`).
+- Tests (QA inline): entidad (invariantes/meIsInTop/inmutabilidad), repo remoto (parseo {top,me}, me:null, fila corrupta, me corrupto, error Dio), use case (delegación/propagación), 7 widget tests de la pantalla (loading, podio+filas, vacío, error+retry reinvoca provider, barra anclada con "Tú", resaltado in-place, "sin clasificar"). Fakes manuales de 3 suites existentes ganaron el método nuevo; mocks con diff real regenerados (get_leaderboard/submit_score/remote_leaderboard + el nuevo), ruido EOL revertido.
+- `README.md`: sección nueva §Global leaderboard (ADR 0006) + árbol actualizado.
+- Verificación: `flutter analyze` sin issues; `flutter test` **794/794 verde** (antes 773).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 110 — feat(front): contrato nuevo del POST /scores y reconciliación canónica en la victoria (ADR 0006)
 
 **Fecha:** 2026-07-16

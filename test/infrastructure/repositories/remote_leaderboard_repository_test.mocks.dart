@@ -44,6 +44,17 @@ class MockLeaderboardRemoteDataSource extends _i1.Mock
       ) as _i3.Future<Map<String, dynamic>>);
 
   @override
+  _i3.Future<Map<String, dynamic>> fetchGlobalLeaderboard() =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #fetchGlobalLeaderboard,
+          [],
+        ),
+        returnValue:
+            _i3.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      ) as _i3.Future<Map<String, dynamic>>);
+
+  @override
   _i3.Future<List<dynamic>> fetchLeaderboard(
     String? levelId, {
     int? limit,

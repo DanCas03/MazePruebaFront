@@ -122,6 +122,14 @@
   "leaderboardEmpty": "No scores on this level yet.\nBe the first!",
   "leaderboardError": "Couldn't load the ranking.",
   "viewLeaderboard": "View ranking",
+  "globalLeaderboardTitle": "Global Ranking",
+  "globalLeaderboardSubtitle": "Top campaign players",
+  "globalLeaderboardEmpty": "No ranked players yet.\nBe the first!",
+  "globalLeaderboardError": "Couldn't load the global ranking.",
+  "globalLeaderboardYou": "You",
+  "globalLeaderboardUnranked": "Not ranked yet — clear a campaign level to enter the ranking.",
+  "globalLeaderboardPointsSuffix": "pts",
+  "homeLeaderboard": "Ranking",
   "settingsTitle": "Settings",
   "@settingsTitle": {
     "description": "Title of the settings screen and tooltip of the home gear icon."

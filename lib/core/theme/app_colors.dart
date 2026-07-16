@@ -20,6 +20,12 @@ class AppColors {
   static const Color glassBorder = Color(0x26FFFFFF); // blanco ~15%
   static const Color glassFill = Color(0x14FFFFFF); // blanco ~8%
 
+  // Medallas del podio (leaderboard general, ADR 0006). El oro reutiliza el
+  // dorado de victoria para mantener una sola voz de "logro" en la app.
+  static const Color medalGold = victory;
+  static const Color medalSilver = Color(0xFFB9C0D8);
+  static const Color medalBronze = Color(0xFFC9764E);
+
   // Estado
   static const Color success = Color(0xFF46B98C);
   static const Color warning = Color(0xFFD7A24A);

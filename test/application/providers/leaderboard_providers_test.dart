@@ -27,6 +27,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/global_leaderboard.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart';
 
@@ -56,6 +57,10 @@ void _stubLevel(MockILevelRepository repo, ArrowBoard board) =>
 /// enviado en vez de golpear la red, para poder aserir la forma exacta del
 /// mapeo GameWon → ScoreEntry hecho por el Observer.
 class _SpyLeaderboardRepository implements ILeaderboardRepository {
+  @override
+  Future<GlobalLeaderboard> getGlobalLeaderboard() async =>
+      GlobalLeaderboard(top: const [], me: null);
+
   final List<ScoreEntry> submitted = [];
 
   /// Resultado canónico devuelto en éxito; configurable por test para cubrir

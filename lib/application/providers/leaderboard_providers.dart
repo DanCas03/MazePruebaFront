@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/board/value_objects/level_id.dart';
+import '../../domain/leaderboard/entities/global_leaderboard.dart';
 import '../../domain/leaderboard/entities/leaderboard_entry.dart';
 import '../../domain/leaderboard/entities/score_entry.dart';
 import '../../domain/leaderboard/value_objects/canonical_result.dart';
 import '../state/game_controller.dart';
 import '../state/game_state.dart';
+import '../use_cases/get_global_leaderboard_use_case.dart';
 import '../use_cases/get_leaderboard_use_case.dart';
 import '../use_cases/submit_score_use_case.dart';
 import 'progress_providers.dart';
@@ -93,5 +95,26 @@ final leaderboardProvider =
   (ref, levelId) {
     final useCase = ref.watch(getLeaderboardUseCaseProvider);
     return useCase.execute(LevelId(levelId));
+  },
+);
+
+/// ADR 0006 (lado lectura global). Se compone en main con el Dio firmado
+/// (DIP); el default falla para no acoplar a impls concretas antes de que
+/// existan.
+final getGlobalLeaderboardUseCaseProvider =
+    Provider<GetGlobalLeaderboardUseCase>(
+  (ref) => throw UnimplementedError(
+    'getGlobalLeaderboardUseCaseProvider must be overridden with composed dependencies',
+  ),
+);
+
+/// Expone el ranking general (`{top, me}`) a la UI vía `AsyncValue`.
+/// `autoDispose` para recargar al reabrir la pantalla y no cachear un ranking
+/// obsoleto (mismo criterio que `leaderboardProvider`).
+final globalLeaderboardProvider =
+    FutureProvider.autoDispose<GlobalLeaderboard>(
+  (ref) {
+    final useCase = ref.watch(getGlobalLeaderboardUseCaseProvider);
+    return useCase.execute();
   },
 );

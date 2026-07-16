@@ -1,5 +1,6 @@
 import '../../board/value_objects/level_id.dart';
 import '../../leaderboard/value_objects/canonical_result.dart';
+import '../entities/global_leaderboard.dart';
 import '../entities/leaderboard_entry.dart';
 import '../entities/score_entry.dart';
 
@@ -18,4 +19,10 @@ abstract interface class ILeaderboardRepository {
   /// su propio default y máximo). Propaga el error para que la UI muestre estado
   /// de error (a diferencia del envío fire-and-forget).
   Future<List<LeaderboardEntry>> getLeaderboard(LevelId levelId, {int? limit});
+
+  /// Lee el ranking general de jugadores (`GET /leaderboard`, ADR 0006):
+  /// top-N por total de puntos de campaña más la fila propia (`me`, o `null`
+  /// si el jugador aún no clasifica). Requiere sesión (JWT). Propaga el error
+  /// para que la UI muestre estado de error, igual que [getLeaderboard].
+  Future<GlobalLeaderboard> getGlobalLeaderboard();
 }

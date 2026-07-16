@@ -7,6 +7,7 @@ import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/global_leaderboard.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
 import 'package:flutter_arrow_maze/infrastructure/data_sources/remote/leaderboard_remote_data_source.dart';
@@ -170,5 +171,105 @@ void main() {
     // Assert — solo las dos válidas, en orden; la corrupta se saltó y se loggeó.
     expect(entries.map((e) => e.id).toList(), ['ok-1', 'ok-2']);
     expect(logger.warnings, hasLength(1));
+  });
+
+  Map<String, dynamic> globalRow({
+    String username = 'ana',
+    int totalScore = 900,
+    int totalStars = 12,
+    int? rank = 1,
+  }) =>
+      {
+        'username': username,
+        'totalScore': totalScore,
+        'totalStars': totalStars,
+        if (rank != null) 'rank': rank,
+      };
+
+  test('getGlobalLeaderboard parsea el contrato {top, me} de ADR 0006',
+      () async {
+    // Arrange
+    when(dataSource.fetchGlobalLeaderboard()).thenAnswer(
+      (_) async => {
+        'top': [
+          globalRow(rank: 1),
+          globalRow(username: 'leo', totalScore: 700, totalStars: 9, rank: 2),
+        ],
+        'me': globalRow(username: 'dan', totalScore: 120, totalStars: 3, rank: 42),
+      },
+    );
+    // Act
+    final board = await repository.getGlobalLeaderboard();
+    // Assert
+    expect(board.top, hasLength(2));
+    expect(board.top.first, isA<GlobalLeaderboardEntry>());
+    expect(board.top.first.username, 'ana');
+    expect(board.top.first.totalScore, 900);
+    expect(board.top.first.totalStars, 12);
+    expect(board.top.first.rank, 1);
+    expect(board.me, isNotNull);
+    expect(board.me!.username, 'dan');
+    expect(board.me!.rank, 42);
+    expect(board.meIsInTop, isFalse);
+  });
+
+  test('getGlobalLeaderboard mapea me:null a un jugador sin clasificar',
+      () async {
+    // Arrange
+    when(dataSource.fetchGlobalLeaderboard()).thenAnswer(
+      (_) async => {
+        'top': [globalRow()],
+        'me': null,
+      },
+    );
+    // Act
+    final board = await repository.getGlobalLeaderboard();
+    // Assert
+    expect(board.top, hasLength(1));
+    expect(board.me, isNull);
+  });
+
+  test(
+      'getGlobalLeaderboard omite una fila corrupta del top loggeándola, sin '
+      'tumbar el resto', () async {
+    // Arrange — a la fila del medio le falta `rank` (cast a int falla).
+    when(dataSource.fetchGlobalLeaderboard()).thenAnswer(
+      (_) async => {
+        'top': [
+          globalRow(rank: 1),
+          globalRow(username: 'bad', rank: null),
+          globalRow(username: 'leo', rank: 3),
+        ],
+        'me': null,
+      },
+    );
+    // Act
+    final board = await repository.getGlobalLeaderboard();
+    // Assert
+    expect(board.top.map((e) => e.username).toList(), ['ana', 'leo']);
+    expect(logger.warnings, hasLength(1));
+  });
+
+  test('getGlobalLeaderboard degrada un me corrupto a null con warn', () async {
+    // Arrange — me trae rank inválido (0 viola la invariante de la entidad).
+    when(dataSource.fetchGlobalLeaderboard()).thenAnswer(
+      (_) async => {
+        'top': [globalRow()],
+        'me': globalRow(username: 'dan', rank: 0),
+      },
+    );
+    // Act
+    final board = await repository.getGlobalLeaderboard();
+    // Assert — la pantalla no se cae: queda "sin clasificar" y se loggea.
+    expect(board.top, hasLength(1));
+    expect(board.me, isNull);
+    expect(logger.warnings, hasLength(1));
+  });
+
+  test('getGlobalLeaderboard propaga el error del datasource', () async {
+    // Arrange
+    when(dataSource.fetchGlobalLeaderboard()).thenThrow(Exception('red caída'));
+    // Act / Assert
+    expect(() => repository.getGlobalLeaderboard(), throwsException);
   });
 }

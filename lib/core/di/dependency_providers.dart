@@ -13,6 +13,7 @@ import '../../domain/board/repositories/i_remote_progress_repository.dart';
 import '../../domain/board/services/progress_reconciler.dart';
 import '../../infrastructure/data_sources/local/hive_level_progress_data_source.dart';
 import '../../infrastructure/generators/graph_board_generator.dart';
+import '../../infrastructure/repositories/hive_progress_box_scope.dart';
 import '../../infrastructure/repositories/hive_progress_repository.dart';
 
 /// Composition root (DIP): unico lugar donde se instancian clases de
@@ -34,9 +35,17 @@ final audioServiceProvider = Provider<IAudioService>(
   (_) => const SilentAudioService(),
 );
 
+// Alcance por-cuenta de la caja de progreso. Default para tests/composición; en
+// producción `main` comparte una única instancia con el AuthController para que
+// abrir/cerrar la caja siga las transiciones de sesión.
+final hiveProgressBoxScopeProvider = Provider<HiveProgressBoxScope>(
+  (_) => HiveProgressBoxScope(),
+);
+
 // Infraestructura Hive — DataSource separado del Repository (Petros pattern).
+// La caja concreta la resuelve el scope por cuenta activa (no una global).
 final hiveDataSourceProvider = Provider<HiveLocalDataSource>(
-  (_) => HiveLocalDataSource(),
+  (ref) => HiveLocalDataSource(ref.watch(hiveProgressBoxScopeProvider)),
 );
 
 final levelProgressRepositoryProvider = Provider<ILevelProgressRepository>(

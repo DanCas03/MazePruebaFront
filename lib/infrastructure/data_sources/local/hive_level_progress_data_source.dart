@@ -1,6 +1,7 @@
 import 'package:hive_ce/hive.dart';
 
 import '../../models/level_progress_hive_model.dart';
+import '../../repositories/hive_progress_box_scope.dart';
 
 /// Acceso raw a Hive para el progreso de niveles.
 ///
@@ -8,11 +9,16 @@ import '../../models/level_progress_hive_model.dart';
 /// librería de persistencia (Hive). El Repository depende de esta clase y no
 /// de Hive, lo que permite mockear el DataSource y testear el Repository de
 /// forma aislada.
+///
+/// La caja concreta ya NO es global: la resuelve [HiveProgressBoxScope] según
+/// la cuenta activa (`level_progress_<userId>`), de modo que cada usuario
+/// lee/escribe su propia caja y el progreso no se comparte entre cuentas.
 class HiveLocalDataSource {
-  static const _boxName = 'level_progress';
+  final HiveProgressBoxScope _scope;
 
-  Box<LevelProgressHiveModel> get _box =>
-      Hive.box<LevelProgressHiveModel>(_boxName);
+  HiveLocalDataSource(this._scope);
+
+  Box<LevelProgressHiveModel> get _box => _scope.box;
 
   LevelProgressHiveModel? getProgress(String levelId) => _box.get(levelId);
 

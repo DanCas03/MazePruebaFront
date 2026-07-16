@@ -27,6 +27,8 @@ import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/auth/screens/login_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
 
+import '../../support/auth_fakes.dart';
+
 // Token de larga vida (exp en 2100): el restore lo acepta -> arranca autenticado.
 final _validToken = AuthToken(
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1MSIsImV4cCI6NDEwMjQ0NDgwMH0.sig');
@@ -102,7 +104,7 @@ void main() {
     return ProviderContainer(overrides: [
       authControllerProvider.overrideWith(
         () => AuthController(storage, RestoreSessionUseCase(storage),
-            InMemorySessionTokenStore()),
+            InMemorySessionTokenStore(), NoopUserScopedStorage()),
       ),
       authRepositoryProvider.overrideWithValue(_FakeAuthRepo()),
       levelProgressRepositoryProvider.overrideWithValue(_FakeLocal()),

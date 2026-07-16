@@ -39,6 +39,44 @@ void main() {
     });
   });
 
+  group('AuthToken.subject', () {
+    test('devuelve el claim sub cuando el JWT lo trae', () {
+      // Arrange
+      final token = AuthToken(_jwt({'sub': 'user-uuid-123', 'email': 'a@b.co'}));
+      // Act / Assert
+      expect(token.subject, 'user-uuid-123');
+    });
+
+    test('devuelve null cuando el JWT no trae claim sub', () {
+      // Arrange
+      final token = AuthToken(_jwt({'email': 'a@b.co'}));
+      // Act / Assert
+      expect(token.subject, isNull);
+    });
+
+    test('devuelve null cuando sub está vacío', () {
+      // Arrange — un sub vacío no identifica cuenta: se trata como ausente
+      final token = AuthToken(_jwt({'sub': ''}));
+      // Act / Assert
+      expect(token.subject, isNull);
+    });
+
+    test('devuelve null cuando el token no es un JWT decodificable', () {
+      // Arrange
+      final token = AuthToken('not-a-jwt');
+      // Act / Assert
+      expect(token.subject, isNull);
+    });
+
+    test('dos tokens de usuarios distintos exponen subjects distintos', () {
+      // Arrange
+      final a = AuthToken(_jwt({'sub': 'user-a'}));
+      final b = AuthToken(_jwt({'sub': 'user-b'}));
+      // Act / Assert — clave del aislamiento por cuenta del progreso
+      expect(a.subject, isNot(equals(b.subject)));
+    });
+  });
+
   group('AuthToken.isExpired', () {
     final now = DateTime.utc(2026, 7, 8, 12, 0, 0);
 

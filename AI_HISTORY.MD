@@ -1916,3 +1916,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
 **Resultado obtenido:** Método `ArrowBoard.withSilhouetteSpace()` (`lib/domain/arrows/entities/arrow_board.dart`): devuelve un tablero con las mismas flechas y `MaskedSpace(cols, rows, activeCells: {celdas de todas las flechas})` sobre la misma caja. Documentado que NUNCA reduce la resolubilidad (el carril de salida enmascarado es prefijo del rectangular) y que `removeArrow` propaga el espacio (la figura no se encoge). Test AAA `test/domain/entities/arrow_board_silhouette_test.dart`: máscara exacta = unión; caja/flechas intactas; celda de flecha dentro y celda de caja sin flecha fuera; `canExit` preservado; `removeArrow` conserva la máscara. **5/5** verde; `flutter analyze` sin issues. Rama `feat/#88-themed-silhouette-space`.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 103 — Fase 1 (#88): montar el nivel temático sobre su silueta (seam en el controller)
+
+**Tarea o problema abordado:** Cablear la política de #88 en la capa de aplicación: al montar un nivel TEMÁTICO (`palette != null`) el tablero se realiza con `withSilhouetteSpace()`; campaña (rect) intacta. Segundo fragmento de #88.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
+**Resultado obtenido:** `GameController._mountedBoard(Level)` (`lib/application/state/game_controller.dart`) devuelve `level.board.withSilhouetteSpace()` si el nivel es temático, o `level.board` en campaña — la POLÍTICA de cuándo (aplicación), delegando la geometría al dominio. Idempotente y barato, se llama en los tres puntos de montaje para que compartan el MISMO espacio: `_startLevel` (arranque/restart), `_runHintDemo` (demo de pista) y el sembrado de `undoMove` tras victoria (antes usaba `data.board.space` crudo del wire → habría revertido a rectángulo). Test AAA `test/application/state/game_controller_themed_space_test.dart`: temático monta `MaskedSpace` = unión de celdas; campaña conserva `RectSpace`; restart re-deriva la misma silueta. **3/3** nuevos verde; regresión de `game_controller_test`/`game_controller_hint_test` verde; `flutter analyze` sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

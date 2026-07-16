@@ -1,6 +1,7 @@
 import '../value_objects/direction.dart';
 import '../value_objects/position.dart';
 import 'board_space.dart';
+import 'bounding_box.dart';
 
 /// Espacio rectangular cols×rows: la única geometría de producción hoy.
 /// Contiene el único switch dirección→delta del artefacto (ADR-0005 D2),
@@ -36,6 +37,11 @@ class RectSpace extends BoardSpace {
 
   @override
   int get cellCount => cols * rows;
+
+  // Caja conocida en O(1): el rectángulo completo desde el origen (#85).
+  @override
+  BoundingBox get bounds =>
+      BoundingBox(minRow: 0, minCol: 0, rows: rows, cols: cols);
 
   @override
   Iterable<Position> get allCells sync* {

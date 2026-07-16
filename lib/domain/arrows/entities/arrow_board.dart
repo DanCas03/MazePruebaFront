@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'arrow.dart';
 import '../value_objects/arrow_id.dart';
 import '../../game_core/space/board_space.dart';
-import '../../game_core/space/rect_space.dart';
 import '../../game_core/value_objects/position.dart';
 
 // Aggregate Root: único punto de acceso al estado del tablero de flechas.
@@ -15,13 +14,13 @@ class ArrowBoard extends Equatable {
     required this.space,
   });
 
-  // cols/rows delegados (ADR-0005 D4): todo espacio concreto de HOY (RectSpace
-  // y su único subtipo HoledRectSpace) tiene bounding box rectangular, así que
-  // exponer cols/rows aquí evita tocar cada widget/encoder que ya los lee. No
-  // es parte del contrato de BoardSpace — un espacio no-rectangular futuro
-  // rompería este cast a propósito (documentado, no implementado: ADR-0005 §8).
-  int get cols => (space as RectSpace).cols;
-  int get rows => (space as RectSpace).rows;
+  // cols/rows delegados a la caja envolvente del espacio (#85, Fase 1): antes
+  // se hacía un downcast duro al subtipo RectSpace, que rompía cualquier
+  // geometría no rectangular. Ahora salen de `space.bounds`, que TODO
+  // BoardSpace expone (default derivado de allCells; RectSpace en O(1)) — sin
+  // conocer el subtipo concreto.
+  int get cols => space.bounds.cols;
+  int get rows => space.bounds.rows;
 
   // Caché de ocupación por instancia (#64): ArrowBoard es inmutable, así que
   // el Set de celdas ocupadas se computa lazy UNA vez por instancia en lugar

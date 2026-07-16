@@ -1837,3 +1837,39 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
 **Resultado obtenido:** `game_screen.dart` añade `_ErrorsChip` en la AppBar (corazón + `s.strikes.remaining`, tooltip `l10n.errorsLeft`), presente durante todo `GamePlaying` y espejo visual de `_CountdownChip`. TDD: `_repoWithBoard` acepta `maxErrors`; test nuevo (chip arranca en 3, desciende a 2 tras un choque, sigue jugando), **10/10** en game_screen (RED verificado). `flutter analyze` limpio; suite completa **684/684**. README actualizado (condición de derrota: presupuesto por nivel + contador descendente). Seguimiento OPCIONAL (backend): servir `maxErrors` por nivel en `GET /levels/:id` para que difieran entre niveles; hasta entonces todos usan el default 5 (dificultad sin cambios). Nota: `undoMove` no revierte strikes (comportamiento previo intencional, fuera de alcance).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 095 — Generador por bandas (fragmento 1) — Helpers puros de bandas y cuotas
+
+**Tarea o problema abordado:** Primer fragmento del fix de densidad del generador (spec 2026-07-15-generator-band-density-design.md): helpers puros y testeables para particionar el tablero en bandas concéntricas y repartir cuotas proporcionales.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 1)
+**Resultado obtenido:** Nuevo `lib/infrastructure/generators/band_layout.dart` con dos funciones puras: `concentricBands(cols, rows)` (índice 0 = banda más interior; distancia al borde d=min(row,col,rows-1-row,cols-1-col); k=min(3,maxD+1) bandas de ancho igual; particiona todas las celdas sin solape) y `largestRemainderQuotas(total, sizes)` (reparto por mayor resto, suma exacta = total). Tests delegados a subagente (AAA, `should_..._when_...`): **7/7** verdes — 3 para `concentricBands` (partición 20×20, banda única 2×2, una banda por distancia 6×8) y 4 para `largestRemainderQuotas` (suma exacta, proporcionalidad [5,10,15], sizes en cero, total=0). Sin knobs públicos nuevos; no toca `generate()` ni el camino temático.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 096 — Generador por bandas (fragmento 2) — Colocación interior-primero (GREEN)
+
+**Tarea o problema abordado:** Eliminar el anillo perimetral: reescribir `GraphBoardGenerator.generate()` para colocar flechas interior-primero por bandas concéntricas con cuota proporcional y dirección factible (spec 2026-07-15-generator-band-density-design.md).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Tasks 2-3)
+**Resultado obtenido:** `generate()` ahora recorre `concentricBands` de dentro afuera con cuotas de `largestRemainderQuotas` (rollover del déficit hacia la banda siguiente, presupuesto `celdas_banda×30` = `cols×rows×30` global igual que antes). Nuevo helper `_bentArrowFromPool`: muestrea la cabeza del pool de la banda y elige la dirección AL AZAR ENTRE LAS FACTIBLES (antes se imponía a priori, causa del anillo). Se conservan los asserts de invariante DAG (carril de salida libre + sin overlap al colocar) y la degradación con gracia vía `_logger?.warn`. **Test guardián de densidad (Task 2):** ajustado a la config donde el spec sitúa el anillo — 50×50, arrowCount 200, maxPathLen 5 (config del plan 20×20/60 daba falso verde, avg≈0.70; decisión del usuario). RED con el generador viejo (avg 0.474 < 0.6), GREEN tras el fix. Aislamiento verificado: golden temático de `themed_producer_test.dart` byte-idéntico SIN recaptura, determinismo e invariantes verdes (45/45 en la suite de generadores + temático + determinismo). `generateThemed`, `_randomBentArrow`, `_randomHeadWithClearLane` y `_freeNeighbors` intactos. Seguimiento OPCIONAL (fuera de alcance del plan): la rama `allowedBody==null` de `_randomBentArrow`/`_randomHeadWithClearLane` queda sin usar por producción (solo temático las llama, con `allowedBody` no nulo); candidata a limpieza en un fragmento aparte para no arriesgar la estabilidad byte a byte del golden temático.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 097 — Generador por bandas (fragmento 3) — Recaptura de goldens como forward guard
+
+**Tarea o problema abordado:** El golden de campaña (`golden_boards_regression_test.dart`) rompía por diseño tras el rework del generador; su misión pre-BoardSpace terminó con PR #79. Recapturar los dos fixtures y reconvertir el test en guardián hacia delante (patrón back#39).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 4)
+**Resultado obtenido:** Confirmado RED (2/2) con el generador nuevo. Script efímero `tool/regen_goldens.dart` (creado, ejecutado, borrado — sin rastro en el árbol) reescribió `test/fixtures/golden_boards/cand-t1-s101.json` (tier 1, 6×8) y `cand-t5-s918.json` (tier 5 finale, 50×50) vía `produceCandidate(spec).json`. Doc-comment del test reescrito como *forward regression guard*: fija el output del generador por bandas para (tier, seed); si rompe sin cambio deliberado hay bug de reproducibilidad. Verificado GREEN 2/2. (Los nombres de group/test conservan la referencia histórica front#73 por alcance mínimo del plan.)
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 098 — Generador por bandas (fragmento 4) — README, suite completa y PR
+
+**Tarea o problema abordado:** Documentar la distribución homogénea en el README del modo "Generar nivel" y cerrar la feature con la suite completa verde.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 5)
+**Resultado obtenido:** Nota en README (§ GenerateBoardUseCase): `GraphBoardGenerator` coloca interior-primero por bandas concéntricas ⇒ densidad interior comparable al borde (sin anillo perimetral), determinismo intacto (mismo seed + config ⇒ mismo tablero), con enlace al spec. Suite completa **704/704** verde; `flutter analyze` sin issues. PR a `main` (el usuario decide el merge).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -8,6 +8,7 @@ import '../../domain/game_core/space/board_space.dart';
 import '../../domain/game_core/space/rect_space.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
+import 'band_layout.dart';
 
 /// One themed region for [GraphBoardGenerator.generateThemed]: a set of cells
 /// that a group of arrows must stay inside, all tagged with one paint role.
@@ -53,35 +54,53 @@ class GraphBoardGenerator implements ILevelGenerator {
     // en lugar de reconstruirse (y de instanciar un ArrowBoard temporal) en
     // cada intento — eso hacía inviable un 50×50 denso (~10⁸ operaciones).
     final occupied = <Position>{};
-    final maxAttempts = cols * rows * 30;
-    var attempts = 0;
 
-    while (placed.length < arrowCount && attempts < maxAttempts) {
-      attempts++;
-      final candidate = _randomBentArrow(
-          rng, space, cols, rows, placed.length, maxPathLen, occupied);
-      if (candidate == null) continue;
+    // Colocación interior-primero por bandas concéntricas (spec 2026-07-15):
+    // las flechas centrales se colocan con el tablero vacío (carriles largos
+    // baratos) y el perímetro al final, cuando solo los carriles cortos son
+    // viables — homogeneidad por construcción, mismo invariante DAG.
+    final bands = concentricBands(cols: cols, rows: rows);
+    final quotas =
+        largestRemainderQuotas(arrowCount, [for (final b in bands) b.length]);
 
-      // Válido por construcción contra el estado local: _randomBentArrow
-      // elige una cabeza con carril de salida libre de `occupied`, reserva
-      // ese carril y crece el cuerpo evitando `occupied` — no hay overlap y
-      // la salida queda libre en el momento de colocarla (invariante DAG).
-      assert(candidate.cells.every((c) => !occupied.contains(c)),
-          'candidate overlaps the incremental occupancy state');
-      assert(
-          space
-              .exitLane(candidate.head, candidate.headDirection)
-              .every((p) => !occupied.contains(p)),
-          'candidate exit lane is blocked at placement time');
+    var carry = 0; // cuota no colocada que rueda a la banda siguiente
+    var totalAttempts = 0;
+    for (var i = 0; i < bands.length; i++) {
+      final pool = bands[i];
+      final target = quotas[i] + carry;
+      var bandPlaced = 0;
+      var attempts = 0;
+      final maxAttempts = pool.length * 30;
+      while (bandPlaced < target && attempts < maxAttempts) {
+        attempts++;
+        final candidate = _bentArrowFromPool(
+            rng, space, pool, placed.length, maxPathLen, occupied);
+        if (candidate == null) continue;
 
-      placed.add(candidate);
-      occupied.addAll(candidate.cells);
+        // Válido por construcción contra el estado local: _bentArrowFromPool
+        // elige una cabeza con carril de salida libre de `occupied`, reserva
+        // ese carril y crece el cuerpo evitando `occupied` — no hay overlap y
+        // la salida queda libre en el momento de colocarla (invariante DAG).
+        assert(candidate.cells.every((c) => !occupied.contains(c)),
+            'candidate overlaps the incremental occupancy state');
+        assert(
+            space
+                .exitLane(candidate.head, candidate.headDirection)
+                .every((p) => !occupied.contains(p)),
+            'candidate exit lane is blocked at placement time');
+
+        placed.add(candidate);
+        occupied.addAll(candidate.cells);
+        bandPlaced++;
+      }
+      carry = target - bandPlaced;
+      totalAttempts += attempts;
     }
 
     if (placed.length < arrowCount) {
       _logger?.warn(
         'Graceful degradation: placed ${placed.length}/$arrowCount arrows '
-        'in ${cols}x$rows board after $attempts attempts (seed=$seed)',
+        'in ${cols}x$rows board after $totalAttempts attempts (seed=$seed)',
         'GraphBoardGenerator',
       );
     }
@@ -145,6 +164,48 @@ class GraphBoardGenerator implements ILevelGenerator {
     }
 
     return ArrowBoard(arrows: placed, space: space);
+  }
+
+  /// Variante de campaña por bandas: muestrea la cabeza de [pool] y elige la
+  /// dirección AL AZAR ENTRE LAS FACTIBLES (carril libre), en vez de imponerla
+  /// a priori — una celda vale si cualquiera de sus carriles está libre. El
+  /// cuerpo crece igual que en [_randomBentArrow] y puede salir del pool.
+  Arrow? _bentArrowFromPool(Random rng, BoardSpace space, List<Position> pool,
+      int index, int maxPathLen, Set<Position> occupied) {
+    Position? head;
+    Direction? dir;
+    for (var t = 0; t < 20 && head == null; t++) {
+      final cell = pool[rng.nextInt(pool.length)];
+      if (occupied.contains(cell)) continue;
+      final feasible = <Direction>[
+        for (final d in Direction.values)
+          if (space.exitLane(cell, d).every((p) => !occupied.contains(p))) d
+      ];
+      if (feasible.isEmpty) continue;
+      head = cell;
+      dir = feasible[rng.nextInt(feasible.length)];
+    }
+    if (head == null || dir == null) return null;
+
+    final blocked = <Position>{...occupied, head, ...space.exitLane(head, dir)};
+    final body = <Position>[head]; // head..tail; se invierte al final
+    final targetLen = 2 + rng.nextInt(maxPathLen - 1); // 2..maxPathLen
+    var cursor = head;
+    while (body.length < targetLen) {
+      final options = _freeNeighbors(cursor, space, blocked);
+      if (options.isEmpty) break; // acepta cuerpo más corto
+      final next = options[rng.nextInt(options.length)];
+      body.add(next);
+      blocked.add(next);
+      cursor = next;
+    }
+    if (body.length < 2) return null;
+
+    return Arrow(
+      id: ArrowId('arrow-$index'),
+      cells: body.reversed.toList(),
+      headDirection: dir,
+    );
   }
 
   /// Construye una flecha doblada: elige cabeza+dirección con carril de salida

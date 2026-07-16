@@ -3,6 +3,7 @@ import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
+import 'package:flutter_arrow_maze/presentation/level_selection/themed_selection_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,6 +38,11 @@ void main() {
         isA<LevelSelectionScreen>());
   });
 
+  testWidgets('themed route builds ThemedSelectionScreen', (tester) async {
+    expect(await _pageFor(tester, AppRouter.themed),
+        isA<ThemedSelectionScreen>());
+  });
+
   testWidgets('game route builds GameScreen', (tester) async {
     expect(await _pageFor(tester, AppRouter.game), isA<GameScreen>());
   });
@@ -53,6 +59,7 @@ void main() {
     // Assert
     expect(AppRouter.home, '/');
     expect(AppRouter.levelSelection, '/levels');
+    expect(AppRouter.themed, '/themed');
     expect(AppRouter.game, '/game');
     expect(AppRouter.victory, '/victory');
   });

@@ -112,6 +112,14 @@
   "@themedSection": {
     "description": "Header of the themed levels block on the level selection screen (no tiers, no locks)."
   },
+  "homeThemed": "Themed levels",
+  "@homeThemed": {
+    "description": "Home screen CTA that opens the dedicated themed-levels section (front#100)."
+  },
+  "themedEmpty": "No themed levels available yet.",
+  "@themedEmpty": {
+    "description": "Empty state of the themed section when the catalog has no themed levels."
+  },
   "leaderboardTitle": "Ranking · Level {level}",
   "@leaderboardTitle": {
     "description": "Leaderboard screen AppBar title for a given level.",

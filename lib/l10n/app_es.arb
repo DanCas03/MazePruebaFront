@@ -45,6 +45,8 @@
   "difficultyMedium": "Medio",
   "difficultyHard": "Difícil",
   "themedSection": "Temáticos",
+  "homeThemed": "Niveles temáticos",
+  "themedEmpty": "Aún no hay niveles temáticos disponibles.",
   "leaderboardTitle": "Ranking · Nivel {level}",
   "leaderboardEmpty": "Aún no hay puntajes en este nivel.\n¡Sé el primero!",
   "leaderboardError": "No se pudo cargar el ranking.",

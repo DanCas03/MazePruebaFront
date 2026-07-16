@@ -129,11 +129,11 @@ void main() {
     expect(find.byIcon(Icons.lock), findsNWidgets(3));
   });
 
-  testWidgets('should_render_themed_block_without_locks_and_navigate_with_real_id',
+  testWidgets(
+      'should_not_embed_the_themed_block_the_campaign_selector_is_campaign_only',
       (tester) async {
-    // Arrange: 3 niveles de campaña (Tier 1, desbloqueado) + 1 temático. El
-    // temático vive en su bloque "Themed", sin candado y siempre tappable.
-    final nav = _NavCapture();
+    // Arrange & Act — catálogo con un temático: el selector de campaña ya NO lo
+    // embebe (front#100: el contenido temático vive en ThemedSelectionScreen).
     final entries = <CatalogEntry>[
       for (var n = 1; n <= 3; n++)
         CatalogEntry(id: LevelId('$n'), section: LevelSection.campaign),
@@ -141,29 +141,12 @@ void main() {
     ];
     await _pumpScreen(
       tester,
-      nav,
+      _NavCapture(),
       overrides: levelSelectionOverrides(catalogEntries: entries),
     );
-    // Assert: aparece el encabezado "Themed" y ningún candado (nada bloqueado).
-    expect(find.text('Themed'), findsOneWidget);
-    expect(find.byIcon(Icons.lock), findsNothing);
-
-    // Act: tocar la celda temática navega con el LevelId REAL.
-    await tester.tap(find.byKey(const ValueKey('level-tile-t-smiley')));
-    await tester.pump();
-    await tester.pump();
-    // Assert
-    expect(nav.pushedLevel, LevelId('t-smiley'));
-    expect(find.byKey(const Key('game-page')), findsOneWidget);
-  });
-
-  testWidgets('should_not_render_themed_block_when_catalog_is_campaign_only',
-      (tester) async {
-    // Arrange & Act: catálogo solo-campaña (el caso por defecto de los fakes).
-    await _pumpScreen(tester, _NavCapture());
-    // Assert: sin niveles temáticos no aparece el encabezado "Themed" (la
-    // pantalla se ve idéntica a antes de la feature).
+    // Assert — ni encabezado "Themed" ni la celda temática en esta pantalla.
     expect(find.text('Themed'), findsNothing);
+    expect(find.byKey(const ValueKey('level-tile-t-smiley')), findsNothing);
   });
 
   testWidgets('should_render_earned_stars_on_completed_level', (tester) async {

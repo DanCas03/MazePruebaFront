@@ -31,9 +31,11 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/entities/global_leaderboard.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/leaderboard_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/entities/score_entry.dart';
 import 'package:flutter_arrow_maze/domain/leaderboard/repositories/i_leaderboard_repository.dart';
+import 'package:flutter_arrow_maze/domain/leaderboard/value_objects/canonical_result.dart';
 import 'package:flutter_arrow_maze/presentation/game/screens/game_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/victory_screen.dart';
 
@@ -90,11 +92,20 @@ MockILevelRepository _repoWithBoard(ArrowBoard board) {
 class _CountingLeaderboardRepository implements ILeaderboardRepository {
   final List<String> submitted = [];
   @override
-  Future<void> submitScore(ScoreEntry entry) async =>
-      submitted.add(entry.levelId.value);
+  Future<CanonicalResult> submitScore(ScoreEntry entry) async {
+    submitted.add(entry.levelId.value);
+    // ADR 0006: el back devuelve el resultado canónico; aquí espejamos el
+    // preview del entry (este test no ejercita la reconciliación de valores).
+    return CanonicalResult(score: entry.score, stars: entry.stars);
+  }
+
   @override
   Future<List<LeaderboardEntry>> getLeaderboard(LevelId levelId, {int? limit}) async =>
       const [];
+
+  @override
+  Future<GlobalLeaderboard> getGlobalLeaderboard() async =>
+      GlobalLeaderboard(top: const []);
 }
 
 /// Progress repo que CUENTA las escrituras de completado por nivel.
@@ -146,15 +157,23 @@ void main() {
     await notifier.loadLevel(LevelId('level-01'));
     await notifier.tapArrow(const ArrowId('a1'));
     await container.pump(); // deja correr los fire-and-forget
+    // Instantánea tras la victoria. El ENVÍO es exactamente uno; el REGISTRO
+    // puede ser >1 por la reconciliación canónica de ADR 0006 (el observer de
+    // progreso registra el preview y `_submitAndReconcile` re-registra el
+    // canónico, idempotente best-of) — irrelevante para este invariante.
+    final submittedAfterWin = List.of(leaderboard.submitted);
+    final recordedAfterWin = List.of(progress.recorded);
 
     // ...y luego ENTRA a otro nivel (loadLevel de nuevo): el estado de carga
-    // no debe re-disparar el envío/registro del nivel ya ganado.
+    // RETIENE el GameWon anterior, pero la guarda de borde impide re-disparar.
     await notifier.loadLevel(LevelId('level-02'));
     await container.pump();
 
-    // Assert — exactamente UN envío y UN registro, ambos del nivel ganado.
-    expect(leaderboard.submitted, ['level-01']);
-    expect(progress.recorded, ['level-01']);
+    // Assert — cargar otro nivel NO re-envía ni re-registra el nivel ya ganado.
+    expect(leaderboard.submitted, ['level-01']); // un solo envío; ninguno al recargar
+    expect(leaderboard.submitted, submittedAfterWin);
+    expect(progress.recorded, recordedAfterWin); // sin nuevos registros al recargar
+    expect(progress.recorded, everyElement('level-01')); // nunca del nivel nuevo
   });
 
   testWidgets(
@@ -202,6 +221,7 @@ void main() {
       score: Score(9000),
       stars: const Stars.three(),
       timeSeconds: 0,
+      collisions: 0,
       levelId: LevelId('level-01'),
     ));
     await tester.pumpAndSettle();

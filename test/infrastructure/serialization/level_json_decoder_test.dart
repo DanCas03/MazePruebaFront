@@ -362,5 +362,50 @@ void main() {
       // Act & Assert
       expect(() => sut.decode(bad), throwsFormatException);
     });
+
+    // front#99 — silhouette field (ADR 0006): a themed level may carry a
+    // silhouette (role -> list of [row, col] pairs) to fill under the board.
+    test('parses silhouette into Level', () {
+      // Arrange
+      final level = const LevelJsonDecoder().decode({
+        'levelId': 't-x', 'cols': 4, 'rows': 4,
+        'arrows': [
+          {'id': 'a0', 'headDir': 'right', 'cells': [[0, 0], [0, 1]], 'paintRole': 'heart'},
+        ],
+        'palette': {'heart': '#FF4D6D'},
+        'silhouette': {'heart': [[0, 0], [0, 1], [1, 0]]},
+      });
+      expect(level.silhouette!['heart'], [
+        Position(row: 0, col: 0), Position(row: 0, col: 1), Position(row: 1, col: 0),
+      ]);
+    });
+
+    test('rejects malformed silhouette', () {
+      expect(() => const LevelJsonDecoder().decode({
+        'levelId': 't-x', 'cols': 4, 'rows': 4,
+        'arrows': [{'id': 'a0', 'headDir': 'right', 'cells': [[0, 0], [0, 1]]}],
+        'silhouette': {'heart': [[0]]}, // not a [row,col] pair
+      }), throwsA(isA<FormatException>()));
+    });
+
+    test('golden: encode(decode(themed)) reproduces the map', () {
+      // Arrange
+      const encoder = LevelJsonEncoder();
+      final json = {
+        'levelId': 't-x', 'cols': 4, 'rows': 4,
+        'arrows': [
+          {'id': 'a0', 'headDir': 'right', 'cells': [[0, 0], [0, 1]], 'paintRole': 'heart'},
+        ],
+        'palette': {'heart': '#FF4D6D'},
+        'silhouette': {'heart': [[0, 0], [0, 1], [1, 0]]},
+      };
+      // Act
+      final level = const LevelJsonDecoder().decode(json);
+      final map = const LevelJsonEncoder().toMap(
+        levelId: level.id.value, board: level.board,
+        palette: level.palette, silhouette: level.silhouette);
+      // Assert
+      expect(map['silhouette'], json['silhouette']);
+    });
   });
 }

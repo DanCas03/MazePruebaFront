@@ -46,6 +46,7 @@ class LevelJsonDecoder {
       // temáticos. Ausente = campaña. Se valida la FORMA (Map<String,String>);
       // la validez del hex la resuelve el seam de color con fallback (front#67).
       palette: _optionalStringMap(json, 'palette'),
+      silhouette: _optionalSilhouette(json, 'silhouette'),
     );
   }
 
@@ -133,6 +134,23 @@ class LevelJsonDecoder {
         throw FormatException('"$key" must map strings to strings');
       }
       result[k] = v;
+    });
+    return result;
+  }
+
+  Map<String, List<Position>>? _optionalSilhouette(
+      Map<String, Object?> json, String key) {
+    final value = json[key];
+    if (value == null) return null;
+    if (value is! Map) {
+      throw FormatException('"$key" must be an object when present');
+    }
+    final result = <String, List<Position>>{};
+    value.forEach((k, v) {
+      if (k is! String || v is! List) {
+        throw FormatException('"$key" must map roles to cell lists');
+      }
+      result[k] = [for (final cell in v) _position(cell, 'silhouette:$k')];
     });
     return result;
   }

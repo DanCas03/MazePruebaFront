@@ -11,8 +11,8 @@ void main() {
   const board = ArrowBoard(arrows: [], space: RectSpace(4, 4));
 
   GeneratorConfig config({int? seed}) => GeneratorConfig.create(
-        cols: 4,
-        rows: 4,
+        cols: 6,
+        rows: 10,
         difficulty: Difficulty.easy,
         seed: seed,
       );

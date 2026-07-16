@@ -89,8 +89,8 @@ GeneratorConfig _config({
   int? seed,
 }) =>
     GeneratorConfig.create(
-      cols: 4,
-      rows: 4,
+      cols: 6,
+      rows: 10,
       difficulty: difficulty,
       timed: timed,
       seed: seed,

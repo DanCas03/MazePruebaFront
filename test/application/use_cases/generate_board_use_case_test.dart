@@ -38,17 +38,17 @@ void main() {
     test('should_forward_derived_params_to_generator_when_seed_is_given', () {
       // Arrange
       final config = GeneratorConfig.create(
-          cols: 6, rows: 6, difficulty: Difficulty.easy, seed: 42);
+          cols: 6, rows: 10, difficulty: Difficulty.easy, seed: 42);
 
       // Act
       useCase.execute(config);
 
-      // Assert — 6x6 easy deriva 6 flechas (36·0.40/2.5) y maxPathLen 3; el
+      // Assert — 6x10 easy deriva 10 flechas (60·0.40/2.5) y maxPathLen 3; el
       // caso de uso traduce la config del jugador al contrato del puerto.
       verify(generator.generate(
         cols: 6,
-        rows: 6,
-        arrowCount: 6,
+        rows: 10,
+        arrowCount: 10,
         maxPathLen: 3,
         seed: 42,
       )).called(1);
@@ -57,7 +57,7 @@ void main() {
     test('should_return_generator_board_seed_and_effective_config', () {
       // Arrange
       final config = GeneratorConfig.create(
-          cols: 6, rows: 6, difficulty: Difficulty.easy, seed: 42);
+          cols: 6, rows: 10, difficulty: Difficulty.easy, seed: 42);
 
       // Act
       final result = useCase.execute(config);
@@ -76,20 +76,20 @@ void main() {
         return 1234;
       });
       final config = GeneratorConfig.create(
-          cols: 5, rows: 7, difficulty: Difficulty.medium);
+          cols: 6, rows: 10, difficulty: Difficulty.medium);
 
       // Act
       final result = useCase.execute(config);
 
       // Assert — la seed generada emerge en el resultado y viaja al generador
-      // (5x7 medium: 35·0.55/4 = 4.8 → 5 flechas, maxPathLen 6).
+      // (6x10 medium: 60·0.55/4 = 8.25 → 8 flechas, maxPathLen 6).
       expect(calls, 1);
       expect(result.seed, 1234);
       expect(result.config, config.withSeed(1234));
       verify(generator.generate(
-        cols: 5,
-        rows: 7,
-        arrowCount: 5,
+        cols: 6,
+        rows: 10,
+        arrowCount: 8,
         maxPathLen: 6,
         seed: 1234,
       )).called(1);
@@ -105,13 +105,13 @@ void main() {
 
       // Act
       useCase.execute(GeneratorConfig.create(
-          cols: 4, rows: 4, difficulty: Difficulty.hard, seed: 7));
+          cols: 4, rows: 7, difficulty: Difficulty.hard, seed: 7));
 
       // Assert — la seed del jugador manda; la fuente aleatoria ni se toca.
       expect(calls, 0);
       verify(generator.generate(
         cols: 4,
-        rows: 4,
+        rows: 7,
         arrowCount: 4,
         maxPathLen: 9,
         seed: 7,
@@ -119,10 +119,10 @@ void main() {
     });
 
     test('should_accept_graceful_degradation_without_failing', () {
-      // Arrange — el stub devuelve 0 flechas frente a las 6 pedidas: la
+      // Arrange — el stub devuelve 0 flechas frente a las pedidas: la
       // degradación con gracia del generador se acepta tal cual (issue #36).
       final config = GeneratorConfig.create(
-          cols: 6, rows: 6, difficulty: Difficulty.easy, seed: 1);
+          cols: 6, rows: 10, difficulty: Difficulty.easy, seed: 1);
 
       // Act
       final result = useCase.execute(config);
@@ -134,7 +134,7 @@ void main() {
     test('should_log_generation_with_use_case_context', () {
       // Act
       useCase.execute(GeneratorConfig.create(
-          cols: 6, rows: 6, difficulty: Difficulty.easy, seed: 42));
+          cols: 6, rows: 10, difficulty: Difficulty.easy, seed: 42));
 
       // Assert — AOP: la seed queda en el log para reproducir el tablero.
       verify(logger.log(argThat(contains('seed=42')), 'GenerateBoardUseCase'))
@@ -148,7 +148,7 @@ void main() {
       // completo, no del mock.
       final real = GenerateBoardUseCase(GraphBoardGenerator(), logger);
       final config = GeneratorConfig.create(
-          cols: 8, rows: 8, difficulty: Difficulty.medium, seed: 20260713);
+          cols: 6, rows: 10, difficulty: Difficulty.medium, seed: 20260713);
 
       // Act
       final first = real.execute(config);
@@ -164,7 +164,7 @@ void main() {
       final real = GenerateBoardUseCase(GraphBoardGenerator(), logger,
           seedSource: () => 555);
       final first = real.execute(GeneratorConfig.create(
-          cols: 6, rows: 8, difficulty: Difficulty.hard));
+          cols: 6, rows: 10, difficulty: Difficulty.hard));
 
       // Act — regenerar con la config efectiva que devolvió el resultado.
       final replay = real.execute(first.config);
@@ -176,10 +176,10 @@ void main() {
 
   group('GenerateBoardUseCase.executeAsync (front#66)', () {
     test('should_generate_inline_below_threshold_and_forward_seed', () async {
-      // 6x6 (36 celdas) < isolateCellThreshold ⇒ camino síncrono en línea, así
+      // 6x10 (60 celdas) < isolateCellThreshold ⇒ camino síncrono en línea, así
       // que un generador mock (no enviable a un isolate) funciona igual.
       final config = GeneratorConfig.create(
-          cols: 6, rows: 6, difficulty: Difficulty.easy, seed: 42);
+          cols: 6, rows: 10, difficulty: Difficulty.easy, seed: 42);
 
       final result = await useCase.executeAsync(config);
 
@@ -187,8 +187,8 @@ void main() {
       expect(result.seed, 42);
       verify(generator.generate(
         cols: 6,
-        rows: 6,
-        arrowCount: 6,
+        rows: 10,
+        arrowCount: 10,
         maxPathLen: 3,
         seed: 42,
       )).called(1);
@@ -196,12 +196,13 @@ void main() {
 
     test('should_offload_large_board_to_isolate_and_stay_deterministic',
         () async {
-      // 25x25 (625 celdas) >= isolateCellThreshold ⇒ corre en un isolate vía
-      // `compute`. Con el generador REAL, el resultado debe ser idéntico al
-      // camino síncrono para la misma seed (determinismo a través del isolate).
+      // 19x34 (646 celdas, preset XL en banda front#101) >= isolateCellThreshold
+      // ⇒ corre en un isolate vía `compute`. Con el generador REAL, el
+      // resultado debe ser idéntico al camino síncrono para la misma seed
+      // (determinismo a través del isolate).
       final real = GenerateBoardUseCase(GraphBoardGenerator(), logger);
       final config = GeneratorConfig.create(
-          cols: 25, rows: 25, difficulty: Difficulty.medium, seed: 20260715);
+          cols: 19, rows: 34, difficulty: Difficulty.medium, seed: 20260715);
 
       final async = await real.executeAsync(config);
       final sync = real.execute(config);

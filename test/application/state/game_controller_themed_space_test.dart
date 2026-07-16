@@ -10,7 +10,6 @@ import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
-import 'package:flutter_arrow_maze/domain/game_core/space/masked_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
@@ -18,7 +17,9 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'game_controller_test.mocks.dart';
 import '../../support/arrow_fixtures.dart';
 
-/// Tablero 4×4 con dos flechas: la unión de sus celdas es la silueta esperada.
+/// Tablero 4×4 con dos flechas que dejan celdas interiores sin ocupar. Bajo la
+/// silueta previa (#88) esas celdas quedaban como agujeros; front#99 monta la
+/// caja rectangular completa, así que el espacio jugable es siempre RectSpace.
 ///   arrow-0: (0,0)-(0,1)   arrow-2: (2,2)-(2,3)
 ArrowBoard _board() => ArrowBoard(
       arrows: [
@@ -38,13 +39,6 @@ ArrowBoard _board() => ArrowBoard(
       space: RectSpace(4, 4),
     );
 
-final _expectedMask = MaskedSpace(4, 4, activeCells: {
-  Position(row: 0, col: 0),
-  Position(row: 0, col: 1),
-  Position(row: 2, col: 2),
-  Position(row: 2, col: 3),
-});
-
 void _stubLevel(MockILevelRepository repo, ArrowBoard board,
         {Map<String, String>? palette}) =>
     when(repo.getLevel(any)).thenAnswer((_) async => Right(Level(
@@ -63,7 +57,7 @@ ProviderContainer _container(MockILevelRepository repo, MockRemoveArrowUseCase u
 }
 
 void main() {
-  test('themed level (palette != null) mounts a MaskedSpace = union of arrow cells',
+  test('themed level (palette != null) mounts the full RectSpace box (no holes)',
       () async {
     // Arrange
     final repo = MockILevelRepository();
@@ -74,9 +68,10 @@ void main() {
     // Act
     await c.read(gameControllerProvider.notifier).loadLevel(LevelId('1'));
 
-    // Assert — el tablero jugable se realiza como su silueta.
+    // Assert — front#99: el nivel temático se juega sobre su caja completa, no
+    // sobre la silueta; toda celda de la caja queda pintable/tappable.
     final state = c.read(gameControllerProvider).valueOrNull as GamePlaying;
-    expect(state.board.space, _expectedMask);
+    expect(state.board.space, RectSpace(4, 4));
     expect(state.board.arrows.length, 2); // mismas flechas
   });
 
@@ -95,7 +90,7 @@ void main() {
     expect(state.board.space, RectSpace(4, 4));
   });
 
-  test('restarting a themed level re-mounts the same MaskedSpace', () async {
+  test('restarting a themed level re-mounts the same full RectSpace box', () async {
     // Arrange
     final repo = MockILevelRepository();
     final uc = MockRemoveArrowUseCase();
@@ -107,8 +102,8 @@ void main() {
     // Act
     await notifier.restartLevel();
 
-    // Assert — sin refetch, la silueta se re-deriva idéntica.
+    // Assert — sin refetch, se re-monta la misma caja rectangular.
     final state = c.read(gameControllerProvider).valueOrNull as GamePlaying;
-    expect(state.board.space, _expectedMask);
+    expect(state.board.space, RectSpace(4, 4));
   });
 }

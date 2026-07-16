@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'arrow.dart';
 import '../value_objects/arrow_id.dart';
 import '../../game_core/space/board_space.dart';
-import '../../game_core/space/masked_space.dart';
 import '../../game_core/value_objects/position.dart';
 
 // Aggregate Root: único punto de acceso al estado del tablero de flechas.
@@ -78,26 +77,6 @@ class ArrowBoard extends Equatable {
     return ArrowBoard(
       arrows: arrows.where((a) => a.id != id).toList(),
       space: space,
-    );
-  }
-
-  // Silueta temática (Fase 1, #88): mismo tablero pero con el espacio sustituido
-  // por un MaskedSpace cuya máscara es la UNIÓN de las celdas de las flechas
-  // ACTUALES, sobre la misma caja cols×rows. La presentación entonces pinta la
-  // figura (solo `allCells`) y no la caja, y los taps fuera de la silueta se
-  // vetan por `space.contains` — cierra el punto B (el tablero temático se
-  // ajusta a su figura) sin tocar wire ni backend.
-  //
-  // Mecánicamente NUNCA reduce la resolubilidad: el carril de salida enmascarado
-  // es un PREFIJO del rectangular (una celda inactiva corta `step` antes o igual
-  // que el borde), así que toda flecha que podía salir sigue pudiendo. Pensado
-  // para el tablero INICIAL de un nivel temático; al retirar flechas el espacio
-  // se conserva (removeArrow lo propaga), de modo que la figura no se encoge.
-  ArrowBoard withSilhouetteSpace() {
-    final active = {for (final a in arrows) ...a.cells};
-    return ArrowBoard(
-      arrows: arrows,
-      space: MaskedSpace(cols, rows, activeCells: active),
     );
   }
 

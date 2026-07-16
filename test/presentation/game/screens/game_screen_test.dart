@@ -14,6 +14,10 @@ import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_re
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
+import 'package:flutter_arrow_maze/application/state/game_state.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/score.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/stars.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/strike_count.dart';
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
 import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
 import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
@@ -134,13 +138,10 @@ MockILevelRepository _repoWithBoard(ArrowBoard board,
   return repo;
 }
 
-/// Overrides comunes: GameController remoto sobre [repo] + Observer de score
-/// no-op + audio silencioso (Null Object). El RemoveArrowUseCase es real para
-/// que los taps ejerzan la lógica de salida/choque de dominio.
-List<Override> _overrides(ILevelRepository repo) => [
-      gameControllerProvider.overrideWith(
-        () => GameController(repo, RemoveArrowUseCase(), CommandInvoker()),
-      ),
+/// Overrides comunes parametrizados por la fábrica del controller: Observer de
+/// score/progreso no-op + audio silencioso (Null Object).
+List<Override> _overridesWith(GameController Function() make) => [
+      gameControllerProvider.overrideWith(make),
       submitScoreUseCaseProvider.overrideWithValue(
         SubmitScoreUseCase(_NoopLeaderboardRepository(), LoggerServiceAdapter()),
       ),
@@ -150,6 +151,75 @@ List<Override> _overrides(ILevelRepository repo) => [
       ),
       audioServiceProvider.overrideWithValue(const SilentAudioService()),
     ];
+
+/// Overrides comunes: GameController remoto sobre [repo]. El RemoveArrowUseCase
+/// es real para que los taps ejerzan la lógica de salida/choque de dominio.
+List<Override> _overrides(ILevelRepository repo) =>
+    _overridesWith(() => GameController(repo, RemoveArrowUseCase(), CommandInvoker()));
+
+/// front#98: controller que expone un canal para RE-EMITIR estados a mano,
+/// simulando la re-emisión del async value estando ya en un estado terminal
+/// (p. ej. el Observer de score que reconstruye el provider tras el POST).
+/// `loadLevel` es un no-op para que el ÚNICO cambio de estado sea el guionizado.
+class _ScriptableGameController extends GameController {
+  _ScriptableGameController()
+      : super(MockILevelRepository(), RemoveArrowUseCase(), CommandInvoker());
+
+  @override
+  Future<void> loadLevel(LevelId levelId) async {}
+
+  void emit(GameState next) => state = AsyncValue.data(next);
+}
+
+/// Cuenta las entradas a rutas TERMINALES (victoria/derrota). `pushReplacement`
+/// se refleja como `didReplace`, no como `didPush`: registramos ambas para no
+/// perder ninguna navegación terminal.
+class _TerminalNavObserver extends NavigatorObserver {
+  final List<String?> entries = [];
+
+  void _record(Route<dynamic>? route) {
+    final name = route?.settings.name;
+    if (name == AppRouter.victory || name == AppRouter.defeat) {
+      entries.add(name);
+    }
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _record(route);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
+      _record(newRoute);
+}
+
+/// Host con [observer] enganchado al Navigator, para contar navegaciones
+/// terminales. Las rutas de victoria/derrota se resuelven a sus pantallas.
+Widget _observedHost(ProviderContainer container, NavigatorObserver observer) =>
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: AppTheme.dark(),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        navigatorObservers: [observer],
+        onGenerateRoute: (settings) => switch (settings.name) {
+          AppRouter.victory => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const VictoryScreen(),
+            ),
+          AppRouter.defeat => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const DefeatScreen(),
+            ),
+          _ => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => GameScreen(levelId: LevelId('level-01')),
+            ),
+        },
+      ),
+    );
 
 ProviderContainer _container(ILevelRepository repo) =>
     ProviderContainer(overrides: _overrides(repo));
@@ -362,6 +432,72 @@ void main() {
         expect(find.byType(ArrowWidget), findsWidgets);
       },
     );
+
+    // ── front#98: navegación terminal idempotente ────────────────────────────
+    group('terminal navigation is idempotent (front#98)', () {
+      GameWon won() => GameWon(
+            moves: const MoveCount(1),
+            score: Score(9000),
+            stars: const Stars.three(),
+            timeSeconds: 0,
+            levelId: LevelId('level-01'),
+          );
+
+      GameLost lost() => GameLost(
+            moves: const MoveCount(0),
+            strikes: const StrikeCount(5, max: 5),
+          );
+
+      testWidgets(
+          'should_navigate_to_victory_once_when_GameWon_is_re_emitted',
+          (tester) async {
+        // Arrange — controller guionizado; el estado solo cambia por emit().
+        final controller = _ScriptableGameController();
+        final container =
+            ProviderContainer(overrides: _overridesWith(() => controller));
+        addTearDown(container.dispose);
+        final observer = _TerminalNavObserver();
+        await tester.pumpWidget(_observedHost(container, observer));
+        await tester.pumpAndSettle(); // build() -> AsyncData(GameLoading)
+
+        // Act — entra en victoria (borde) y luego RE-EMITE una nueva instancia
+        // GameWon mientras GameScreen sigue montada (mitad de transición), como
+        // haría el Observer de score al reconstruir el provider tras el POST.
+        controller.emit(won());
+        await tester.pump();
+        controller.emit(won());
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // Assert — exactamente UNA navegación a la ruta de victoria.
+        expect(observer.entries, [AppRouter.victory]);
+        expect(find.byType(VictoryScreen), findsOneWidget);
+      });
+
+      testWidgets(
+          'should_navigate_to_defeat_once_when_GameLost_is_re_emitted',
+          (tester) async {
+        // Arrange
+        final controller = _ScriptableGameController();
+        final container =
+            ProviderContainer(overrides: _overridesWith(() => controller));
+        addTearDown(container.dispose);
+        final observer = _TerminalNavObserver();
+        await tester.pumpWidget(_observedHost(container, observer));
+        await tester.pumpAndSettle();
+
+        // Act — misma re-emisión sobre el estado terminal simétrico.
+        controller.emit(lost());
+        await tester.pump();
+        controller.emit(lost());
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // Assert — exactamente UNA navegación a la ruta de derrota.
+        expect(observer.entries, [AppRouter.defeat]);
+        expect(find.byType(DefeatScreen), findsOneWidget);
+      });
+    });
 
     // ── Rama de error: discrimina el LevelFailure (front#8, Task 10) ──────────
     group('error branch', () {

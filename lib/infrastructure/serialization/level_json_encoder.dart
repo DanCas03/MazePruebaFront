@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../domain/arrows/entities/arrow_board.dart';
+import '../../domain/game_core/value_objects/position.dart';
 
 /// Serializa un [ArrowBoard] al JSON arrow-path del wire contract
 /// (CONTEXT-MAP raíz). Emite las claves del contrato para que el JSON sea
@@ -19,6 +20,7 @@ class LevelJsonEncoder {
     int? order,
     int? maxErrors,
     Map<String, String>? palette,
+    Map<String, List<Position>>? silhouette,
   }) =>
       {
         'levelId': levelId,
@@ -44,6 +46,11 @@ class LevelJsonEncoder {
             },
         ],
         if (palette != null) 'palette': palette,
+        if (silhouette != null)
+          'silhouette': {
+            for (final entry in silhouette.entries)
+              entry.key: [for (final c in entry.value) [c.row, c.col]],
+          },
       };
 
   /// JSON con indent de 2 espacios y newline final: salida byte-estable para
@@ -55,6 +62,7 @@ class LevelJsonEncoder {
     int? order,
     int? maxErrors,
     Map<String, String>? palette,
+    Map<String, List<Position>>? silhouette,
   }) =>
-      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, order: order, maxErrors: maxErrors, palette: palette))}\n';
+      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, order: order, maxErrors: maxErrors, palette: palette, silhouette: silhouette))}\n';
 }

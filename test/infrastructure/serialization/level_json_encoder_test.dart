@@ -191,5 +191,37 @@ void main() {
         equals(sut.toMap(levelId: 'pretty', board: board)),
       );
     });
+
+    test('emits silhouette after palette when provided', () {
+      final board = ArrowBoard(
+        arrows: [
+          Arrow(
+            id: ArrowId('a0'),
+            headDirection: Direction.right,
+            cells: [Position(row: 0, col: 0), Position(row: 0, col: 1)],
+            paintRole: 'heart',
+          ),
+        ],
+        space: RectSpace(4, 4),
+      );
+      final map = sut.toMap(
+        levelId: 't-x',
+        board: board,
+        palette: const {'heart': '#FF4D6D'},
+        silhouette: {
+          'heart': [
+            Position(row: 0, col: 0),
+            Position(row: 0, col: 1),
+            Position(row: 1, col: 0),
+          ],
+        },
+      );
+      expect(map['silhouette'], {
+        'heart': [[0, 0], [0, 1], [1, 0]],
+      });
+      // campaign (no silhouette) omits the key
+      final campaign = sut.toMap(levelId: 'l1', board: board);
+      expect(campaign.containsKey('silhouette'), isFalse);
+    });
   });
 }

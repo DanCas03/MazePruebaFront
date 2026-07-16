@@ -110,11 +110,9 @@ class GeneratedResultScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 TextButton.icon(
-                  onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRouter.home,
-                    (_) => false,
-                  ),
+                  // front#103: vuelve al menú conservando la raíz (AuthGate) —
+                  // antes `(_) => false` la borraba y el logout quedaba varado.
+                  onPressed: () => AppRouter.exitToHome(context),
                   icon: Icon(Icons.home_outlined, color: muted),
                   label: Text(l10n.generatedExit,
                       style: TextStyle(color: muted)),

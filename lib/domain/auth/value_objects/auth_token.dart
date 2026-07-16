@@ -27,19 +27,38 @@ class AuthToken extends Equatable {
     return !(now ?? DateTime.now()).isBefore(exp);
   }
 
+  /// Identidad del usuario dueño de la sesión: claim estándar `sub` del JWT
+  /// (UUID emitido por el back). Se usa para aislar el almacenamiento local por
+  /// cuenta (namespacing del progreso) sin una llamada extra a `/auth/me`.
+  /// Devuelve `null` si el token no es un JWT decodificable o no trae `sub`.
+  String? get subject {
+    final claims = _claims();
+    final sub = claims?['sub'];
+    return sub is String && sub.isNotEmpty ? sub : null;
+  }
+
   /// Decodifica el claim `exp` (segundos epoch) del payload del JWT.
   /// Devuelve `null` si el token no es un JWT decodificable o no trae `exp`.
   DateTime? _expiry() {
+    final claims = _claims();
+    if (claims == null || claims['exp'] is! int) return null;
+    return DateTime.fromMillisecondsSinceEpoch(
+      (claims['exp'] as int) * 1000,
+      isUtc: true,
+    );
+  }
+
+  /// Decodifica el payload (segmento central) del JWT a un mapa de claims.
+  /// Devuelve `null` si el token no es un JWT de tres segmentos con payload
+  /// base64/JSON decodificable. La firma NO se valida aquí (tarea del server).
+  Map<String, dynamic>? _claims() {
     final parts = value.split('.');
     if (parts.length != 3) return null;
     try {
-      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final payload =
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
       final claims = jsonDecode(payload);
-      if (claims is! Map || claims['exp'] is! int) return null;
-      return DateTime.fromMillisecondsSinceEpoch(
-        (claims['exp'] as int) * 1000,
-        isUtc: true,
-      );
+      return claims is Map ? Map<String, dynamic>.from(claims) : null;
     } catch (_) {
       return null;
     }

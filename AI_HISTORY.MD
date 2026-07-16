@@ -1934,3 +1934,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
 **Resultado obtenido:** Widget test `test/presentation/game/widgets/board_view_themed_silhouette_test.dart`: un `ArrowBoard` pasado por `withSilhouetteSpace()` montado en `BoardView` rellena EXACTAMENTE las celdas de la silueta (4, no las 16 de la caja) vía `BoardSurfacePainter`, un toque fuera de la figura se rechaza y un toque sobre una flecha de la figura enruta. **2/2** verde. README §BoardSpace: nueva viñeta "Silueta temática (front#88, cierra el punto B)" describiendo la realización del tablero temático sobre su silueta. Suite completa **679** verde; los 13 fallos restantes son la carrera pre-existente de generación de l10n en ejecución multi-archivo (verificada idéntica en `origin/main`, ajena a este cambio). `flutter analyze` sin issues.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 105 — Bug #94: primitivas de identidad de cuenta (`AuthToken.subject` + puerto `IUserScopedStorage`)
+
+**Tarea o problema abordado:** El progreso se comparte entre cuentas: una cuenta nueva hereda (y sube al server) el progreso de la anterior, porque el progreso local vive en una caja Hive global (`level_progress`) sin identificador de usuario. Primer fragmento del fix (#94): las primitivas de dominio que permiten aislar el almacenamiento por cuenta.
+**Fecha:** 2026-07-16
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "el progreso no se está asignando a la cuenta... si creo una cuenta nueva le sale el progreso de la primera; el progreso se comparte"
+**Resultado obtenido:** Getter `AuthToken.subject` (`lib/domain/auth/value_objects/auth_token.dart`): decodifica el claim estándar `sub` del JWT (UUID del usuario emitido por el back) para derivar la identidad de cuenta localmente, sin llamada extra a `/auth/me`. Se refactorizó un helper privado `_claims()` compartido con `_expiry()` (DRY). Nuevo puerto `IUserScopedStorage` (`lib/domain/auth/repositories/i_user_scoped_storage.dart`) con `activate(userId)`/`deactivate()` (ISP: solo el ciclo de vida del alcance). Tests AAA añadidos a `auth_token_test.dart`: `subject` devuelve `sub`, `null` sin claim / sub vacío / token opaco, y subjects distintos para cuentas distintas. Dominio Dart puro. `dart analyze` sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

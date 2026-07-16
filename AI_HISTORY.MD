@@ -1907,3 +1907,30 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "resuelve el issues front#86"
 **Resultado obtenido:** `MaskedSpace` (`lib/domain/game_core/space/masked_space.dart`) extiende `RectSpace` (reusa el único switch dirección→delta del artefacto en `RectSpace.step`, ADR-0005 D2) y sobreescribe `contains` (= en-caja AND en-set), `cellCount` (= tamaño del set) y `allCells` (set activo en orden row-major); hereda `step`/`directions`/`bounds` (la caja cols×rows). Una celda enmascarada es frontera: `step` que aterriza en ella devuelve null, igual que un agujero de `HoledRectSpace`. Tests: la suite de contrato compartida corre sobre `MaskedSpace`, más focos (step a celda enmascarada → frontera; `exitLane` termina en el borde de la máscara; `allCells`/`cellCount`/`bounds`), y una certificación OCP gemela de la de `HoledRectSpace` que prueba `ArrowBoard.canExit` sobre `MaskedSpace` sin cambiar Arrow/ArrowBoard. **15/15** verde en los nuevos archivos, **249** dominio verde; `flutter analyze` sin issues. Rama `feat/#86-masked-space`.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 102 — Fase 1 (#88): `ArrowBoard.withSilhouetteSpace` (silueta = unión de flechas)
+
+**Tarea o problema abordado:** Dar al dominio la capacidad de realizar un tablero como su SILUETA: reemplazar el `BoardSpace` por un `MaskedSpace` cuya máscara es la unión de las celdas de las flechas actuales, para que un nivel temático se pinte como su figura (cierra el punto B). Primer fragmento de #88 (la geometría; la política de "cuándo" va en la aplicación).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
+**Resultado obtenido:** Método `ArrowBoard.withSilhouetteSpace()` (`lib/domain/arrows/entities/arrow_board.dart`): devuelve un tablero con las mismas flechas y `MaskedSpace(cols, rows, activeCells: {celdas de todas las flechas})` sobre la misma caja. Documentado que NUNCA reduce la resolubilidad (el carril de salida enmascarado es prefijo del rectangular) y que `removeArrow` propaga el espacio (la figura no se encoge). Test AAA `test/domain/entities/arrow_board_silhouette_test.dart`: máscara exacta = unión; caja/flechas intactas; celda de flecha dentro y celda de caja sin flecha fuera; `canExit` preservado; `removeArrow` conserva la máscara. **5/5** verde; `flutter analyze` sin issues. Rama `feat/#88-themed-silhouette-space`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 103 — Fase 1 (#88): montar el nivel temático sobre su silueta (seam en el controller)
+
+**Tarea o problema abordado:** Cablear la política de #88 en la capa de aplicación: al montar un nivel TEMÁTICO (`palette != null`) el tablero se realiza con `withSilhouetteSpace()`; campaña (rect) intacta. Segundo fragmento de #88.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
+**Resultado obtenido:** `GameController._mountedBoard(Level)` (`lib/application/state/game_controller.dart`) devuelve `level.board.withSilhouetteSpace()` si el nivel es temático, o `level.board` en campaña — la POLÍTICA de cuándo (aplicación), delegando la geometría al dominio. Idempotente y barato, se llama en los tres puntos de montaje para que compartan el MISMO espacio: `_startLevel` (arranque/restart), `_runHintDemo` (demo de pista) y el sembrado de `undoMove` tras victoria (antes usaba `data.board.space` crudo del wire → habría revertido a rectángulo). Test AAA `test/application/state/game_controller_themed_space_test.dart`: temático monta `MaskedSpace` = unión de celdas; campaña conserva `RectSpace`; restart re-deriva la misma silueta. **3/3** nuevos verde; regresión de `game_controller_test`/`game_controller_hint_test` verde; `flutter analyze` sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 104 — Fase 1 (#88): test de render de silueta temática + README (cierra punto B)
+
+**Tarea o problema abordado:** Cerrar #88 con la prueba de presentación end-to-end (un nivel temático pinta solo su figura, no la caja) y documentar el comportamiento en el README. Tercer y último fragmento.
+**Fecha:** 2026-07-16
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
+**Resultado obtenido:** Widget test `test/presentation/game/widgets/board_view_themed_silhouette_test.dart`: un `ArrowBoard` pasado por `withSilhouetteSpace()` montado en `BoardView` rellena EXACTAMENTE las celdas de la silueta (4, no las 16 de la caja) vía `BoardSurfacePainter`, un toque fuera de la figura se rechaza y un toque sobre una flecha de la figura enruta. **2/2** verde. README §BoardSpace: nueva viñeta "Silueta temática (front#88, cierra el punto B)" describiendo la realización del tablero temático sobre su silueta. Suite completa **679** verde; los 13 fallos restantes son la carrera pre-existente de generación de l10n en ejecución multi-archivo (verificada idéntica en `origin/main`, ajena a este cambio). `flutter analyze` sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

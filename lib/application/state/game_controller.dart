@@ -128,6 +128,18 @@ class GameController extends AsyncNotifier<GameState> {
     );
   }
 
+  // Realiza el tablero del nivel según su tipo (front#88, cierra punto B): un
+  // nivel TEMÁTICO (palette != null) se juega sobre su SILUETA —el espacio pasa
+  // a MaskedSpace = unión de las celdas de las flechas iniciales—, así la
+  // presentación pinta la figura y no la caja, y los taps fuera se vetan por
+  // `space.contains`. Campaña (rect) intacta. La geometría la deriva el dominio
+  // (`withSilhouetteSpace`); aquí vive solo la POLÍTICA de cuándo aplicarla.
+  // Idempotente y barato (O(celdas)): se llama en cada montaje (arranque,
+  // restart, demo de pista, undo-tras-victoria) para que todos compartan el
+  // MISMO espacio sin necesidad de cachearlo.
+  ArrowBoard _mountedBoard(Level level) =>
+      level.palette != null ? level.board.withSilhouetteSpace() : level.board;
+
   // Monta el nivel [level] en el estado de partida. Reutilizado por loadLevel
   // (tras el fetch) y por restartLevel (sin refetch). Arranca el cronómetro y,
   // si el nivel es cronometrado, la cuenta atrás.
@@ -141,10 +153,11 @@ class GameController extends AsyncNotifier<GameState> {
     _strikes = StrikeCount(0, max: level.maxErrors);
     _invoker.clear();
     _remainingSeconds = level.timeLimitSec;
-    _optimalMoves = level.board.arrows.length; // óptimo = nº de flechas
+    final board = _mountedBoard(level);
+    _optimalMoves = board.arrows.length; // óptimo = nº de flechas
     _startElapsed();
     state = AsyncValue.data(GamePlaying(
-      board: level.board,
+      board: board,
       moves: const MoveCount(0),
       strikes: _strikes, // expone el presupuesto del nivel al HUD desde el inicio
       palette: level.palette,
@@ -254,8 +267,10 @@ class GameController extends AsyncNotifier<GameState> {
       // dimensiones REALES del nivel remoto para reinsertar bien.
       final data = _currentLevelData;
       if (data == null) return;
+      // Reconstruimos vacío con el MISMO espacio con que se montó el nivel
+      // (silueta en temáticos, rect en campaña), no el crudo del wire.
       currentBoard =
-          ArrowBoard(arrows: const [], space: data.board.space);
+          ArrowBoard(arrows: const [], space: _mountedBoard(data).space);
       currentMoves = current.moves.value;
     } else {
       return;
@@ -328,7 +343,7 @@ class GameController extends AsyncNotifier<GameState> {
     // pila de undo queda intacta) ni cuenta movimientos/choques.
     _cancelTimer();
     _cancelElapsed();
-    var board = level.board;
+    var board = _mountedBoard(level);
     _exitNonce = 0;
     // Remonta el tablero completo antes de empezar a vaciarlo.
     state = AsyncValue.data(GamePlaying(

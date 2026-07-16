@@ -1925,3 +1925,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
 **Resultado obtenido:** `GameController._mountedBoard(Level)` (`lib/application/state/game_controller.dart`) devuelve `level.board.withSilhouetteSpace()` si el nivel es temático, o `level.board` en campaña — la POLÍTICA de cuándo (aplicación), delegando la geometría al dominio. Idempotente y barato, se llama en los tres puntos de montaje para que compartan el MISMO espacio: `_startLevel` (arranque/restart), `_runHintDemo` (demo de pista) y el sembrado de `undoMove` tras victoria (antes usaba `data.board.space` crudo del wire → habría revertido a rectángulo). Test AAA `test/application/state/game_controller_themed_space_test.dart`: temático monta `MaskedSpace` = unión de celdas; campaña conserva `RectSpace`; restart re-deriva la misma silueta. **3/3** nuevos verde; regresión de `game_controller_test`/`game_controller_hint_test` verde; `flutter analyze` sin issues.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 104 — Fase 1 (#88): test de render de silueta temática + README (cierra punto B)
+
+**Tarea o problema abordado:** Cerrar #88 con la prueba de presentación end-to-end (un nivel temático pinta solo su figura, no la caja) y documentar el comportamiento en el README. Tercer y último fragmento.
+**Fecha:** 2026-07-16
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "resuelve el issue front#88"
+**Resultado obtenido:** Widget test `test/presentation/game/widgets/board_view_themed_silhouette_test.dart`: un `ArrowBoard` pasado por `withSilhouetteSpace()` montado en `BoardView` rellena EXACTAMENTE las celdas de la silueta (4, no las 16 de la caja) vía `BoardSurfacePainter`, un toque fuera de la figura se rechaza y un toque sobre una flecha de la figura enruta. **2/2** verde. README §BoardSpace: nueva viñeta "Silueta temática (front#88, cierra el punto B)" describiendo la realización del tablero temático sobre su silueta. Suite completa **679** verde; los 13 fallos restantes son la carrera pre-existente de generación de l10n en ejecución multi-archivo (verificada idéntica en `origin/main`, ajena a este cambio). `flutter analyze` sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

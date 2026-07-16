@@ -1,38 +1,42 @@
 {
   "levelId": "themed-heart",
-  "cols": 16,
-  "rows": 14,
+  "cols": 24,
+  "rows": 16,
   "arrows": [
     {
       "id": "arrow-0",
-      "headDir": "left",
+      "headDir": "right",
       "cells": [
         [
-          7,
-          10
+          5,
+          5
         ],
         [
-          8,
-          10
+          5,
+          4
         ],
         [
-          9,
-          10
+          5,
+          3
         ],
         [
-          10,
-          10
+          4,
+          3
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-1",
-      "headDir": "left",
+      "headDir": "right",
       "cells": [
         [
-          7,
-          9
+          9,
+          10
+        ],
+        [
+          8,
+          10
         ],
         [
           8,
@@ -47,39 +51,55 @@
           7
         ],
         [
-          9,
+          7,
           7
+        ],
+        [
+          7,
+          8
+        ],
+        [
+          7,
+          9
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-2",
-      "headDir": "down",
+      "headDir": "up",
       "cells": [
         [
-          7,
-          12
-        ],
-        [
-          7,
-          13
+          8,
+          14
         ],
         [
           8,
-          13
+          15
         ],
         [
           9,
-          13
+          15
         ],
         [
           9,
-          12
+          16
         ],
         [
-          10,
-          12
+          8,
+          16
+        ],
+        [
+          7,
+          16
+        ],
+        [
+          7,
+          15
+        ],
+        [
+          7,
+          14
         ]
       ],
       "paintRole": "heart"
@@ -89,47 +109,31 @@
       "headDir": "left",
       "cells": [
         [
-          6,
-          8
+          13,
+          11
         ],
         [
-          6,
-          7
-        ],
-        [
-          5,
-          7
+          12,
+          11
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-4",
-      "headDir": "right",
+      "headDir": "up",
       "cells": [
         [
-          5,
-          12
+          6,
+          20
         ],
         [
-          5,
-          11
+          6,
+          21
         ],
         [
-          5,
-          10
-        ],
-        [
-          5,
-          9
-        ],
-        [
-          5,
-          8
-        ],
-        [
-          4,
-          8
+          6,
+          22
         ]
       ],
       "paintRole": "heart"
@@ -139,73 +143,121 @@
       "headDir": "left",
       "cells": [
         [
-          6,
-          3
+          0,
+          17
         ],
         [
-          5,
-          3
+          1,
+          17
         ],
         [
-          5,
-          4
+          1,
+          18
         ],
         [
-          6,
-          4
+          1,
+          19
         ],
         [
-          7,
-          4
+          1,
+          20
+        ],
+        [
+          1,
+          21
+        ],
+        [
+          2,
+          21
+        ],
+        [
+          2,
+          20
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-6",
-      "headDir": "down",
+      "headDir": "up",
       "cells": [
         [
+          2,
+          17
+        ],
+        [
+          3,
+          17
+        ],
+        [
           4,
-          4
+          17
         ],
         [
-          3,
-          4
+          4,
+          18
         ],
         [
-          3,
-          5
+          5,
+          18
+        ],
+        [
+          5,
+          17
+        ],
+        [
+          6,
+          17
+        ],
+        [
+          6,
+          16
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-7",
-      "headDir": "left",
+      "headDir": "right",
       "cells": [
         [
-          5,
-          2
+          11,
+          12
         ],
         [
-          6,
-          2
+          12,
+          12
+        ],
+        [
+          12,
+          13
+        ],
+        [
+          11,
+          13
+        ],
+        [
+          11,
+          14
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-8",
-      "headDir": "right",
+      "headDir": "left",
       "cells": [
         [
-          6,
-          9
+          11,
+          5
         ],
         [
-          6,
-          10
+          10,
+          5
+        ],
+        [
+          10,
+          4
         ]
       ],
       "paintRole": "heart"
@@ -215,50 +267,50 @@
       "headDir": "up",
       "cells": [
         [
-          9,
-          8
+          6,
+          13
+        ],
+        [
+          7,
+          13
+        ],
+        [
+          8,
+          13
         ],
         [
           9,
-          9
+          13
         ],
         [
-          10,
-          9
-        ],
-        [
-          10,
-          8
-        ],
-        [
-          10,
-          7
-        ],
-        [
-          10,
-          6
+          9,
+          12
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-10",
-      "headDir": "down",
+      "headDir": "left",
       "cells": [
         [
-          12,
+          3,
           6
         ],
         [
-          12,
-          7
+          3,
+          5
         ],
         [
-          13,
-          7
+          2,
+          5
         ],
         [
-          13,
+          2,
+          6
+        ],
+        [
+          1,
           6
         ]
       ],
@@ -269,59 +321,13 @@
       "headDir": "right",
       "cells": [
         [
-          4,
-          12
+          10,
+          9
         ],
-        [
-          4,
-          11
-        ],
-        [
-          4,
-          10
-        ],
-        [
-          3,
-          10
-        ],
-        [
-          3,
-          11
-        ]
-      ],
-      "paintRole": "heart"
-    },
-    {
-      "id": "arrow-12",
-      "headDir": "left",
-      "cells": [
         [
           11,
-          4
+          9
         ],
-        [
-          10,
-          4
-        ],
-        [
-          10,
-          5
-        ],
-        [
-          9,
-          5
-        ],
-        [
-          9,
-          4
-        ]
-      ],
-      "paintRole": "heart"
-    },
-    {
-      "id": "arrow-13",
-      "headDir": "right",
-      "cells": [
         [
           12,
           9
@@ -329,63 +335,129 @@
         [
           13,
           9
+        ],
+        [
+          14,
+          9
         ]
       ],
       "paintRole": "heart"
     },
     {
-      "id": "arrow-14",
-      "headDir": "up",
+      "id": "arrow-12",
+      "headDir": "down",
       "cells": [
         [
-          9,
-          6
+          8,
+          18
+        ],
+        [
+          7,
+          18
+        ],
+        [
+          7,
+          19
         ],
         [
           8,
-          6
+          19
         ]
       ],
       "paintRole": "heart"
     },
     {
-      "id": "arrow-15",
-      "headDir": "right",
+      "id": "arrow-13",
+      "headDir": "down",
       "cells": [
         [
-          12,
-          5
+          10,
+          6
+        ],
+        [
+          10,
+          7
+        ],
+        [
+          10,
+          8
         ],
         [
           11,
-          5
+          8
+        ],
+        [
+          11,
+          7
         ],
         [
           11,
           6
         ],
         [
-          11,
+          12,
+          6
+        ],
+        [
+          12,
           7
         ]
       ],
       "paintRole": "heart"
     },
     {
-      "id": "arrow-16",
+      "id": "arrow-14",
+      "headDir": "down",
+      "cells": [
+        [
+          13,
+          16
+        ],
+        [
+          13,
+          15
+        ],
+        [
+          13,
+          14
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          14,
+          13
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-15",
       "headDir": "up",
       "cells": [
         [
           6,
-          11
+          2
         ],
         [
           6,
-          12
+          1
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-16",
+      "headDir": "left",
+      "cells": [
+        [
+          8,
+          5
         ],
         [
-          6,
-          13
+          7,
+          5
         ]
       ],
       "paintRole": "heart"
@@ -395,39 +467,51 @@
       "headDir": "left",
       "cells": [
         [
-          10,
-          3
+          15,
+          12
         ],
         [
-          9,
-          3
+          14,
+          12
         ],
         [
-          8,
-          3
+          14,
+          11
+        ],
+        [
+          15,
+          11
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-18",
-      "headDir": "down",
+      "headDir": "up",
       "cells": [
         [
-          7,
-          3
+          6,
+          12
         ],
         [
           7,
-          2
+          12
         ],
         [
-          8,
-          2
+          7,
+          11
         ],
         [
-          9,
-          2
+          6,
+          11
+        ],
+        [
+          5,
+          11
+        ],
+        [
+          5,
+          10
         ]
       ],
       "paintRole": "heart"
@@ -438,52 +522,233 @@
       "cells": [
         [
           8,
-          12
-        ],
-        [
-          8,
-          11
+          6
         ],
         [
           9,
-          11
+          6
         ],
         [
-          10,
-          11
+          9,
+          5
         ],
         [
-          11,
-          11
+          9,
+          4
+        ],
+        [
+          8,
+          4
+        ],
+        [
+          7,
+          4
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          6,
+          3
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-20",
-      "headDir": "up",
+      "headDir": "right",
       "cells": [
         [
-          7,
-          6
+          2,
+          19
         ],
         [
-          7,
-          5
+          2,
+          18
         ],
         [
-          6,
-          5
+          3,
+          18
         ],
         [
-          6,
-          6
+          3,
+          19
+        ],
+        [
+          4,
+          19
         ]
       ],
       "paintRole": "heart"
     },
     {
       "id": "arrow-21",
+      "headDir": "left",
+      "cells": [
+        [
+          2,
+          7
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          0,
+          7
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-22",
+      "headDir": "left",
+      "cells": [
+        [
+          2,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          3,
+          2
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-23",
+      "headDir": "right",
+      "cells": [
+        [
+          5,
+          19
+        ],
+        [
+          5,
+          20
+        ],
+        [
+          4,
+          20
+        ],
+        [
+          3,
+          20
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-24",
+      "headDir": "right",
+      "cells": [
+        [
+          9,
+          19
+        ],
+        [
+          9,
+          20
+        ],
+        [
+          8,
+          20
+        ],
+        [
+          7,
+          20
+        ],
+        [
+          7,
+          21
+        ],
+        [
+          8,
+          21
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-25",
+      "headDir": "left",
+      "cells": [
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          4,
+          2
+        ],
+        [
+          5,
+          2
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-26",
+      "headDir": "right",
+      "cells": [
+        [
+          7,
+          17
+        ],
+        [
+          8,
+          17
+        ],
+        [
+          9,
+          17
+        ],
+        [
+          10,
+          17
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-27",
+      "headDir": "right",
+      "cells": [
+        [
+          12,
+          17
+        ],
+        [
+          11,
+          17
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-28",
       "headDir": "up",
       "cells": [
         [
@@ -491,8 +756,339 @@
           5
         ],
         [
-          5,
+          4,
+          4
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-29",
+      "headDir": "right",
+      "cells": [
+        [
+          11,
+          18
+        ],
+        [
+          10,
+          18
+        ],
+        [
+          10,
+          19
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-30",
+      "headDir": "left",
+      "cells": [
+        [
+          12,
+          8
+        ],
+        [
+          13,
+          8
+        ],
+        [
+          13,
+          7
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-31",
+      "headDir": "left",
+      "cells": [
+        [
+          1,
           5
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-32",
+      "headDir": "down",
+      "cells": [
+        [
+          10,
+          12
+        ],
+        [
+          10,
+          11
+        ],
+        [
+          10,
+          10
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-33",
+      "headDir": "right",
+      "cells": [
+        [
+          4,
+          22
+        ],
+        [
+          4,
+          21
+        ],
+        [
+          3,
+          21
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-34",
+      "headDir": "left",
+      "cells": [
+        [
+          8,
+          3
+        ],
+        [
+          7,
+          3
+        ],
+        [
+          7,
+          2
+        ],
+        [
+          8,
+          2
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-35",
+      "headDir": "down",
+      "cells": [
+        [
+          11,
+          11
+        ],
+        [
+          11,
+          10
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-36",
+      "headDir": "right",
+      "cells": [
+        [
+          0,
+          18
+        ],
+        [
+          0,
+          19
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-37",
+      "headDir": "up",
+      "cells": [
+        [
+          2,
+          11
+        ],
+        [
+          2,
+          12
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-38",
+      "headDir": "left",
+      "cells": [
+        [
+          2,
+          4
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-39",
+      "headDir": "up",
+      "cells": [
+        [
+          3,
+          12
+        ],
+        [
+          3,
+          11
+        ],
+        [
+          3,
+          10
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-40",
+      "headDir": "up",
+      "cells": [
+        [
+          4,
+          8
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          5,
+          9
+        ],
+        [
+          4,
+          9
+        ],
+        [
+          3,
+          9
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-41",
+      "headDir": "up",
+      "cells": [
+        [
+          3,
+          15
+        ],
+        [
+          2,
+          15
+        ],
+        [
+          2,
+          14
+        ],
+        [
+          1,
+          14
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-42",
+      "headDir": "up",
+      "cells": [
+        [
+          4,
+          11
+        ],
+        [
+          4,
+          12
+        ],
+        [
+          5,
+          12
+        ],
+        [
+          5,
+          13
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-43",
+      "headDir": "up",
+      "cells": [
+        [
+          3,
+          13
+        ],
+        [
+          4,
+          13
+        ],
+        [
+          4,
+          14
+        ],
+        [
+          4,
+          15
+        ],
+        [
+          5,
+          15
+        ],
+        [
+          5,
+          16
+        ],
+        [
+          4,
+          16
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-44",
+      "headDir": "up",
+      "cells": [
+        [
+          0,
+          15
+        ],
+        [
+          0,
+          16
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-45",
+      "headDir": "up",
+      "cells": [
+        [
+          6,
+          6
         ],
         [
           5,
@@ -505,33 +1101,113 @@
         [
           4,
           7
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          3,
+          8
         ]
       ],
       "paintRole": "heart"
     },
     {
-      "id": "arrow-22",
-      "headDir": "down",
+      "id": "arrow-46",
+      "headDir": "up",
       "cells": [
         [
-          13,
-          8
-        ],
-        [
-          12,
-          8
-        ],
-        [
-          11,
-          8
-        ],
-        [
-          11,
+          2,
           9
         ],
         [
-          11,
+          2,
           10
+        ],
+        [
+          1,
+          10
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          1,
+          12
+        ],
+        [
+          1,
+          13
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-47",
+      "headDir": "up",
+      "cells": [
+        [
+          1,
+          8
+        ],
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          9
+        ],
+        [
+          0,
+          10
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-48",
+      "headDir": "up",
+      "cells": [
+        [
+          0,
+          14
+        ],
+        [
+          0,
+          13
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-49",
+      "headDir": "down",
+      "cells": [
+        [
+          12,
+          10
+        ],
+        [
+          13,
+          10
+        ]
+      ],
+      "paintRole": "heart"
+    },
+    {
+      "id": "arrow-50",
+      "headDir": "right",
+      "cells": [
+        [
+          5,
+          21
+        ],
+        [
+          5,
+          22
         ]
       ],
       "paintRole": "heart"

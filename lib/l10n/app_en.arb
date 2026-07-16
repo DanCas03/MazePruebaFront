@@ -36,6 +36,10 @@
       "count": { "type": "int" }
     }
   },
+  "errorsLeft": "Errors left",
+  "@errorsLeft": {
+    "description": "Tooltip/semantics label of the descending error-budget chip in the game AppBar (front#83)."
+  },
   "loading": "Loading...",
   "error": "Error",
   "defeatTitle": "Out of Moves!",
@@ -85,6 +89,10 @@
   "campaignComplete": "You've completed all levels!",
   "@campaignComplete": {
     "description": "Shown on the victory screen after clearing the last level in the catalog."
+  },
+  "nextLevelLocked": "Complete the earlier levels to unlock the next one.",
+  "@nextLevelLocked": {
+    "description": "Shown on the victory screen when the next level's tier is still locked (earlier levels not completed)."
   },
   "levelsLoadError": "Couldn't load levels",
   "@levelsLoadError": {

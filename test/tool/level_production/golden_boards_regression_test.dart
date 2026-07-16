@@ -6,12 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../tool/level_production/candidate_producer.dart';
 import '../../../tool/level_production/ramp.dart';
 
-/// Fija el output del generador para (tier, seed) ANTES del refactor
-/// BoardSpace (front#73, ADR-0005). El generador debe seguir produciendo
-/// exactamente el mismo JSON durante todo el refactor — mismo seed, misma
-/// secuencia de llamadas a Random, mismo tablero. Si este test rompe en
-/// cualquier tarea posterior, el refactor tiene un bug de reproducibilidad:
-/// NO se recaptura el golden, se corrige el código.
+/// Forward regression guard (patrón back#39): fija el output del generador
+/// por bandas (spec 2026-07-15-generator-band-density-design.md) para
+/// (tier, seed). Si rompe SIN un cambio deliberado del generador, hay un bug
+/// de reproducibilidad. Ante un cambio deliberado, recapturar con un script
+/// puntual que escriba produceCandidate(spec).json en test/fixtures/.
 void main() {
   group('golden boards — regresión pre-BoardSpace (front#73)', () {
     test('tier 1, seed 101 (6x8) se mantiene byte-idéntico', () {

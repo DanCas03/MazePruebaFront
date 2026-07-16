@@ -1765,4 +1765,118 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
 **Prompt o instrucción proporcionada:** > "arranca el #85 con TDD"
 **Resultado obtenido:** Nuevo VO `lib/domain/game_core/space/bounding_box.dart` (`BoundingBox {minRow,minCol,rows,cols}` + `maxRow/maxCol`, `isEmpty`, `contains`, Equatable). `BoardSpace` gana `BoundingBox get bounds` con default GENÉRICO O(cellCount) derivado del min/max de `allCells` (funciona para cualquier geometría; vacío ⇒ caja 0×0); `RectSpace` lo sobreescribe en O(1) (`0,0,rows,cols`). `ArrowBoard.cols/rows` delegan en `space.bounds` y se elimina el import + cast a `RectSpace` (el Aggregate ya no conoce el subtipo concreto). El suite de contrato compartido gana la invariante universal "bounds contiene todas las celdas" (corre contra RectSpace y HoledRectSpace sin cambios). TDD: `bounding_box_test.dart` (4) + `board_space_bounds_test.dart` (5, incluye un espacio NO rectangular de test que ejercita el default y prueba que `ArrowBoard.cols/rows` ya no castea), RED verificado. Aceptación: `grep "as RectSpace" lib/` VACÍO; `flutter analyze` limpio; suite completa **676/676**. README (§Architecture, párrafo BoardSpace) actualizado. Desbloquea #86 (MaskedSpace) y #87 (render vía space), que pueden correr en paralelo.
+## Entrada 086 — front#81 (fragmento 1) — Servicio de dominio CampaignProgression
+
+**Tarea o problema abordado:** Bug #81: la pantalla de victoria ofrecía "Next Level" por pura adyacencia del Catálogo, saltándose `TierGating` — al ganar el último nivel de un Tier desbloqueado entrando fuera de orden, desbloqueaba/entraba al primer nivel del Tier siguiente aún bloqueado. Se necesita mover la decisión "qué sigue y si es jugable" al dominio.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** Nuevo `lib/domain/board/services/campaign_progression.dart` (Dart puro, hermano de `TierGating`) con un `sealed NextLevelOutcome` de 4 casos exhaustivos (`NextLevelUnlocked(levelId)`, `NextLevelLocked`, `CampaignComplete`, `NotInCampaign`) y `CampaignProgression.resolve(currentId, catalog, progress)`. Deriva el Tier de cada nivel de campaña por POSICIÓN (mismo criterio que `LevelSelectionController`), cuenta el nivel recién ganado como completado (robusto ante la carrera con la persistencia fire-and-forget) y consulta `TierGating.isLevelUnlocked` para el candidato siguiente. TDD: `test/domain/board/services/campaign_progression_test.dart` **6/6** (RED verificado antes de implementar), incluida la regresión del bug (cruce de frontera de Tier con previos incompletos ⇒ `NextLevelLocked`).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 087 — front#81 (fragmento 2) — Provider nextLevelOutcomeProvider
+
+**Tarea o problema abordado:** Exponer la progresión gating-aware a la presentación como fachada reactiva, sin que la pantalla de victoria toque infraestructura ni recomponga la adyacencia a mano.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** Nuevo `lib/application/providers/next_level_provider.dart`: `nextLevelOutcomeProvider` = `FutureProvider.autoDispose.family<NextLevelOutcome, LevelId>` que compone `levelCatalogProvider.future` + `levelProgressRepositoryProvider.getAll()` y delega en `CampaignProgression(TierGating())`. No requiere override en `main` (se autocompone leyendo providers ya sobreescritos allí — DIP transitiva). TDD: `test/application/providers/next_level_provider_test.dart` **3/3** con `ProviderContainer` + `FakeLevelProgressRepository` (RED verificado). El nivel recién ganado se cuenta como completado, así el gating no depende de la carrera con la persistencia fire-and-forget del observer.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 088 — front#81 (fragmento 3) — String l10n nextLevelLocked (en/es)
+
+**Tarea o problema abordado:** Mensaje para el caso nuevo `NextLevelLocked` en la pantalla de victoria: cuando el siguiente nivel pertenece a un Tier aún bloqueado, en vez de un CTA que llevaría a un nivel bloqueado se muestra el requisito.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** `lib/l10n/app_en.arb` y `app_es.arb`: clave `nextLevelLocked` ("Complete the earlier levels to unlock the next one." / "Completa los niveles anteriores para desbloquear el siguiente."). `flutter gen-l10n` regenera los getters (archivos `app_localizations*.dart` son build artifacts gitignoreados, no se versionan). Solo los `.arb` entran al commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 089 — front#81 (fragmento 4) — VictoryScreen respeta el gating + cierre
+
+**Tarea o problema abordado:** El fix real del bug #81 en la UI: la pantalla de victoria ofrecía "Next Level" incondicionalmente por adyacencia del Catálogo, saltándose `TierGating` y permitiendo entrar a un nivel de un Tier bloqueado (con efecto cascada: persistía `completed:true` de ese nivel, corrompiendo el gating y encadenando la campaña).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto A" (star-gating saltado al pasar el último nivel de una dificultad)
+**Resultado obtenido:** `lib/presentation/level_selection/victory_screen.dart` sustituye el cálculo inline de adyacencia (fuga de lógica a presentación) por `ref.watch(nextLevelOutcomeProvider(args.levelId))` y un `switch` exhaustivo sobre el `sealed NextLevelOutcome`: `NextLevelUnlocked`→CTA que navega al id resuelto; `NextLevelLocked`→mensaje de requisito (`l10n.nextLevelLocked`); `CampaignComplete`→felicitación; `NotInCampaign`/loading→nada. Se eliminan los imports de `levelCatalogProvider`/`CatalogEntry`/`LevelSection` (ya no se recompone la adyacencia aquí). TDD: `test/presentation/level_selection/victory_screen_test.dart` — harness overridea `levelProgressRepositoryProvider` con `FakeLevelProgressRepository`; 2 tests nuevos (bloqueado ⇒ sin CTA + mensaje + sin navegación; desbloqueado tras completar previos ⇒ navega al Tier siguiente), RED verificado antes del fix. **9/9** en la pantalla, **677/677** suite completa, `flutter analyze` limpio. README actualizado (§Progresión y §Themed section). Nota: la defensa en profundidad en `GameController.loadLevel` (guarda para futuros deep links) queda como follow-up opcional — el fix de la pantalla ya cierra la única ruta de bypass existente.
+
+## Entrada 090 — front#83 (fragmento 1) — Presupuesto de errores por nivel (dominio)
+
+**Tarea o problema abordado:** Punto C: "contador de errores máximo por nivel que va descendiendo por cada error". La mecánica de choques existía pero con máximo GLOBAL hardcodeado (5), ascendente y sin mostrarse en partida. Modelar el presupuesto por nivel y la vista descendente en el dominio.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `StrikeCount` gana `max` por instancia (default `defaultMax=5`) y un getter `remaining = (max-value).clamp(0,max)` — el contador DESCENDENTE que ve el jugador; el modelo interno sigue contando choques cometidos (el scoring los usa como `collisions`). `isFatal`/`increment` preservan `max`; `props` incluye `max`. `Level` gana `maxErrors` (default `StrikeCount.defaultMax`, invariante `> 0` → `InvalidLevelException`), en `props`. TDD: nuevo `test/domain/game_core/value_objects/strike_count_test.dart` (6) + 5 casos nuevos en `level_test.dart` (default/valor/cero/negativo/igualdad), **24/24** (RED verificado). Decisión: un único origen del "5" (`StrikeCount.defaultMax`), referenciado por `Level`; el default de generados (sin `Level`) sale del mismo sitio.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 091 — front#83 (fragmento 2) — Wire decode/encode de maxErrors
+
+**Tarea o problema abordado:** Transportar el presupuesto por nivel en el wire contract de forma aditiva/tolerante, sin romper clientes ni goldens existentes.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `LevelJsonDecoder` decodifica `maxErrors` con `_optionalInt(...) ?? StrikeCount.defaultMax` (ausente ⇒ default; no-int ⇒ FormatException, contrato roto). `LevelJsonEncoder.toMap`/`encode` ganan `int? maxErrors` opcional, emitido `if (maxErrors != null)` (igual que `timeLimitSec`/`order`): no pasarlo conserva el JSON de campaña original y mantiene los golden boards byte-idénticos. TDD: 4 casos nuevos en `level_json_decoder_test.dart` (default por ausencia, decode del valor, no-int lanza, round-trip preserva el presupuesto), **19/19** (RED verificado). La propiedad inversa se conserva porque el encoder es primitive-based: el caller elige qué campos emitir (como ya ocurría con palette/timeLimitSec).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 092 — front#83 (fragmento 3) — GameController inicializa strikes desde Level.maxErrors
+
+**Tarea o problema abordado:** Conectar el presupuesto por nivel al bucle de partida: el contador debe arrancar en `level.maxErrors` y perder al agotarlo (no al 5 hardcodeado), exponiendo el presupuesto al HUD desde la carga.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `GameController._startLevel` cambia `const StrikeCount(0)` por `StrikeCount(0, max: level.maxErrors)` y pasa `strikes: _strikes` al `GamePlaying` inicial (antes el estado de arranque no llevaba strikes → el HUD no podía derivar los restantes). Las dos reconstrucciones de `GamePlaying` de la demo de pista pasan `StrikeCount(0, max: level.maxErrors)` para que el chip sea coherente durante la reproducción. Los tableros generados siguen con el default (`StrikeCount(0)` = `defaultMax`), sin `Level`. TDD: `_stubLevel` acepta `maxErrors`; 2 tests nuevos (presupuesto expuesto como `remaining` al cargar; pérdida al 3.er choque con `maxErrors:3`, no al 5.º), **29/29** en game_controller + hint (RED verificado; los tests de default 5 siguen verdes).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 093 — front#83 (fragmento 4) — String l10n errorsLeft (en/es)
+
+**Tarea o problema abordado:** Etiqueta de tooltip/semántica para el chip descendente de errores del HUD.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `app_en.arb`/`app_es.arb`: clave `errorsLeft` ("Errors left" / "Errores restantes"). `flutter gen-l10n` regenera los getters (los `app_localizations*.dart` son build artifacts gitignoreados). Solo los `.arb` entran al commit.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 094 — front#83 (fragmento 5) — Chip descendente de errores en el HUD + cierre
+
+**Tarea o problema abordado:** Mostrar en partida el contador de errores descendente (lo que faltaba de la feature: la mecánica ya existía pero nunca se veía durante el juego).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "arregla el punto C" (contador de errores máximo por nivel, descendente)
+**Resultado obtenido:** `game_screen.dart` añade `_ErrorsChip` en la AppBar (corazón + `s.strikes.remaining`, tooltip `l10n.errorsLeft`), presente durante todo `GamePlaying` y espejo visual de `_CountdownChip`. TDD: `_repoWithBoard` acepta `maxErrors`; test nuevo (chip arranca en 3, desciende a 2 tras un choque, sigue jugando), **10/10** en game_screen (RED verificado). `flutter analyze` limpio; suite completa **684/684**. README actualizado (condición de derrota: presupuesto por nivel + contador descendente). Seguimiento OPCIONAL (backend): servir `maxErrors` por nivel en `GET /levels/:id` para que difieran entre niveles; hasta entonces todos usan el default 5 (dificultad sin cambios). Nota: `undoMove` no revierte strikes (comportamiento previo intencional, fuera de alcance).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 095 — Generador por bandas (fragmento 1) — Helpers puros de bandas y cuotas
+
+**Tarea o problema abordado:** Primer fragmento del fix de densidad del generador (spec 2026-07-15-generator-band-density-design.md): helpers puros y testeables para particionar el tablero en bandas concéntricas y repartir cuotas proporcionales.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 1)
+**Resultado obtenido:** Nuevo `lib/infrastructure/generators/band_layout.dart` con dos funciones puras: `concentricBands(cols, rows)` (índice 0 = banda más interior; distancia al borde d=min(row,col,rows-1-row,cols-1-col); k=min(3,maxD+1) bandas de ancho igual; particiona todas las celdas sin solape) y `largestRemainderQuotas(total, sizes)` (reparto por mayor resto, suma exacta = total). Tests delegados a subagente (AAA, `should_..._when_...`): **7/7** verdes — 3 para `concentricBands` (partición 20×20, banda única 2×2, una banda por distancia 6×8) y 4 para `largestRemainderQuotas` (suma exacta, proporcionalidad [5,10,15], sizes en cero, total=0). Sin knobs públicos nuevos; no toca `generate()` ni el camino temático.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 096 — Generador por bandas (fragmento 2) — Colocación interior-primero (GREEN)
+
+**Tarea o problema abordado:** Eliminar el anillo perimetral: reescribir `GraphBoardGenerator.generate()` para colocar flechas interior-primero por bandas concéntricas con cuota proporcional y dirección factible (spec 2026-07-15-generator-band-density-design.md).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Tasks 2-3)
+**Resultado obtenido:** `generate()` ahora recorre `concentricBands` de dentro afuera con cuotas de `largestRemainderQuotas` (rollover del déficit hacia la banda siguiente, presupuesto `celdas_banda×30` = `cols×rows×30` global igual que antes). Nuevo helper `_bentArrowFromPool`: muestrea la cabeza del pool de la banda y elige la dirección AL AZAR ENTRE LAS FACTIBLES (antes se imponía a priori, causa del anillo). Se conservan los asserts de invariante DAG (carril de salida libre + sin overlap al colocar) y la degradación con gracia vía `_logger?.warn`. **Test guardián de densidad (Task 2):** ajustado a la config donde el spec sitúa el anillo — 50×50, arrowCount 200, maxPathLen 5 (config del plan 20×20/60 daba falso verde, avg≈0.70; decisión del usuario). RED con el generador viejo (avg 0.474 < 0.6), GREEN tras el fix. Aislamiento verificado: golden temático de `themed_producer_test.dart` byte-idéntico SIN recaptura, determinismo e invariantes verdes (45/45 en la suite de generadores + temático + determinismo). `generateThemed`, `_randomBentArrow`, `_randomHeadWithClearLane` y `_freeNeighbors` intactos. Seguimiento OPCIONAL (fuera de alcance del plan): la rama `allowedBody==null` de `_randomBentArrow`/`_randomHeadWithClearLane` queda sin usar por producción (solo temático las llama, con `allowedBody` no nulo); candidata a limpieza en un fragmento aparte para no arriesgar la estabilidad byte a byte del golden temático.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 097 — Generador por bandas (fragmento 3) — Recaptura de goldens como forward guard
+
+**Tarea o problema abordado:** El golden de campaña (`golden_boards_regression_test.dart`) rompía por diseño tras el rework del generador; su misión pre-BoardSpace terminó con PR #79. Recapturar los dos fixtures y reconvertir el test en guardián hacia delante (patrón back#39).
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 4)
+**Resultado obtenido:** Confirmado RED (2/2) con el generador nuevo. Script efímero `tool/regen_goldens.dart` (creado, ejecutado, borrado — sin rastro en el árbol) reescribió `test/fixtures/golden_boards/cand-t1-s101.json` (tier 1, 6×8) y `cand-t5-s918.json` (tier 5 finale, 50×50) vía `produceCandidate(spec).json`. Doc-comment del test reescrito como *forward regression guard*: fija el output del generador por bandas para (tier, seed); si rompe sin cambio deliberado hay bug de reproducibilidad. Verificado GREEN 2/2. (Los nombres de group/test conservan la referencia histórica front#73 por alcance mínimo del plan.)
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 098 — Generador por bandas (fragmento 4) — README, suite completa y PR
+
+**Tarea o problema abordado:** Documentar la distribución homogénea en el README del modo "Generar nivel" y cerrar la feature con la suite completa verde.
+**Fecha:** 2026-07-15
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context)
+**Prompt o instrucción proporcionada:** > "ejecuta el plan generator-band-density" (Task 5)
+**Resultado obtenido:** Nota en README (§ GenerateBoardUseCase): `GraphBoardGenerator` coloca interior-primero por bandas concéntricas ⇒ densidad interior comparable al borde (sin anillo perimetral), determinismo intacto (mismo seed + config ⇒ mismo tablero), con enlace al spec. Suite completa **704/704** verde; `flutter analyze` sin issues. PR a `main` (el usuario decide el merge).
 **Modificaciones realizadas por el equipo:** (completar manualmente)

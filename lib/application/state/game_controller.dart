@@ -136,7 +136,9 @@ class GameController extends AsyncNotifier<GameState> {
     _cancelElapsed();
     _blockedNonce = 0;
     _exitNonce = 0;
-    _strikes = const StrikeCount(0);
+    // Presupuesto de errores POR NIVEL (front#83): el contador arranca lleno y
+    // desciende con cada choque; a los cero errores restantes se pierde.
+    _strikes = StrikeCount(0, max: level.maxErrors);
     _invoker.clear();
     _remainingSeconds = level.timeLimitSec;
     _optimalMoves = level.board.arrows.length; // óptimo = nº de flechas
@@ -144,6 +146,7 @@ class GameController extends AsyncNotifier<GameState> {
     state = AsyncValue.data(GamePlaying(
       board: level.board,
       moves: const MoveCount(0),
+      strikes: _strikes, // expone el presupuesto del nivel al HUD desde el inicio
       palette: level.palette,
       canUndo: false,
       remainingSeconds: _remainingSeconds,
@@ -331,6 +334,7 @@ class GameController extends AsyncNotifier<GameState> {
     state = AsyncValue.data(GamePlaying(
       board: board,
       moves: const MoveCount(0),
+      strikes: StrikeCount(0, max: level.maxErrors), // HUD coherente con el nivel
       palette: level.palette,
       hintPlaying: true,
     ));
@@ -348,6 +352,7 @@ class GameController extends AsyncNotifier<GameState> {
       state = AsyncValue.data(GamePlaying(
         board: board,
         moves: const MoveCount(0),
+        strikes: StrikeCount(0, max: level.maxErrors),
         palette: level.palette,
         hintPlaying: true,
         exitingArrow: removed,

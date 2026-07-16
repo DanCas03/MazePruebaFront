@@ -1,6 +1,7 @@
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/domain/game_core/value_objects/strike_count.dart';
 import 'package:flutter_arrow_maze/infrastructure/serialization/level_json_decoder.dart';
 import 'package:flutter_arrow_maze/infrastructure/serialization/level_json_encoder.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,6 +109,46 @@ void main() {
 
       // Assert — the optional limit surfaces as null, not a default.
       expect(level.timeLimitSec, isNull);
+    });
+
+    // front#83 — per-level error budget, additive/tolerant like timeLimitSec.
+    test('should_default_maxErrors_to_the_strike_budget_when_key_is_absent', () {
+      // Arrange — the canonical map carries no maxErrors.
+      final level = sut.decode(canonicalWireMap());
+      // Assert — absent ⇒ the default budget, never a crash.
+      expect(level.maxErrors, StrikeCount.defaultMax);
+    });
+
+    test('should_decode_per_level_maxErrors_when_present', () {
+      // Arrange
+      final json = canonicalWireMap()..['maxErrors'] = 3;
+      // Act
+      final level = sut.decode(json);
+      // Assert
+      expect(level.maxErrors, 3);
+    });
+
+    test('should_throw_format_exception_when_maxErrors_is_not_an_int', () {
+      // Arrange — a malformed budget of the wrong type.
+      final bad = canonicalWireMap()..['maxErrors'] = '3';
+      // Act & Assert
+      expect(() => sut.decode(bad), throwsA(isA<FormatException>()));
+    });
+
+    test('should_round_trip_maxErrors_through_encode_when_present', () {
+      // Arrange — decode a map WITH a budget, then re-encode passing it back.
+      const encoder = LevelJsonEncoder();
+      final canonical = canonicalWireMap()..['maxErrors'] = 3;
+      // Act — JSON -> Level -> JSON preserving the budget.
+      final level = sut.decode(canonical);
+      final reEncoded = encoder.toMap(
+        levelId: level.id.value,
+        board: level.board,
+        timeLimitSec: level.timeLimitSec,
+        maxErrors: level.maxErrors,
+      );
+      // Assert — the budget survives the round-trip.
+      expect(reEncoded['maxErrors'], 3);
     });
 
     test('should_throw_format_exception_when_cols_key_is_missing', () {

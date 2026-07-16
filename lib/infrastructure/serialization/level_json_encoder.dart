@@ -17,6 +17,7 @@ class LevelJsonEncoder {
     required ArrowBoard board,
     int? timeLimitSec,
     int? order,
+    int? maxErrors,
     Map<String, String>? palette,
   }) =>
       {
@@ -25,6 +26,10 @@ class LevelJsonEncoder {
         'cols': board.cols,
         'rows': board.rows,
         if (timeLimitSec != null) 'timeLimitSec': timeLimitSec,
+        // Presupuesto de errores por nivel (front#83): opcional como
+        // timeLimitSec — solo se emite cuando se provee (ausente conserva el
+        // JSON original y el default del dominio al decodear).
+        if (maxErrors != null) 'maxErrors': maxErrors,
         'arrows': [
           for (final a in board.arrows)
             {
@@ -48,7 +53,8 @@ class LevelJsonEncoder {
     required ArrowBoard board,
     int? timeLimitSec,
     int? order,
+    int? maxErrors,
     Map<String, String>? palette,
   }) =>
-      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, order: order, palette: palette))}\n';
+      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, order: order, maxErrors: maxErrors, palette: palette))}\n';
 }

@@ -47,7 +47,8 @@ class RampStep {
   final int maxPathLen;
 
   /// true ⇒ los candidatos llevan cuenta atrás derivada (ver [timeLimitSec]).
-  /// Los tiers 1–2 son sin límite; del tier 3 en adelante, con límite.
+  /// Todos los tiers de la campaña están cronometrados (feedback de
+  /// mantenedor, back#46): ya no hay escalones sin límite.
   final bool timed;
 
   const RampStep({
@@ -89,18 +90,18 @@ class RampStep {
 /// remate 28×50 del tier 5 (nivel 15). Ordenada por dificultad creciente. Todas
 /// las dimensiones caen dentro de [AspectBand] (back#46, reshape 9:16).
 const List<RampStep> rampTable = [
-  // T1 (niveles 1–3) — 6×10, sin límite.
-  RampStep(tier: 1, finale: false, cols: 6, rows: 10, fillRatio: 0.30, maxPathLen: 3, timed: false),
-  // T2 (niveles 4–6) — 9×16, sin límite.
-  RampStep(tier: 2, finale: false, cols: 9, rows: 16, fillRatio: 0.38, maxPathLen: 5, timed: false),
+  // T1 (niveles 1–3) — 6×10, con límite derivado.
+  RampStep(tier: 1, finale: false, cols: 6, rows: 10, fillRatio: 0.30, maxPathLen: 3, timed: true),
+  // T2 (niveles 4–6) — 9×16, con límite derivado.
+  RampStep(tier: 2, finale: false, cols: 9, rows: 16, fillRatio: 0.38, maxPathLen: 5, timed: true),
   // T3 (niveles 7–9) — 12×22, con límite derivado.
   RampStep(tier: 3, finale: false, cols: 12, rows: 22, fillRatio: 0.45, maxPathLen: 7, timed: true),
   // T4 (niveles 10–12) — 19×34, con límite derivado.
-  RampStep(tier: 4, finale: false, cols: 19, rows: 34, fillRatio: 0.55, maxPathLen: 10, timed: true),
+  RampStep(tier: 4, finale: false, cols: 19, rows: 34, fillRatio: 0.62, maxPathLen: 10, timed: true),
   // T5 (niveles 13–14) — 25×44, con límite derivado.
-  RampStep(tier: 5, finale: false, cols: 25, rows: 44, fillRatio: 0.60, maxPathLen: 12, timed: true),
-  // T5 (nivel 15, remate) — 28×50, con límite derivado.
-  RampStep(tier: 5, finale: true, cols: 28, rows: 50, fillRatio: 0.65, maxPathLen: 12, timed: true),
+  RampStep(tier: 5, finale: false, cols: 25, rows: 44, fillRatio: 0.75, maxPathLen: 12, timed: true),
+  // T5 (nivel 15, remate) — 28×50, con límite derivado, densidad casi total.
+  RampStep(tier: 5, finale: true, cols: 28, rows: 50, fillRatio: 0.90, maxPathLen: 12, timed: true),
 ];
 
 /// Tier mínimo/máximo aceptados por la rampa (útil para validar CLI args).

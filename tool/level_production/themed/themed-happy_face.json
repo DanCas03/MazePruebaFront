@@ -1,171 +1,215 @@
 {
   "levelId": "themed-happy_face",
-  "cols": 16,
-  "rows": 16,
+  "cols": 24,
+  "rows": 22,
   "arrows": [
     {
       "id": "arrow-0",
-      "headDir": "up",
+      "headDir": "left",
       "cells": [
         [
-          6,
-          11
+          15,
+          16
         ],
         [
-          6,
-          10
+          16,
+          16
         ],
         [
-          5,
-          10
-        ],
-        [
-          5,
-          11
+          16,
+          15
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-1",
-      "headDir": "down",
+      "headDir": "right",
       "cells": [
         [
-          11,
-          9
+          7,
+          7
         ],
         [
-          12,
-          9
+          7,
+          6
         ],
         [
-          12,
-          10
+          6,
+          6
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          7,
+          8
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-2",
-      "headDir": "right",
+      "headDir": "left",
       "cells": [
         [
-          11,
-          10
+          15,
+          17
         ],
         [
-          11,
-          11
+          14,
+          17
         ],
         [
-          10,
-          11
+          14,
+          16
         ],
         [
-          9,
-          11
-        ],
-        [
-          9,
-          12
-        ],
-        [
-          10,
-          12
+          13,
+          16
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-3",
-      "headDir": "left",
+      "headDir": "up",
       "cells": [
         [
-          6,
-          5
+          9,
+          17
         ],
         [
-          5,
-          5
+          8,
+          17
+        ],
+        [
+          8,
+          18
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-4",
-      "headDir": "up",
+      "headDir": "right",
       "cells": [
         [
-          12,
-          8
+          16,
+          14
         ],
         [
-          12,
-          7
+          15,
+          14
+        ],
+        [
+          15,
+          13
+        ],
+        [
+          16,
+          13
+        ],
+        [
+          17,
+          13
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-5",
-      "headDir": "up",
+      "headDir": "left",
       "cells": [
         [
-          10,
-          4
+          9,
+          8
         ],
         [
-          10,
-          3
+          9,
+          7
+        ],
+        [
+          8,
+          7
+        ],
+        [
+          8,
+          6
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-6",
-      "headDir": "down",
+      "headDir": "up",
       "cells": [
         [
-          11,
-          4
+          9,
+          16
         ],
         [
-          11,
-          5
+          9,
+          15
         ],
         [
-          11,
-          6
+          8,
+          15
+        ],
+        [
+          8,
+          16
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-7",
-      "headDir": "down",
+      "headDir": "right",
       "cells": [
         [
-          12,
-          5
+          6,
+          15
         ],
         [
-          12,
-          6
+          7,
+          15
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-8",
-      "headDir": "up",
+      "headDir": "left",
       "cells": [
         [
-          6,
-          4
+          15,
+          6
         ],
         [
-          5,
-          4
+          15,
+          7
+        ],
+        [
+          16,
+          7
+        ],
+        [
+          16,
+          8
+        ],
+        [
+          15,
+          8
+        ],
+        [
+          14,
+          8
         ]
       ],
       "paintRole": "features"
@@ -175,208 +219,192 @@
       "headDir": "left",
       "cells": [
         [
-          9,
-          4
+          7,
+          5
         ],
         [
-          9,
-          3
+          8,
+          5
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-10",
-      "headDir": "up",
+      "headDir": "right",
       "cells": [
         [
-          6,
-          6
+          7,
+          17
         ],
         [
-          5,
-          6
+          7,
+          16
+        ],
+        [
+          6,
+          16
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-11",
-      "headDir": "up",
+      "headDir": "left",
       "cells": [
         [
-          6,
+          16,
           9
         ],
         [
-          5,
-          9
+          16,
+          10
+        ],
+        [
+          16,
+          11
+        ],
+        [
+          15,
+          11
+        ],
+        [
+          15,
+          12
+        ],
+        [
+          16,
+          12
+        ],
+        [
+          17,
+          12
         ]
       ],
       "paintRole": "features"
     },
     {
       "id": "arrow-12",
-      "headDir": "up",
-      "cells": [
-        [
-          7,
-          0
-        ],
-        [
-          8,
-          0
-        ],
-        [
-          8,
-          1
-        ]
-      ],
-      "paintRole": "face"
-    },
-    {
-      "id": "arrow-13",
-      "headDir": "right",
-      "cells": [
-        [
-          1,
-          4
-        ],
-        [
-          1,
-          5
-        ],
-        [
-          2,
-          5
-        ],
-        [
-          2,
-          4
-        ],
-        [
-          2,
-          3
-        ],
-        [
-          3,
-          3
-        ]
-      ],
-      "paintRole": "face"
-    },
-    {
-      "id": "arrow-14",
       "headDir": "left",
       "cells": [
         [
-          13,
-          9
+          17,
+          11
         ],
         [
-          13,
+          17,
           10
-        ],
-        [
-          14,
-          10
-        ],
-        [
-          14,
-          9
         ]
       ],
-      "paintRole": "face"
+      "paintRole": "features"
     },
     {
-      "id": "arrow-15",
-      "headDir": "up",
+      "id": "arrow-13",
+      "headDir": "left",
       "cells": [
         [
-          9,
+          14,
           7
         ],
         [
-          9,
-          8
+          14,
+          6
+        ]
+      ],
+      "paintRole": "features"
+    },
+    {
+      "id": "arrow-14",
+      "headDir": "up",
+      "cells": [
+        [
+          15,
+          10
         ],
         [
-          9,
+          15,
           9
+        ]
+      ],
+      "paintRole": "features"
+    },
+    {
+      "id": "arrow-15",
+      "headDir": "down",
+      "cells": [
+        [
+          3,
+          5
         ],
         [
-          8,
-          9
-        ],
-        [
-          7,
-          9
-        ],
-        [
-          7,
-          8
-        ],
-        [
-          6,
-          8
+          4,
+          5
         ],
         [
           5,
-          8
+          5
+        ],
+        [
+          5,
+          4
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          7,
+          4
+        ],
+        [
+          8,
+          4
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-16",
-      "headDir": "up",
+      "headDir": "down",
       "cells": [
         [
-          5,
-          12
+          9,
+          4
         ],
         [
-          6,
-          12
+          9,
+          3
         ],
         [
-          6,
-          13
+          8,
+          3
         ],
         [
-          6,
-          14
+          7,
+          3
         ],
         [
-          5,
-          14
+          7,
+          2
         ],
         [
-          5,
-          13
-        ],
-        [
-          4,
-          13
-        ],
-        [
-          4,
-          14
+          7,
+          1
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-17",
-      "headDir": "left",
+      "headDir": "down",
       "cells": [
         [
-          5,
-          2
+          9,
+          20
         ],
         [
-          6,
-          2
+          9,
+          19
         ]
       ],
       "paintRole": "face"
@@ -386,58 +414,66 @@
       "headDir": "down",
       "cells": [
         [
-          8,
-          2
+          17,
+          8
         ],
         [
-          9,
-          2
+          17,
+          7
         ],
         [
-          9,
-          1
+          18,
+          7
         ],
         [
-          10,
-          1
+          18,
+          6
         ],
         [
-          10,
-          2
+          17,
+          6
+        ],
+        [
+          17,
+          5
+        ],
+        [
+          18,
+          5
+        ],
+        [
+          18,
+          4
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-19",
-      "headDir": "right",
+      "headDir": "down",
       "cells": [
         [
-          1,
-          8
+          18,
+          11
         ],
         [
-          1,
-          9
+          19,
+          11
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-20",
-      "headDir": "up",
+      "headDir": "down",
       "cells": [
         [
-          8,
-          8
+          19,
+          16
         ],
         [
-          8,
-          7
-        ],
-        [
-          7,
-          7
+          19,
+          15
         ]
       ],
       "paintRole": "face"
@@ -447,36 +483,28 @@
       "headDir": "down",
       "cells": [
         [
-          11,
-          13
+          20,
+          12
         ],
         [
-          10,
-          13
+          20,
+          11
         ],
         [
-          10,
-          14
+          20,
+          10
         ],
         [
-          9,
-          14
+          19,
+          10
         ],
         [
-          9,
-          13
+          18,
+          10
         ],
         [
-          8,
-          13
-        ],
-        [
-          8,
-          14
-        ],
-        [
-          8,
-          15
+          18,
+          9
         ]
       ],
       "paintRole": "face"
@@ -486,90 +514,102 @@
       "headDir": "right",
       "cells": [
         [
-          4,
-          7
+          9,
+          18
         ],
         [
-          4,
-          6
+          10,
+          18
         ],
         [
-          4,
-          5
+          10,
+          17
         ],
         [
-          4,
-          4
+          10,
+          16
         ],
         [
-          3,
-          4
+          10,
+          15
+        ],
+        [
+          10,
+          14
+        ],
+        [
+          11,
+          14
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-23",
-      "headDir": "up",
+      "headDir": "right",
       "cells": [
         [
-          3,
-          8
+          5,
+          19
         ],
         [
-          3,
-          9
+          5,
+          20
         ],
         [
-          2,
-          9
+          6,
+          20
         ],
         [
-          2,
-          8
+          7,
+          20
         ],
         [
-          2,
-          7
+          8,
+          20
         ],
         [
-          3,
-          7
+          8,
+          21
         ],
         [
-          3,
-          6
+          9,
+          21
+        ],
+        [
+          9,
+          22
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-24",
-      "headDir": "left",
+      "headDir": "up",
       "cells": [
         [
-          14,
+          12,
           6
         ],
         [
-          14,
-          5
-        ],
-        [
-          13,
-          5
-        ],
-        [
-          13,
-          4
-        ],
-        [
-          13,
-          3
+          12,
+          7
         ],
         [
           12,
-          3
+          8
+        ],
+        [
+          12,
+          9
+        ],
+        [
+          13,
+          9
+        ],
+        [
+          13,
+          10
         ]
       ],
       "paintRole": "face"
@@ -579,144 +619,144 @@
       "headDir": "right",
       "cells": [
         [
-          9,
+          2,
+          8
+        ],
+        [
+          2,
+          9
+        ],
+        [
+          1,
+          9
+        ],
+        [
+          0,
+          9
+        ],
+        [
+          0,
           10
-        ],
-        [
-          8,
-          10
-        ],
-        [
-          7,
-          10
-        ],
-        [
-          7,
-          11
-        ],
-        [
-          7,
-          12
-        ],
-        [
-          7,
-          13
-        ],
-        [
-          7,
-          14
-        ],
-        [
-          7,
-          15
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-26",
-      "headDir": "down",
+      "headDir": "up",
       "cells": [
         [
-          12,
+          3,
+          14
+        ],
+        [
+          4,
+          14
+        ],
+        [
+          4,
+          15
+        ],
+        [
+          5,
+          15
+        ],
+        [
+          5,
+          14
+        ],
+        [
+          6,
+          14
+        ],
+        [
+          6,
           13
-        ],
-        [
-          12,
-          12
-        ],
-        [
-          12,
-          11
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-27",
-      "headDir": "down",
-      "cells": [
-        [
-          13,
-          6
-        ],
-        [
-          13,
-          7
-        ]
-      ],
-      "paintRole": "face"
-    },
-    {
-      "id": "arrow-28",
       "headDir": "right",
       "cells": [
         [
-          2,
-          10
+          21,
+          14
         ],
         [
-          3,
-          10
+          21,
+          13
         ],
         [
-          3,
-          11
+          20,
+          13
         ],
         [
-          2,
-          11
+          19,
+          13
         ],
         [
-          2,
+          19,
           12
         ],
         [
-          3,
+          18,
           12
         ],
         [
-          3,
+          18,
           13
         ]
       ],
       "paintRole": "face"
     },
     {
-      "id": "arrow-29",
-      "headDir": "up",
+      "id": "arrow-28",
+      "headDir": "down",
       "cells": [
         [
-          7,
-          5
+          21,
+          10
         ],
         [
-          8,
-          5
+          21,
+          11
         ],
         [
-          8,
-          4
+          21,
+          12
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-29",
+      "headDir": "down",
+      "cells": [
+        [
+          11,
+          19
         ],
         [
-          7,
-          4
+          10,
+          19
         ],
         [
-          7,
-          3
+          10,
+          20
         ],
         [
-          7,
-          2
+          11,
+          20
         ],
         [
-          7,
-          1
+          11,
+          21
         ],
         [
-          6,
-          1
+          11,
+          22
         ]
       ],
       "paintRole": "face"
@@ -726,12 +766,28 @@
       "headDir": "left",
       "cells": [
         [
-          5,
-          1
+          10,
+          13
         ],
         [
-          4,
-          1
+          10,
+          12
+        ],
+        [
+          9,
+          12
+        ],
+        [
+          9,
+          11
+        ],
+        [
+          10,
+          11
+        ],
+        [
+          10,
+          10
         ]
       ],
       "paintRole": "face"
@@ -741,15 +797,31 @@
       "headDir": "up",
       "cells": [
         [
-          2,
-          6
+          3,
+          8
         ],
         [
-          1,
-          6
+          3,
+          9
         ],
         [
-          1,
+          4,
+          9
+        ],
+        [
+          4,
+          8
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          4,
           7
         ]
       ],
@@ -757,72 +829,84 @@
     },
     {
       "id": "arrow-32",
-      "headDir": "down",
+      "headDir": "right",
       "cells": [
         [
-          13,
-          8
+          18,
+          19
         ],
         [
-          14,
-          8
+          18,
+          18
         ],
         [
-          14,
-          7
+          19,
+          18
         ],
         [
-          15,
-          7
+          19,
+          17
         ],
         [
-          15,
-          8
+          18,
+          17
+        ],
+        [
+          18,
+          16
+        ],
+        [
+          17,
+          16
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-33",
-      "headDir": "left",
+      "headDir": "up",
       "cells": [
         [
-          11,
-          1
+          6,
+          12
         ],
         [
-          11,
-          2
+          6,
+          11
         ],
         [
-          12,
-          2
+          6,
+          10
+        ],
+        [
+          6,
+          9
+        ],
+        [
+          5,
+          9
+        ],
+        [
+          5,
+          10
+        ],
+        [
+          5,
+          11
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-34",
-      "headDir": "left",
+      "headDir": "down",
       "cells": [
         [
-          6,
-          3
-        ],
-        [
-          5,
-          3
-        ],
-        [
-          4,
-          3
-        ],
-        [
-          4,
+          11,
           2
         ],
         [
-          3,
+          12,
           2
         ]
       ],
@@ -833,30 +917,30 @@
       "headDir": "up",
       "cells": [
         [
-          1,
-          11
+          5,
+          16
         ],
         [
-          1,
-          10
+          4,
+          16
         ]
       ],
       "paintRole": "face"
     },
     {
       "id": "arrow-36",
-      "headDir": "down",
+      "headDir": "right",
       "cells": [
         [
-          13,
+          1,
           12
         ],
         [
-          13,
+          1,
           11
         ],
         [
-          14,
+          0,
           11
         ]
       ],
@@ -864,15 +948,725 @@
     },
     {
       "id": "arrow-37",
+      "headDir": "right",
+      "cells": [
+        [
+          16,
+          20
+        ],
+        [
+          16,
+          21
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-38",
+      "headDir": "up",
+      "cells": [
+        [
+          4,
+          17
+        ],
+        [
+          3,
+          17
+        ],
+        [
+          3,
+          16
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-39",
       "headDir": "left",
       "cells": [
         [
-          0,
+          10,
+          8
+        ],
+        [
+          10,
+          7
+        ],
+        [
+          10,
+          6
+        ],
+        [
+          10,
+          5
+        ],
+        [
+          10,
+          4
+        ],
+        [
+          11,
+          4
+        ],
+        [
+          11,
+          3
+        ],
+        [
+          10,
+          3
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-40",
+      "headDir": "down",
+      "cells": [
+        [
+          16,
+          6
+        ],
+        [
+          16,
+          5
+        ],
+        [
+          16,
+          4
+        ],
+        [
+          17,
+          4
+        ],
+        [
+          17,
+          3
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-41",
+      "headDir": "right",
+      "cells": [
+        [
+          1,
+          14
+        ],
+        [
+          1,
+          15
+        ],
+        [
+          2,
+          15
+        ],
+        [
+          2,
+          16
+        ],
+        [
+          1,
+          16
+        ],
+        [
+          1,
+          17
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-42",
+      "headDir": "up",
+      "cells": [
+        [
+          3,
+          6
+        ],
+        [
+          3,
+          7
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-43",
+      "headDir": "down",
+      "cells": [
+        [
+          13,
+          5
+        ],
+        [
+          13,
+          4
+        ],
+        [
+          13,
+          3
+        ],
+        [
+          13,
+          2
+        ],
+        [
+          14,
+          2
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-44",
+      "headDir": "down",
+      "cells": [
+        [
+          9,
+          2
+        ],
+        [
+          8,
+          2
+        ],
+        [
+          8,
+          1
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-45",
+      "headDir": "down",
+      "cells": [
+        [
+          19,
+          5
+        ],
+        [
+          19,
+          6
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-46",
+      "headDir": "up",
+      "cells": [
+        [
+          3,
+          11
+        ],
+        [
+          2,
+          11
+        ],
+        [
+          2,
+          12
+        ],
+        [
+          3,
+          12
+        ],
+        [
+          3,
+          13
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-47",
+      "headDir": "down",
+      "cells": [
+        [
+          20,
+          7
+        ],
+        [
+          20,
+          6
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-48",
+      "headDir": "up",
+      "cells": [
+        [
+          2,
+          17
+        ],
+        [
+          2,
+          18
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-49",
+      "headDir": "right",
+      "cells": [
+        [
+          8,
+          22
+        ],
+        [
+          7,
+          22
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-50",
+      "headDir": "up",
+      "cells": [
+        [
+          2,
+          6
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          1,
+          7
+        ],
+        [
+          1,
+          6
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-51",
+      "headDir": "down",
+      "cells": [
+        [
+          20,
+          14
+        ],
+        [
+          20,
+          15
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-52",
+      "headDir": "right",
+      "cells": [
+        [
+          10,
+          21
+        ],
+        [
+          10,
+          22
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-53",
+      "headDir": "right",
+      "cells": [
+        [
+          11,
+          17
+        ],
+        [
+          11,
+          18
+        ],
+        [
+          12,
+          18
+        ],
+        [
+          12,
+          17
+        ],
+        [
+          13,
+          17
+        ],
+        [
+          13,
+          18
+        ],
+        [
+          13,
+          19
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-54",
+      "headDir": "left",
+      "cells": [
+        [
+          9,
+          1
+        ],
+        [
+          10,
+          1
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-55",
+      "headDir": "up",
+      "cells": [
+        [
+          2,
+          14
+        ],
+        [
+          2,
+          13
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-56",
+      "headDir": "up",
+      "cells": [
+        [
+          7,
+          21
+        ],
+        [
+          6,
+          21
+        ],
+        [
+          5,
+          21
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-57",
+      "headDir": "left",
+      "cells": [
+        [
+          13,
+          1
+        ],
+        [
+          14,
+          1
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-58",
+      "headDir": "right",
+      "cells": [
+        [
+          15,
+          19
+        ],
+        [
+          16,
+          19
+        ],
+        [
+          16,
+          18
+        ],
+        [
+          16,
+          17
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          17,
+          18
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-59",
+      "headDir": "left",
+      "cells": [
+        [
+          1,
           8
         ],
         [
           0,
-          7
+          8
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-60",
+      "headDir": "up",
+      "cells": [
+        [
+          0,
+          15
+        ],
+        [
+          0,
+          14
+        ],
+        [
+          0,
+          13
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-61",
+      "headDir": "down",
+      "cells": [
+        [
+          14,
+          21
+        ],
+        [
+          14,
+          22
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-62",
+      "headDir": "up",
+      "cells": [
+        [
+          6,
+          3
+        ],
+        [
+          6,
+          2
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-63",
+      "headDir": "right",
+      "cells": [
+        [
+          13,
+          21
+        ],
+        [
+          13,
+          22
+        ],
+        [
+          12,
+          22
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-64",
+      "headDir": "up",
+      "cells": [
+        [
+          6,
+          19
+        ],
+        [
+          6,
+          18
+        ],
+        [
+          5,
+          18
+        ],
+        [
+          4,
+          18
+        ],
+        [
+          3,
+          18
+        ],
+        [
+          3,
+          19
+        ],
+        [
+          4,
+          19
+        ],
+        [
+          4,
+          20
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-65",
+      "headDir": "left",
+      "cells": [
+        [
+          15,
+          3
+        ],
+        [
+          16,
+          3
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-66",
+      "headDir": "down",
+      "cells": [
+        [
+          20,
+          16
+        ],
+        [
+          20,
+          17
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-67",
+      "headDir": "right",
+      "cells": [
+        [
+          14,
+          19
+        ],
+        [
+          14,
+          20
+        ],
+        [
+          15,
+          20
+        ],
+        [
+          15,
+          21
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-68",
+      "headDir": "left",
+      "cells": [
+        [
+          20,
+          9
+        ],
+        [
+          21,
+          9
+        ],
+        [
+          21,
+          8
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-69",
+      "headDir": "left",
+      "cells": [
+        [
+          15,
+          2
+        ],
+        [
+          16,
+          2
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-70",
+      "headDir": "right",
+      "cells": [
+        [
+          17,
+          19
+        ],
+        [
+          17,
+          20
+        ]
+      ],
+      "paintRole": "face"
+    },
+    {
+      "id": "arrow-71",
+      "headDir": "left",
+      "cells": [
+        [
+          12,
+          1
+        ],
+        [
+          11,
+          1
         ]
       ],
       "paintRole": "face"

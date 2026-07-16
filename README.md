@@ -31,18 +31,18 @@ lib/
 │   ├── arrows/      Arrow, ArrowBoard (aggregate root), ArrowId, ArrowLength, ILevelGenerator, Difficulty, GeneratorConfig, GeneratedBoard
 │   ├── board/       LevelId, Level, LevelFailure, SolutionFailure, ILevelRepository, ISolutionRepository, HintPolicy, ILevelProgressRepository, IRemoteProgressRepository, ProgressReconciler
 │   ├── game_core/   Position, Direction, MoveCount, Score, Stars, space/ (BoardSpace, RectSpace, MaskedSpace)
-│   ├── leaderboard/ ScoreEntry, LeaderboardEntry, ILeaderboardRepository (port — submit + read)
+│   ├── leaderboard/ ScoreEntry, LeaderboardEntry, GlobalLeaderboard(+Entry), ILeaderboardRepository (port — submit + read + global read)
 │   ├── auth/        Email, AuthToken, IAuthTokenStorage (port)
 │   └── core/        Domain exception hierarchy
 ├── application/     Use cases, Commands (undo), GameState (sealed), Riverpod Notifiers
 │   ├── commands/    ICommand, CommandInvoker, RemoveArrowCommand
 │   ├── state/       GameState / AuthState (sealed), GameController / AuthController (AsyncNotifier)
-│   ├── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login), LoginUseCase, RegisterUseCase, SyncProgressUseCase, SubmitScoreUseCase, GetLeaderboardUseCase, GenerateBoardUseCase
-│   └── providers/   leaderboard_providers.dart (submitScoreUseCaseProvider, scoreSubmissionObserverProvider — Observer, getLeaderboardUseCaseProvider, leaderboardProvider — FutureProvider.family), level_catalog_provider.dart (levelCatalogProvider — remote catalog + campaign prefetch)
+│   ├── use_cases/   RemoveArrowUseCase, RestoreSessionUseCase (auto-login), LoginUseCase, RegisterUseCase, SyncProgressUseCase, SubmitScoreUseCase, GetLeaderboardUseCase, GetGlobalLeaderboardUseCase, GenerateBoardUseCase
+│   └── providers/   leaderboard_providers.dart (submitScoreUseCaseProvider, scoreSubmissionObserverProvider — Observer, getLeaderboardUseCaseProvider, leaderboardProvider — FutureProvider.family, getGlobalLeaderboardUseCaseProvider, globalLeaderboardProvider), level_catalog_provider.dart (levelCatalogProvider — remote catalog + campaign prefetch)
 ├── infrastructure/  Hive persistence, secure token storage, RemoteAuthRepository, RemoteProgressRepository, RemoteLeaderboardRepository, RemoteLevelRepository (campaign, `levels_cache` box), GraphBoardGenerator (implements the domain ports)
 ├── presentation/    Screens, Widgets, Painters + providers/ (the only place infra is built)
 │   ├── auth/        Login/register screens (LoginScreen, RegisterScreen) and shared auth widgets
-│   └── leaderboard/ LeaderboardScreen (per-level ranking view)
+│   └── leaderboard/ LeaderboardScreen (per-level ranking view), GlobalLeaderboardScreen (global player ranking)
 ├── core/            Cross-cutting: aspects/ (logger), auth/ (AuthGate route guard), config/ (AppConfig), network/ (DioClient, AuthTokenInterceptor), theme/, router/
 └── l10n/            i18n (front#4): app_en.arb / app_es.arb + generated AppLocalizations delegate (see Tooling → Localization)
 ```
@@ -170,11 +170,17 @@ The **Settings screen** (gear icon on Home, route `/settings`) exposes **indepen
 
 ### Score submission (front#16)
 
-On winning a level, `GameController` computes the run's `Score`/`Stars` and emits an enriched `GameWon` state (`{moves, score, stars, timeSeconds, levelId}`). An Observer (`scoreSubmissionObserverProvider`), activated by `GameScreen` via `ref.watch`, listens to `gameControllerProvider` and, on `GameWon`, builds a `ScoreEntry` and fires `SubmitScoreUseCase` fire-and-forget. The use case sends `POST /scores` (`{levelId, score, stars, moves, timeSeconds}`) through `RemoteLeaderboardRepository` (implements the domain port `ILeaderboardRepository`) and `LeaderboardRemoteDataSource` (Dio). The request is signed with the live session's Bearer token via `ISessionTokenStore`, which also covers `remember: false` sessions (front#16's interceptor fix). A network failure is logged (AOP) and swallowed by the use case, so the victory screen is never blocked by the submission.
+On winning a level, `GameController` computes the run's PREVIEW `Score`/`Stars` and emits an enriched `GameWon` state (`{moves, score, stars, timeSeconds, collisions, levelId}`). An Observer (`scoreSubmissionObserverProvider`), activated by `GameScreen` via `ref.watch`, listens to `gameControllerProvider` and, on `GameWon`, builds a `ScoreEntry` and fires `SubmitScoreUseCase` fire-and-forget. The use case sends `POST /scores` with the run's raw metrics (`{levelId, moves, timeSeconds, collisions, previewScore}`, ADR 0006) through `RemoteLeaderboardRepository` (implements the domain port `ILeaderboardRepository`) and `LeaderboardRemoteDataSource` (Dio); `previewScore` (the client's own `Score.fromRun` estimate) travels for audit/telemetry only — the back derives the CANONICAL result from the raw metrics, not from the preview. The request is signed with the live session's Bearer token via `ISessionTokenStore`, which also covers `remember: false` sessions (front#16's interceptor fix).
+
+The back's response (`{score, stars}`) is parsed into a `CanonicalResult` VO and returned by `SubmitScoreUseCase.execute` (`Future<CanonicalResult?>`, `null` on failure — a network error or an invalid response is logged (AOP) and swallowed, so the victory screen is never blocked by the submission). On success, the Observer publishes the canonical result to `canonicalResultProvider` and re-invokes `RecordLevelCompletionUseCase` with the canonical `score`/`stars` (its existing best-of merge makes the re-record idempotent). `VictoryScreen` watches `canonicalResultProvider`: while it is `null` (submission in flight or failed) it renders the client's preview from `GameWon`/`VictoryArgs`; once the back responds, the canonical score/stars replace the preview silently, with no loading spinner.
 
 ### Leaderboard view (front#17)
 
 The level-selection screen exposes a ranking icon per level; tapping it opens `LeaderboardScreen`, which reads the public `GET /leaderboard/:levelId` (back#9). The screen watches `leaderboardProvider` (`FutureProvider.autoDispose.family` keyed by `levelId`), which runs `GetLeaderboardUseCase` through the same `ILeaderboardRepository` port — now cohesive around submit **and** read. `RemoteLeaderboardRepository.getLeaderboard` maps the back's rows (`{id, userId, username, levelId, score, stars, moves, timeSeconds, createdAt}`) to `LeaderboardEntry`, preserving the server's score-desc order (rank is positional). The UI renders the three `AsyncValue` states — a loading spinner, an error state with a retry button, and the ranked list (empty state when a level has no scores yet). Unlike the fire-and-forget submit, the read use case rethrows on failure so the UI can surface the error. The tile shows the entry's `username` (front#50) rather than the raw `userId` UUID.
+
+### Global leaderboard (ADR 0006)
+
+The home menu exposes a **Ranking** entry (trophy icon) that opens `GlobalLeaderboardScreen`: the global player ranking by **campaign totals** — the back aggregates each player's *best* score and *best* stars per campaign level (themed levels and `GeneratedBoard` never count) and serves `GET /leaderboard` (JWT) as `{top, me|null}`. `rank` travels on the wire (unlike the per-level ranking it is not positional: the player's own row can sit outside the top). The screen watches `globalLeaderboardProvider` (`FutureProvider.autoDispose` over `GetGlobalLeaderboardUseCase`) and renders a **podium** for the top 3 (gold/silver/bronze accents), glass rows from 4th on, and the player's own row — highlighted in place when inside the top, **anchored under the list** when outside it, or an "unranked" footer when `me` is `null` (no campaign score submitted yet). Corrupt rows degrade gracefully (skipped with a warn; a corrupt `me` degrades to unranked) mirroring `getLeaderboard`. Pull-to-refresh re-queries; the three `AsyncValue` states follow the per-level screen's pattern.
 
 ### Level selection (front#20 + front#8)
 

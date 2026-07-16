@@ -151,6 +151,35 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                // ADR 0006: acceso al ranking general de jugadores. Mismo peso
+                // visual que el generador (secundario), con el dorado de
+                // "logro" como acento.
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.victory,
+                    side: BorderSide(
+                        color: AppColors.victory.withValues(alpha: 0.6)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pushNamed(
+                      context, AppRouter.globalLeaderboard),
+                  icon: const Icon(Icons.emoji_events),
+                  label: Text(
+                    l10n.homeLeaderboard,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
                   ],
                 ),
               ),

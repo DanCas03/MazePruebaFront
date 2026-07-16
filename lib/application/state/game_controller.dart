@@ -220,6 +220,7 @@ class GameController extends AsyncNotifier<GameState> {
             moves: newMoves.value,
             optimalMoves: _optimalMoves,
             collisions: _strikes.value,
+            timeLimitSec: _currentLevelData?.timeLimitSec,
           );
           final stars = Stars.rate(
             moves: newMoves.value,
@@ -232,6 +233,7 @@ class GameController extends AsyncNotifier<GameState> {
             stars: stars,
             timeSeconds: _elapsedSeconds,
             levelId: _currentLevel!,
+            collisions: _strikes.value,
           ));
         } else {
           state = AsyncValue.data(GamePlaying(

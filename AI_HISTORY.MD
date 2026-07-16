@@ -1,5 +1,54 @@
 # AI History — MazePruebaFront
 
+## Entrada 111 — feat(front): pantalla del Leaderboard general desde el menú principal (ADR 0006)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Task B3 (última del sprint de scoring/leaderboard, ADR 0006): la pantalla marquee del ranking general de jugadores, consumiendo el `GET /leaderboard` del back (PR back#48) — `{top, me|null}` con totales de campaña (mejor score/estrellas por nivel) y `rank` en el cable. Directiva del usuario: pulido visual impecable, app-native.
+**Herramienta de IA utilizada:** Claude Code (Fable 5, roles frontend-architect + qa-engineer; el QA se ejecutó inline por caídas 529 del API en los despachos de subagente)
+**Prompt o instrucción proporcionada:** > "implementa la Task B3 (pantalla del leaderboard general, con pulido visual impecable) y luego monta el PR del front"
+**Resultado obtenido:**
+- `lib/domain/leaderboard/entities/global_leaderboard.dart` (nuevo): `GlobalLeaderboardEntry {username, totalScore, totalStars, rank}` (invariantes: rank ≥ 1, totales ≥ 0) y `GlobalLeaderboard {top inmutable, me?}` con `meIsInTop`. El `rank` viaja en el cable (no es posicional: `me` puede quedar fuera del top).
+- Puerto `ILeaderboardRepository` + `getGlobalLeaderboard()`; `LeaderboardRemoteDataSource.fetchGlobalLeaderboard()` (`GET /leaderboard`, JWT); `RemoteLeaderboardRepository.getGlobalLeaderboard()` con degradación con gracia (fila corrupta del top se salta con warn; `me` corrupto degrada a null = "sin clasificar").
+- `GetGlobalLeaderboardUseCase` + `getGlobalLeaderboardUseCaseProvider`/`globalLeaderboardProvider` (`FutureProvider.autoDispose`); composición en `main.dart` con el mismo Dio firmado.
+- `lib/presentation/leaderboard/screens/global_leaderboard_screen.dart` (nuevo): fondo radial continuo con Home, **podio top-3** (avatares-inicial con anillo/glow oro-plata-bronce — `AppColors.medalGold/Silver/Bronze` nuevos —, corona al nº 1, entrada fade+lift one-shot test-friendly), lista glass del 4º en adelante, fila propia resaltada in-place o **barra anclada** bajo la lista con badge "Tú", pie "sin clasificar" con `me == null`, pull-to-refresh + estados carga/error(retry)/vacío.
+- Ruta `AppRouter.globalLeaderboard = '/leaderboard/global'` (declarada antes del match de `/leaderboard`) y botón "Ranking" (`Icons.emoji_events`, acento dorado) en el Home bajo "Generar nivel". 8 claves l10n nuevas es/en (`globalLeaderboard*`, `homeLeaderboard`).
+- Tests (QA inline): entidad (invariantes/meIsInTop/inmutabilidad), repo remoto (parseo {top,me}, me:null, fila corrupta, me corrupto, error Dio), use case (delegación/propagación), 7 widget tests de la pantalla (loading, podio+filas, vacío, error+retry reinvoca provider, barra anclada con "Tú", resaltado in-place, "sin clasificar"). Fakes manuales de 3 suites existentes ganaron el método nuevo; mocks con diff real regenerados (get_leaderboard/submit_score/remote_leaderboard + el nuevo), ruido EOL revertido.
+- `README.md`: sección nueva §Global leaderboard (ADR 0006) + árbol actualizado.
+- Verificación: `flutter analyze` sin issues; `flutter test` **794/794 verde** (antes 773).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 110 — feat(front): contrato nuevo del POST /scores y reconciliación canónica en la victoria (ADR 0006)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Task B2 del sprint de scoring/leaderboard global (ADR 0006, sesión de diseño 2026-07-16): tras B1 (`GameWon.collisions` + preview multiplicativo), cerrar el contrato remoto — `ScoreEntry` gana `collisions`, el POST envía las métricas crudas del run (`{levelId, moves, timeSeconds, collisions, previewScore}`) en vez del preview cliente, y el back responde el resultado CANÓNICO (`{score, stars}`) con el que se reconcilia la pantalla de victoria. Rol `frontend-architect` implementó producción; este rol (`qa-engineer`) cubrió el contrato nuevo y reparó todos los specs rotos por la firma.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol qa-engineer)
+**Prompt o instrucción proporcionada:** > "Cubre el contrato nuevo del submit (mockito): postea el body exacto y parsea `{score, stars}` a `CanonicalResult`; una respuesta inválida propaga; el use case devuelve el canónico o `null` sin relanzar; `ScoreEntry` valida `collisions >= 0`; widget test de `victory_screen` para preview vs canónico. Ajusta todos los specs rotos por la firma nueva del puerto."
+**Resultado obtenido:**
+- `test/domain/leaderboard/entities/score_entry_test.dart`: fixture con `collisions`, aserción de igualdad por ese campo y test nuevo `rechaza collisions negativo`.
+- `test/infrastructure/repositories/remote_leaderboard_repository_test.dart`: `submitScore` reescrito — verifica el body EXACTO `{levelId, moves, timeSeconds, collisions, previewScore}` (sin `score`/`stars` del preview) y que la respuesta `{score, stars}` se parsea a `CanonicalResult`; dos casos nuevos (`TypeError` si falta un campo canónico, `ArgumentError` si `stars` cae fuera de `[1,3]` vía `Stars.fromValue`).
+- `test/application/use_cases/submit_score_use_case_test.dart`: `execute` ahora se verifica devolviendo el `CanonicalResult` en éxito y `null` (+ `logger.error` llamado) en fallo de red, sin relanzar.
+- `test/application/providers/leaderboard_providers_test.dart`: `_SpyLeaderboardRepository.submitScore` migrado a `Future<CanonicalResult>` (antes `void`); `_container` ahora también override-ea `recordLevelCompletionUseCaseProvider` con un `_FakeProgressRepository` propio (antes lanzaba `UnimplementedError` porque `_submitAndReconcile` invoca ese use case tras reconciliar, y las dos pruebas existentes rompían silenciosamente vía Future no manejado). Test nuevo: `reconcilia canonicalResultProvider... y re-registra el progreso con los valores CANÓNICOS` — confirma que el provider expone el canónico devuelto por el repo y que `RecordLevelCompletionUseCase` recibe esos mismos valores (no el preview).
+- `test/presentation/game/screens/game_screen_test.dart` y `game_screen_hint_test.dart`: `_NoopLeaderboardRepository.submitScore` migrado a devolver un `CanonicalResult` dummy (antes `Future<void>`); ambos ya tenían `recordLevelCompletionUseCaseProvider` overrideado, sin ajustes adicionales.
+- `test/presentation/level_selection/victory_screen_test.dart`: `_appUnderTest` gana el parámetro `canonicalResult` (override de `canonicalResultProvider`, `null` por defecto = preview). Dos tests nuevos: con `canonicalResultProvider == null` se muestra el score/estrellas de `GameWon`/`VictoryArgs`; con el provider poblado, el canónico reemplaza al preview en pantalla.
+- Mocks regenerados (`build_runner build --delete-conflicting-outputs`): `get_leaderboard_use_case_test.mocks.dart`, `submit_score_use_case_test.mocks.dart` y `remote_leaderboard_repository_test.mocks.dart` (firma de `ILeaderboardRepository.submitScore` cambiada). El resto de `.mocks.dart` regenerados por el mismo comando no tuvo diff real (solo ruido CRLF/LF), así que quedan fuera del commit.
+- `README.md` §Score submission (front#16): reescrita para reflejar el envío de métricas crudas + `previewScore` de auditoría, el `CanonicalResult` devuelto por el POST, y la reconciliación silenciosa (sin spinner) en `VictoryScreen`.
+- Verificación: `flutter analyze` → sin issues. `flutter test` → 773/773 verde (suite completa).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 109 — feat(domain): Score preview multiplicativo y GameWon.collisions (ADR 0006)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Task B1 del sprint de scoring/leaderboard global (ADR 0006, sesión de diseño 2026-07-16): reemplazar la fórmula aditiva de `Score.fromRun` por la PREVIEW multiplicativa que espeja al back (`base × precisión² × collisionFactor^choques × 2^(−segundos/par)`, piso 100), y hacer que `GameWon` transporte los choques acumulados del run para el futuro POST `/scores`. QA (rol `qa-engineer`) ya había dejado en rojo `test/domain/value_objects/score_test.dart` (reescrito íntegro para la fórmula multiplicativa) y una aserción nueva en `game_controller_test.dart` (`won.collisions`).
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol frontend-architect)
+**Prompt o instrucción proporcionada:** > "Make the RED tests GREEN... replace the additive Score.fromRun with the multiplicative PREVIEW formula per the brief's Step 3 code... add collisions to GameWon... pass timeLimitSec/collisions desde game_controller."
+**Resultado obtenido:**
+- `lib/domain/game_core/value_objects/score.dart`: `Score.fromRun` reescrito con la fórmula multiplicativa (`base=10000`, `moveExponent=2`, `collisionFactor=0.8`, `parRatio=0.5`, `minWinScore=100`, `fallbackParSecondsPerArrow=3`); nueva firma con `timeLimitSec: int?` requerido; `par = timeLimitSec != null ? timeLimitSec × parRatio : optimal × fallbackParSecondsPerArrow`. Constantes aditivas viejas (`timePenaltyPerSecond`, `extraMovePenalty`, `collisionPenalty`) eliminadas. Import `dart:math as math` (dominio Dart puro).
+- `lib/application/state/game_state.dart`: `GameWon` gana `final int collisions;` (requerido).
+- `lib/application/state/game_controller.dart`: el bloque de victoria pasa `timeLimitSec: _currentLevelData?.timeLimitSec` a `Score.fromRun` y `collisions: _strikes.value` a `GameWon`.
+- Ajuste necesario no cubierto por QA: `test/application/state/game_controller_test.dart` tenía una aserción preexistente (`Score.base - 30 * Score.timePenaltyPerSecond`) atada a la constante aditiva eliminada — se corrigió al valor multiplicativo esperado (`Score.minWinScore`, con `timeLimitSec` null en ese fixture y 30s ≫ par de reserva 3s). `test/presentation/game/screens/game_screen_test.dart` necesitó `collisions: 0` en su fixture de `GameWon` (parámetro ahora requerido).
+- Verificación: `flutter test test/domain/value_objects/score_test.dart` → 11/11 verde (RED→GREEN). `flutter test` completo → 767/767 verde. `flutter analyze` → sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 071 — feat(tooling): Rampa + CLI de producción de candidatos (front#65)
 
 **Fecha:** 2026-07-15

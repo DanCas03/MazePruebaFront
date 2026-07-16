@@ -6,6 +6,7 @@ import '../../presentation/generated/configurator_screen.dart';
 import '../../presentation/generated/generated_game_screen.dart';
 import '../../presentation/generated/generated_result_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
+import '../../presentation/leaderboard/screens/global_leaderboard_screen.dart';
 import '../../presentation/leaderboard/screens/leaderboard_screen.dart';
 import '../../presentation/level_selection/defeat_screen.dart';
 import '../../presentation/level_selection/level_selection_screen.dart';
@@ -27,6 +28,8 @@ class AppRouter {
   static const String victory = '/victory';
   static const String defeat = '/defeat';
   static const String leaderboard = '/leaderboard';
+  // ADR 0006: ranking general de jugadores, accesible desde el menú principal.
+  static const String globalLeaderboard = '/leaderboard/global';
   static const String settings = '/settings';
 
   // front#37: flujo de tableros generados por el jugador (configurador →
@@ -80,6 +83,8 @@ class AppRouter {
         ),
       AppRouter.victory => _fade(const VictoryScreen(), settings),
       AppRouter.defeat => _fade(const DefeatScreen(), settings),
+      AppRouter.globalLeaderboard =>
+        _fade(const GlobalLeaderboardScreen(), settings),
       AppRouter.leaderboard => _fade(
           LeaderboardScreen(
             levelId: settings.arguments is LevelId

@@ -64,7 +64,14 @@ Estado sellado y mutuamente excluyente de la partida: `GameLoading`, `GamePlayin
 _Avoid_: pantalla, fase, modo.
 
 **TimeLimit** (Límite de tiempo):
-Tope de tiempo opcional de un nivel (niveles avanzados); agotarlo → `GameLost`.
+Tope de tiempo de un nivel; agotarlo → `GameLost`. **Obligatorio en todo `Level`** desde
+2026-07-16 (antes opcional; los niveles se regeneran). Sigue siendo opcional en un
+`GeneratedBoard` (timer a elección del jugador).
+
+**Par** (Tiempo de referencia):
+"Qué es un buen tiempo" en un nivel: la mitad de su TimeLimit. El Score pondera la
+velocidad del jugador contra el Par — por debajo premia, cerca del límite castiga.
+_Avoid_: TimeLimit como sinónimo (ese es "cuándo pierdes", no "qué es rápido").
 
 ### Nivel y progreso
 
@@ -113,7 +120,12 @@ sincroniza con el backend.
 1–3 por nivel, según choques y movimientos respecto del óptimo.
 
 **Score** (Puntaje):
-Valor numérico = f(tiempo, movimientos sobre óptimo, choques). Define el ranking.
+Valor numérico = f(tiempo respecto del Par, movimientos sobre óptimo, choques);
+**multiplicativo**, para que rápido-y-perfecto se separe con claridad de "pasar con lo
+mínimo". El que calcula el cliente es un **preview** (feedback inmediato / offline); el
+canónico lo deriva el backend de las métricas del run y reconcilia la pantalla de victoria
+al llegar (decidido 2026-07-16).
+_Avoid_: score del cliente como fuente de verdad.
 
 **Solution** (Solución):
 El orden de `ArrowId`, producido y servido por el **backend**, cuya remoción en secuencia
@@ -134,6 +146,15 @@ _Avoid_: login como estado, auth-state.
 
 **Leaderboard** (Ranking):
 Tabla de mejores `Score` por nivel; el cliente la **lee** y la muestra.
+
+**Leaderboard general** (Ranking de jugadores):
+Ranking global de jugadores por **total de puntos** (suma del mejor score por nivel de
+**campaña** — temáticos y `GeneratedBoard` no suman), con **total de estrellas** como dato
+visible y desempate: el espejo competitivo de los totales del panel de cuenta. Incluye la
+posición propia aunque quede fuera del top. Accesible desde el menú principal. Solo refleja
+partidas enviadas: una victoria offline cuenta en el progreso local pero no en el ranking
+(limitación aceptada 2026-07-16; cola de reenvío = TODO futuro).
+_Avoid_: ranking de actividad, suma de todas las runs.
 
 ### Producción de niveles
 

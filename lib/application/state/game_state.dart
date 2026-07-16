@@ -58,12 +58,14 @@ class GameWon extends GameState {
   final Stars stars; // front#16: estrellas del run
   final int timeSeconds; // front#16: tiempo transcurrido, para el POST /scores
   final LevelId levelId; // front#16: nivel al que pertenece el score
+  final int collisions; // ADR 0006: choques acumulados del run, para el POST /scores
   GameWon({
     required this.moves,
     required this.score,
     required this.stars,
     required this.timeSeconds,
     required this.levelId,
+    required this.collisions,
   });
 }
 

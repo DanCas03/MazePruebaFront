@@ -9,6 +9,7 @@ import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/generated/configurator_screen.dart';
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
 import 'package:flutter_arrow_maze/presentation/level_selection/level_selection_screen.dart';
+import 'package:flutter_arrow_maze/presentation/level_selection/themed_selection_screen.dart';
 
 import '../../support/level_selection_fakes.dart';
 
@@ -61,6 +62,25 @@ void main() {
 
       // Assert
       expect(find.byType(LevelSelectionScreen), findsOneWidget);
+    });
+
+    testWidgets('renders the "Niveles temáticos" CTA (front#100)',
+        (tester) async {
+      await tester.pumpWidget(_appUnderTest());
+      expect(find.widgetWithText(OutlinedButton, 'Niveles temáticos'),
+          findsOneWidget);
+    });
+
+    testWidgets('"Niveles temáticos" navigates to ThemedSelectionScreen (front#100)',
+        (tester) async {
+      await tester.pumpWidget(_appUnderTest());
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Niveles temáticos'));
+      // El logo anima en bucle: bombeamos la transición con pumps acotados.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(ThemedSelectionScreen), findsOneWidget);
     });
 
     testWidgets('renders the "Generar nivel" CTA (front#37)', (tester) async {

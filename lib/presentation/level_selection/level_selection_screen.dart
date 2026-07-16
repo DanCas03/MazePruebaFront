@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers/level_catalog_provider.dart';
 import '../../application/state/level_selection_state.dart';
-import '../../core/router/app_router.dart';
 import '../../core/router/route_observer.dart';
 import '../../core/theme/app_colors.dart';
 import '../../domain/board/value_objects/tier.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/level_selection_provider.dart';
+import 'widgets/level_tile_view.dart';
 
 /// Selección de nivel: agrupa el Catálogo remoto (front#8) por Tier (que es, a
 /// la vez, la agrupación por dificultad), muestra las estrellas ganadas por
@@ -100,11 +100,10 @@ class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
           children: [
             for (final section in view.campaignTiers)
               _TierSectionView(section: section),
-            // Bloque temático: solo si el back publicó niveles temáticos. Si no
-            // hay, no se renderiza nada extra (los catálogos solo-campaña se ven
-            // idénticos a antes).
-            if (view.themedTiles.isNotEmpty)
-              _ThemedSectionView(tiles: view.themedTiles),
+            // front#100: el bloque temático dejó de vivir aquí. Los niveles
+            // temáticos tienen su propia sección, alcanzable desde el menú
+            // principal (AppRouter.themed / ThemedSelectionScreen), para que el
+            // contenido temático viva en un solo sitio.
           ],
         ),
       ),
@@ -184,174 +183,8 @@ class _TierSectionView extends StatelessWidget {
             ],
           ),
         ),
-        GridView.count(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            for (final tile in section.tiles) _LevelTileView(tile: tile),
-          ],
-        ),
+        LevelTileGrid(tiles: section.tiles),
         const SizedBox(height: 16),
-      ],
-    );
-  }
-}
-
-/// Encabezado "Themed" + cuadrícula de niveles temáticos. Reutiliza
-/// `_LevelTileView`: como los tiles temáticos llegan con `locked == false`, se
-/// pintan siempre tappables y sin candado, y navegan con el LevelId REAL igual
-/// que la campaña. Sin gating ni etiqueta de dificultad (no pertenecen a un Tier).
-class _ThemedSectionView extends StatelessWidget {
-  final List<LevelTile> tiles;
-  const _ThemedSectionView({required this.tiles});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final onBackground =
-        isDark ? AppColors.onBackground : AppColors.lightOnBackground;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 12),
-          child: Text(
-            l10n.themedSection,
-            style: TextStyle(
-              color: onBackground,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        GridView.count(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            for (final tile in tiles) _LevelTileView(tile: tile),
-          ],
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-}
-
-/// Celda de un nivel: posición en el Catálogo + fila de estrellas si está
-/// desbloqueado; candado si está bloqueado. Los desbloqueados navegan a la
-/// partida (tap) con el LevelId REAL y ofrecen el acceso al ranking del nivel
-/// (front#17). Los bloqueados no hacen nada.
-class _LevelTileView extends StatelessWidget {
-  final LevelTile tile;
-  const _LevelTileView({required this.tile});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final glassFill = isDark ? AppColors.glassFill : AppColors.lightGlassFill;
-    final glassBorder =
-        isDark ? AppColors.glassBorder : AppColors.lightGlassBorder;
-    final onBackground =
-        isDark ? AppColors.onBackground : AppColors.lightOnBackground;
-    final muted =
-        isDark ? AppColors.onSurfaceMuted : AppColors.lightOnSurfaceMuted;
-
-    final panel = Container(
-      key: ValueKey('level-tile-${tile.levelId.value}'),
-      decoration: BoxDecoration(
-        color: glassFill,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: glassBorder),
-      ),
-      alignment: Alignment.center,
-      child: tile.locked
-          ? Icon(Icons.lock, color: muted, size: 26)
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  // La celda muestra la POSICIÓN (orden de juego); el id real
-                  // del back es opaco y solo viaja en la navegación.
-                  '${tile.position}',
-                  style: TextStyle(
-                    color: onBackground,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _StarRow(stars: tile.stars),
-              ],
-            ),
-    );
-
-    if (tile.locked) return panel; // bloqueado: no navega, sin ripple.
-
-    // Desbloqueado: el tap juega el nivel; el icono de ranking (front#17)
-    // superpuesto arriba a la derecha lleva a su leaderboard sin robar el tap.
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: InkWell(
-            onTap: () => Navigator.pushNamed(
-              context,
-              AppRouter.game,
-              arguments: tile.levelId,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            child: panel,
-          ),
-        ),
-        Positioned(
-          top: 0,
-          right: 0,
-          child: IconButton(
-            icon: const Icon(Icons.leaderboard, size: 18),
-            tooltip: AppLocalizations.of(context).viewLeaderboard,
-            color: onBackground,
-            onPressed: () => Navigator.pushNamed(
-              context,
-              AppRouter.leaderboard,
-              arguments: tile.levelId,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Tres ranuras de estrella; se llenan hasta [stars] (0..3).
-class _StarRow extends StatelessWidget {
-  final int stars;
-  const _StarRow({required this.stars});
-
-  static const int _maxStars = 3;
-
-  @override
-  Widget build(BuildContext context) {
-    final muted = Theme.of(context).brightness == Brightness.dark
-        ? AppColors.onSurfaceMuted
-        : AppColors.lightOnSurfaceMuted;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < _maxStars; i++)
-          Icon(
-            i < stars ? Icons.star : Icons.star_border,
-            size: 14,
-            color: i < stars ? AppColors.victory : muted,
-          ),
       ],
     );
   }

@@ -96,6 +96,34 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+                // front#100: acceso a la sección temática (niveles con silueta).
+                // Secundario (contorneado) como el generador; comparte el patrón.
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.secondary,
+                    side: BorderSide(
+                        color: AppColors.secondary.withValues(alpha: 0.6)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRouter.themed),
+                  icon: const Icon(Icons.palette_outlined),
+                  label: Text(
+                    l10n.homeThemed,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 // front#37: acceso al generador de tableros efímeros. Secundario
                 // (contorneado) frente al CTA primario de la campaña.
                 OutlinedButton.icon(

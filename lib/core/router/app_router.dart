@@ -9,6 +9,7 @@ import '../../presentation/home/screens/home_screen.dart';
 import '../../presentation/leaderboard/screens/leaderboard_screen.dart';
 import '../../presentation/level_selection/defeat_screen.dart';
 import '../../presentation/level_selection/level_selection_screen.dart';
+import '../../presentation/level_selection/themed_selection_screen.dart';
 import '../../presentation/level_selection/victory_screen.dart';
 import '../../presentation/settings/screens/settings_screen.dart';
 
@@ -20,6 +21,8 @@ class AppRouter {
 
   static const String home = '/';
   static const String levelSelection = '/levels';
+  // front#100: sección temática, alcanzable desde el menú principal.
+  static const String themed = '/themed';
   static const String game = '/game';
   static const String victory = '/victory';
   static const String defeat = '/defeat';
@@ -37,6 +40,7 @@ class AppRouter {
     return switch (settings.name) {
       AppRouter.home => _fade(const HomeScreen(), settings),
       AppRouter.levelSelection => _fade(const LevelSelectionScreen(), settings),
+      AppRouter.themed => _fade(const ThemedSelectionScreen(), settings),
       AppRouter.game => _fade(
           GameScreen(
             levelId: settings.arguments is LevelId

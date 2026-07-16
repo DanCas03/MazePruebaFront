@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter_arrow_maze/domain/arrows/value_objects/aspect_band.dart';
 
 import '../../core/exceptions/invalid_generator_config_exception.dart';
 import 'difficulty.dart';
@@ -59,6 +60,15 @@ class GeneratorConfig extends Equatable {
   }) {
     _requireInRange('cols', cols);
     _requireInRange('rows', rows);
+    // front#101: shapes must fall inside the app-wide portrait band so a
+    // generated board fills a phone screen. Explicit user input is rejected
+    // (defaults are snapped elsewhere via AspectBand.snapRowsForCols).
+    if (!AspectBand.contains(cols, rows)) {
+      throw InvalidGeneratorConfigException(
+          'aspect cols:rows must be within [${AspectBand.minRatio}, '
+          '${AspectBand.maxRatio}] (portrait 9:16), got ${cols}x$rows = '
+          '${(cols / rows).toStringAsFixed(3)}');
+    }
     return GeneratorConfig._(
       cols: cols,
       rows: rows,

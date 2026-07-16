@@ -5,9 +5,11 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/generator_config.
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_generator_config_exception.dart';
 
 void main() {
+  // Default shape is 6x10 (0.60): inside AspectBand ([0.53, 0.68], front#101),
+  // so any test that doesn't care about the exact shape can rely on it.
   GeneratorConfig valid({
     int cols = 6,
-    int rows = 6,
+    int rows = 10,
     Difficulty difficulty = Difficulty.medium,
     bool timed = false,
     int? seed,
@@ -22,22 +24,18 @@ void main() {
 
   group('GeneratorConfig.create — validación de dimensiones', () {
     test('should_accept_dimensions_at_both_bounds', () {
-      // Act
-      final min = valid(
-        cols: GeneratorConfig.minDimension,
-        rows: GeneratorConfig.minDimension,
-      );
-      final max = valid(
-        cols: GeneratorConfig.maxDimension,
-        rows: GeneratorConfig.maxDimension,
-      );
+      // Act — el rango jugable [4,50] ahora convive con AspectBand: no toda
+      // combinación cuadrada cols=rows sigue siendo válida (ver el grupo de
+      // validación de aspecto más abajo). cols no puede llegar a 50 sin que
+      // rows exceda también 50 (la banda exigiría rows>=74), así que cada
+      // extremo se prueba por separado con una forma en banda.
+      final atColsFloor = valid(cols: GeneratorConfig.minDimension, rows: 7); // 4/7=0.571
+      final atRowsCeil = valid(cols: 30, rows: GeneratorConfig.maxDimension); // 30/50=0.6
 
-      // Assert — los extremos del rango (4 y 50) son válidos, inclusive.
+      // Assert — los extremos del rango (4 y 50) son alcanzables, inclusive.
       // El techo subió a 50 en front#66 (viewport de zoom/pan): el preset XL.
-      expect(min.cols, 4);
-      expect(min.rows, 4);
-      expect(max.cols, 50);
-      expect(max.rows, 50);
+      expect(atColsFloor.cols, GeneratorConfig.minDimension);
+      expect(atRowsCeil.rows, GeneratorConfig.maxDimension);
     });
 
     test('should_reject_cols_below_range_with_domain_failure', () {
@@ -85,23 +83,67 @@ void main() {
     });
   });
 
+  group('validación de aspecto (AspectBand)', () {
+    test('acepta una config dentro de la banda', () {
+      expect(
+          () => GeneratorConfig.create(
+              cols: 9, rows: 16, difficulty: Difficulty.medium),
+          returnsNormally); // 0.5625
+      expect(
+          () => GeneratorConfig.create(
+              cols: 6, rows: 10, difficulty: Difficulty.medium),
+          returnsNormally); // 0.60
+    });
+    test('rechaza un tablero cuadrado (fuera de banda)', () {
+      expect(
+        () => GeneratorConfig.create(
+            cols: 25, rows: 25, difficulty: Difficulty.medium),
+        throwsA(isA<InvalidGeneratorConfigException>()
+            .having((e) => e.message, 'message', contains('aspect'))),
+      );
+    });
+    test('rechaza un portrait demasiado ancho (0.75 > 0.68)', () {
+      expect(
+          () => GeneratorConfig.create(
+              cols: 6, rows: 8, difficulty: Difficulty.medium),
+          throwsA(isA<InvalidGeneratorConfigException>()));
+    });
+    test('rechaza un portrait demasiado estrecho (0.50 < 0.53)', () {
+      expect(
+          () => GeneratorConfig.create(
+              cols: 10, rows: 20, difficulty: Difficulty.medium),
+          throwsA(isA<InvalidGeneratorConfigException>()));
+    });
+  });
+
   group('derivación por preset de dificultad', () {
     test('should_derive_arrow_count_from_density_and_avg_path_len', () {
-      // Assert — celdas·fillRatio / largo medio ((2+maxPathLen)/2), redondeado:
-      // 6x6 easy: 36·0.40/2.5 = 5.76 → 6 | 8x8 medium: 64·0.55/4 = 8.8 → 9 |
-      // 10x10 hard: 100·0.70/5.5 = 12.7 → 13.
-      expect(valid(cols: 6, rows: 6, difficulty: Difficulty.easy).arrowCount, 6);
+      // Assert — celdas·fillRatio / largo medio ((2+maxPathLen)/2), redondeado,
+      // sobre formas en banda (front#101):
+      // easy 6×10 (60): 60*0.40/2.5 = 9.6 -> 10
       expect(
-          valid(cols: 8, rows: 8, difficulty: Difficulty.medium).arrowCount, 9);
+          GeneratorConfig.create(cols: 6, rows: 10, difficulty: Difficulty.easy)
+              .arrowCount,
+          10);
+      // medium 9×16 (144): 144*0.55/4 = 19.8 -> 20
       expect(
-          valid(cols: 10, rows: 10, difficulty: Difficulty.hard).arrowCount, 13);
+          GeneratorConfig.create(
+                  cols: 9, rows: 16, difficulty: Difficulty.medium)
+              .arrowCount,
+          20);
+      // hard 6×10 (60): 60*0.70/5.5 = 7.63 -> 8
+      expect(
+          GeneratorConfig.create(cols: 6, rows: 10, difficulty: Difficulty.hard)
+              .arrowCount,
+          8);
     });
 
     test('should_clamp_arrow_count_to_playable_minimum_on_small_boards', () {
-      // Assert — 4x4 hard: 16·0.70/5.5 = 2.04 → 2, por debajo del piso
-      // jugable → se eleva a minArrowCount.
+      // Assert — hard 4×7 (28): 28*0.70/5.5 = 3.56 -> 4 (clamped to
+      // minArrowCount; el board más pequeño en banda con cols=minDimension).
       expect(
-        valid(cols: 4, rows: 4, difficulty: Difficulty.hard).arrowCount,
+        GeneratorConfig.create(cols: 4, rows: 7, difficulty: Difficulty.hard)
+            .arrowCount,
         GeneratorConfig.minArrowCount,
       );
     });
@@ -119,34 +161,38 @@ void main() {
     });
 
     test('should_derive_time_limit_from_difficulty_and_board_size', () {
-      // Assert — celdas·secondsPerCell: 6x6 easy 108 s | 8x8 medium 128 s |
-      // 10x10 hard 150 s.
+      // Assert — celdas·secondsPerCell sobre formas en banda (front#101):
+      // easy 6×10=60c ×3.0=180 | medium 9×16=144c ×2.0=288 | hard 6×10=60c ×1.5=90.
       expect(
-        valid(cols: 6, rows: 6, difficulty: Difficulty.easy, timed: true)
+        GeneratorConfig.create(
+                cols: 6, rows: 10, difficulty: Difficulty.easy, timed: true)
             .timeLimitSec,
-        108,
+        180,
       );
       expect(
-        valid(cols: 8, rows: 8, difficulty: Difficulty.medium, timed: true)
+        GeneratorConfig.create(
+                cols: 9, rows: 16, difficulty: Difficulty.medium, timed: true)
             .timeLimitSec,
-        128,
+        288,
       );
       expect(
-        valid(cols: 10, rows: 10, difficulty: Difficulty.hard, timed: true)
+        GeneratorConfig.create(
+                cols: 6, rows: 10, difficulty: Difficulty.hard, timed: true)
             .timeLimitSec,
-        150,
+        90,
       );
     });
 
     test('should_clamp_time_limit_to_floor_and_ceiling', () {
-      // Assert — 4x4 hard: 24 s → piso 30 | 10x10 easy: 300 s = techo exacto.
+      // floor unreachable in-band: el board más chico en banda (cols en el
+      // piso jugable, 4) ya supera el piso de 30s incluso en hard (24s con
+      // 4×4 cuadrado, pero 4×4 ya no es válido — el mínimo en banda es 4×6/4×7
+      // y da 36s/42s), así que no hay caso de piso observable sin salir de
+      // AspectBand.
+      // Assert — ceiling: medium 19×34 (646 celdas): 646*2.0 = 1292 -> clamp a 300.
       expect(
-        valid(cols: 4, rows: 4, difficulty: Difficulty.hard, timed: true)
-            .timeLimitSec,
-        GeneratorConfig.minTimeLimitSec,
-      );
-      expect(
-        valid(cols: 10, rows: 10, difficulty: Difficulty.easy, timed: true)
+        GeneratorConfig.create(
+                cols: 19, rows: 34, difficulty: Difficulty.medium, timed: true)
             .timeLimitSec,
         GeneratorConfig.maxTimeLimitSec,
       );
@@ -160,7 +206,8 @@ void main() {
 
     test('should_copy_config_with_seed_preserving_the_rest', () {
       // Arrange
-      final config = valid(cols: 5, rows: 9, difficulty: Difficulty.hard, timed: true);
+      final config =
+          valid(cols: 5, rows: 9, difficulty: Difficulty.hard, timed: true);
 
       // Act
       final effective = config.withSeed(77);

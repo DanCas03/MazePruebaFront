@@ -134,5 +134,62 @@ void main() {
       // Assert
       expect(find.byType(LevelSelectionScreen), findsOneWidget);
     });
+
+    testWidgets(
+        'Back to Levels keeps Home in the stack so the back arrow persists',
+        (tester) async {
+      // Arrange: reproducimos la pila real Home → LevelSelection → Defeat. La
+      // ruta de niveles se sirve con un Scaffold+AppBar SIN `leading`, de modo
+      // que la flecha de retorno auto-implícita aparece si y solo si
+      // `Navigator.canPop()` es true (front#103, espeja el guard de victoria).
+      final navKey = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navKey,
+          theme: AppTheme.dark(),
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          initialRoute: AppRouter.home,
+          onGenerateRoute: (settings) {
+            switch (settings.name) {
+              case AppRouter.levelSelection:
+                return MaterialPageRoute<void>(
+                  settings: settings,
+                  builder: (_) =>
+                      Scaffold(appBar: AppBar(title: const Text('levels'))),
+                );
+              case AppRouter.defeat:
+                return MaterialPageRoute<void>(
+                  settings: RouteSettings(
+                    name: settings.name,
+                    arguments: (levelId: LevelId('1'), moves: 0, strikes: 5),
+                  ),
+                  builder: (_) => const DefeatScreen(),
+                );
+              case AppRouter.home:
+              default:
+                return MaterialPageRoute<void>(
+                  settings: settings,
+                  builder: (_) => const Scaffold(body: Text('home')),
+                );
+            }
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      navKey.currentState!.pushNamed(AppRouter.levelSelection);
+      await tester.pumpAndSettle();
+      navKey.currentState!.pushNamed(AppRouter.defeat);
+      await tester.pumpAndSettle();
+
+      // Act
+      await tester.tap(find.widgetWithText(TextButton, 'Back to Levels'));
+      await tester.pumpAndSettle();
+
+      // Assert: Home permanece bajo el selector ⇒ la flecha de retorno persiste.
+      expect(navKey.currentState!.canPop(), isTrue);
+      expect(find.byType(BackButton), findsOneWidget);
+    });
   });
 }

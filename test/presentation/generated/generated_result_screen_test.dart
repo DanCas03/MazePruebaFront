@@ -15,6 +15,7 @@ import 'package:flutter_arrow_maze/domain/arrows/value_objects/difficulty.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/generator_config.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/l10n/app_localizations.dart';
 import 'package:flutter_arrow_maze/presentation/generated/generated_result_screen.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
@@ -132,5 +133,82 @@ void main() {
       expect(find.textContaining('555'), findsOneWidget);
       expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     });
+
+    // front#103: "Salir" debe volver al menú SIN borrar la raíz. El flujo real
+    // apila la post-partida sobre la raíz '/' (donde vive el AuthGate); el
+    // antiguo `pushNamedAndRemoveUntil(home, (_) => false)` la borraba y dejaba
+    // el cierre de sesión sin quien conmutara a Login. Aquí la raíz cuenta sus
+    // montajes: preservarla ⇒ un montaje; borrarla y re-crearla ⇒ dos.
+    testWidgets('Salir vuelve a la raíz del menú sin re-crearla', (tester) async {
+      // Arrange
+      final navKey = GlobalKey<NavigatorState>();
+      var homeMounts = 0;
+      final useCase = GenerateBoardUseCase(_FakeGenerator(), _NoopLogger(),
+          seedSource: () => 555);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            generatedGameControllerProvider.overrideWith(
+              () => GeneratedGameController(
+                  useCase, RemoveArrowUseCase(), CommandInvoker()),
+            ),
+          ],
+          child: MaterialApp(
+            navigatorKey: navKey,
+            theme: AppTheme.dark(),
+            locale: const Locale('es'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            onGenerateRoute: (settings) => switch (settings.name) {
+              AppRouter.generatedResult => MaterialPageRoute<void>(
+                  settings: RouteSettings(
+                      name: settings.name, arguments: (won: true, moves: 7)),
+                  builder: (_) => const GeneratedResultScreen(),
+                ),
+              _ => MaterialPageRoute<void>(
+                  settings: settings,
+                  builder: (_) => _RootProbe(onMount: () => homeMounts++),
+                ),
+            },
+          ),
+        ),
+      );
+      expect(homeMounts, 1);
+      navKey.currentState!.pushNamed(AppRouter.generatedResult);
+      await tester.pumpAndSettle();
+      expect(find.text('Salir'), findsOneWidget);
+
+      // Act
+      await tester.tap(find.text('Salir'));
+      await tester.pumpAndSettle();
+
+      // Assert: de vuelta en la MISMA raíz (montada una vez) y sin nada que
+      // desapilar ⇒ el AuthGate se preserva y el logout sigue funcionando.
+      expect(find.text('home-root'), findsOneWidget);
+      expect(navKey.currentState!.canPop(), isFalse);
+      expect(homeMounts, 1);
+    });
   });
+}
+
+/// Raíz de prueba que cuenta sus montajes en `initState`, para distinguir entre
+/// PRESERVAR la ruta raíz (un montaje) y BORRARLA + re-crearla (dos).
+class _RootProbe extends StatefulWidget {
+  final VoidCallback onMount;
+  const _RootProbe({required this.onMount});
+
+  @override
+  State<_RootProbe> createState() => _RootProbeState();
+}
+
+class _RootProbeState extends State<_RootProbe> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onMount();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: Text('home-root')));
 }

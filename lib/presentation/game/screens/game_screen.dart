@@ -373,13 +373,10 @@ class _GameError extends StatelessWidget {
         Text(l10n.levelLoadError, textAlign: TextAlign.center),
         const SizedBox(height: 16),
         TextButton(
-          // Conserva Home bajo la selección de niveles (predicate a la ruta
-          // raíz) para que no desaparezca la flecha de retorno del AppBar.
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRouter.levelSelection,
-            ModalRoute.withName(AppRouter.home),
-          ),
+          // Conserva Home bajo la selección de niveles para que no desaparezca
+          // la flecha de retorno del AppBar (política centralizada en AppRouter,
+          // front#103).
+          onPressed: () => AppRouter.backToLevels(context),
           child: Text(l10n.backToLevels),
         ),
       ],

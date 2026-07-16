@@ -36,6 +36,35 @@ class AppRouter {
   static const String generatedGame = '/generate/play';
   static const String generatedResult = '/generate/result';
 
+  // front#103: política de "camino de vuelta" centralizada. Antes cada pantalla
+  // terminal (victoria, derrota, error de carga, post-partida generada) escribía
+  // a mano su `pushNamedAndRemoveUntil` con el predicado de la pila; un descuido
+  // (p. ej. `(_) => false`) borraba la raíz y dejaba al jugador varado. Estos dos
+  // helpers son la ÚNICA fuente de la garantía "siempre se puede volver al menú":
+  // conservan la ruta raíz `home` ('/', donde vive el AuthGate) bajo el destino,
+  // de modo que la flecha de retorno del AppBar y el cierre de sesión reactivo
+  // siguen funcionando desde cualquier pantalla alcanzable.
+
+  /// Vuelve al selector de niveles conservando `home` ('/') debajo, para que la
+  /// flecha de retorno auto-implícita del AppBar siga visible (regresión front#97).
+  /// Usado por las pantallas de victoria, derrota y el error terminal de carga.
+  static void backToLevels(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      levelSelection,
+      ModalRoute.withName(home),
+    );
+  }
+
+  /// Vuelve al menú principal descartando el sub-flujo actual (p. ej. el flujo
+  /// de tableros generados) SIN borrar la raíz: hace `pop` hasta `home` ('/'),
+  /// preservando el AuthGate montado en ella. Reemplaza al antiguo
+  /// `pushNamedAndRemoveUntil(home, (_) => false)`, que quitaba el AuthGate y
+  /// dejaba el cierre de sesión sin quien conmutara a Login (front#103).
+  static void exitToHome(BuildContext context) {
+    Navigator.popUntil(context, ModalRoute.withName(home));
+  }
+
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     return switch (settings.name) {
       AppRouter.home => _fade(const HomeScreen(), settings),

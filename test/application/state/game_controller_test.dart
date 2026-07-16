@@ -185,6 +185,8 @@ void main() {
     // ⇒ partida perfecta.
     expect(won.stars.value, 3);
     expect(won.score.value, Score.base);
+    // B1 RED: GameWon debe transportar los choques acumulados del run.
+    expect(won.collisions, 0);
   });
 
   test('GameWon lleva timeSeconds del cronómetro y penaliza el score', () async {
@@ -204,8 +206,9 @@ void main() {
     // Assert
     final won = c.read(gameControllerProvider).valueOrNull as GameWon;
     expect(won.timeSeconds, 30);
-    // óptimo 1, 0 choques, 30 s ⇒ score = base - 30*timePenaltyPerSecond.
-    expect(won.score.value, Score.base - 30 * Score.timePenaltyPerSecond);
+    // óptimo 1, 0 choques, timeLimitSec null ⇒ par de reserva = 1×3 = 3s;
+    // 30s = 10 pares ⇒ factor 2^-10, muy por debajo del piso ⇒ minWinScore.
+    expect(won.score.value, Score.minWinScore);
   });
 
   test('should_keep_playing_when_fourth_collision', () async {

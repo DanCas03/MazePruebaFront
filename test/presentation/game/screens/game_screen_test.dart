@@ -441,6 +441,7 @@ void main() {
             stars: const Stars.three(),
             timeSeconds: 0,
             levelId: LevelId('level-01'),
+            collisions: 0,
           );
 
       GameLost lost() => GameLost(

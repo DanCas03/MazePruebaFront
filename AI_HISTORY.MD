@@ -1,5 +1,19 @@
 # AI History — MazePruebaFront
 
+## Entrada 109 — feat(domain): Score preview multiplicativo y GameWon.collisions (ADR 0006)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Task B1 del sprint de scoring/leaderboard global (ADR 0006, sesión de diseño 2026-07-16): reemplazar la fórmula aditiva de `Score.fromRun` por la PREVIEW multiplicativa que espeja al back (`base × precisión² × collisionFactor^choques × 2^(−segundos/par)`, piso 100), y hacer que `GameWon` transporte los choques acumulados del run para el futuro POST `/scores`. QA (rol `qa-engineer`) ya había dejado en rojo `test/domain/value_objects/score_test.dart` (reescrito íntegro para la fórmula multiplicativa) y una aserción nueva en `game_controller_test.dart` (`won.collisions`).
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol frontend-architect)
+**Prompt o instrucción proporcionada:** > "Make the RED tests GREEN... replace the additive Score.fromRun with the multiplicative PREVIEW formula per the brief's Step 3 code... add collisions to GameWon... pass timeLimitSec/collisions desde game_controller."
+**Resultado obtenido:**
+- `lib/domain/game_core/value_objects/score.dart`: `Score.fromRun` reescrito con la fórmula multiplicativa (`base=10000`, `moveExponent=2`, `collisionFactor=0.8`, `parRatio=0.5`, `minWinScore=100`, `fallbackParSecondsPerArrow=3`); nueva firma con `timeLimitSec: int?` requerido; `par = timeLimitSec != null ? timeLimitSec × parRatio : optimal × fallbackParSecondsPerArrow`. Constantes aditivas viejas (`timePenaltyPerSecond`, `extraMovePenalty`, `collisionPenalty`) eliminadas. Import `dart:math as math` (dominio Dart puro).
+- `lib/application/state/game_state.dart`: `GameWon` gana `final int collisions;` (requerido).
+- `lib/application/state/game_controller.dart`: el bloque de victoria pasa `timeLimitSec: _currentLevelData?.timeLimitSec` a `Score.fromRun` y `collisions: _strikes.value` a `GameWon`.
+- Ajuste necesario no cubierto por QA: `test/application/state/game_controller_test.dart` tenía una aserción preexistente (`Score.base - 30 * Score.timePenaltyPerSecond`) atada a la constante aditiva eliminada — se corrigió al valor multiplicativo esperado (`Score.minWinScore`, con `timeLimitSec` null en ese fixture y 30s ≫ par de reserva 3s). `test/presentation/game/screens/game_screen_test.dart` necesitó `collisions: 0` en su fixture de `GameWon` (parámetro ahora requerido).
+- Verificación: `flutter test test/domain/value_objects/score_test.dart` → 11/11 verde (RED→GREEN). `flutter test` completo → 767/767 verde. `flutter analyze` → sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 071 — feat(tooling): Rampa + CLI de producción de candidatos (front#65)
 
 **Fecha:** 2026-07-15

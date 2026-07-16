@@ -43,7 +43,7 @@ import 'infrastructure/data_sources/remote/leaderboard_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/level_remote_data_source.dart';
 import 'infrastructure/data_sources/remote/remote_progress_data_source.dart';
 import 'infrastructure/data_sources/remote/solution_remote_data_source.dart';
-import 'infrastructure/models/level_progress_hive_model.dart';
+import 'infrastructure/repositories/hive_progress_box_scope.dart';
 import 'infrastructure/repositories/hive_progress_repository.dart';
 import 'infrastructure/repositories/in_memory_session_token_store.dart';
 import 'infrastructure/repositories/remote_auth_repository.dart';
@@ -64,7 +64,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapters();
-  await Hive.openBox<LevelProgressHiveModel>('level_progress');
+  // El progreso YA NO usa una caja global: se abre una caja por cuenta
+  // (`level_progress_<userId>`) vía HiveProgressBoxScope, que el AuthController
+  // activa al autenticar. Así el progreso deja de compartirse entre cuentas.
   // front#8: box sin tipar para el JSON crudo de los niveles remotos (catálogo
   // + un entry por nivel). Sin TTL: online siempre refetchea (network-first).
   await Hive.openBox(LevelCacheDataSource.boxName);
@@ -121,18 +123,30 @@ void main() async {
     LoggerServiceAdapter(),
   );
 
-  // #20: una sola composición del repo de progreso local (mismo box Hive ya
-  // abierto), compartida por el sync (front#18) y por el selector de nivel, en
-  // vez de instanciar dos `HiveProgressRepository` equivalentes.
+  // Alcance por-cuenta de la caja de progreso: el AuthController lo activa al
+  // autenticar (abre `level_progress_<userId>`) y el DataSource lee de él. Una
+  // sola instancia compartida por el DataSource y el AuthController.
+  final progressBoxScope = HiveProgressBoxScope();
+
+  // #20: una sola composición del repo de progreso local, compartida por el
+  // sync (front#18) y por el selector de nivel, en vez de instanciar dos
+  // `HiveProgressRepository` equivalentes. Ahora la caja concreta la resuelve
+  // el scope por cuenta activa.
   final levelProgressRepository =
-      HiveProgressRepository(HiveLocalDataSource());
+      HiveProgressRepository(HiveLocalDataSource(progressBoxScope));
 
   runApp(
     ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
           () => AuthController(
-              tokenStorage, RestoreSessionUseCase(tokenStorage), sessionTokenStore),
+            tokenStorage,
+            RestoreSessionUseCase(tokenStorage),
+            sessionTokenStore,
+            // Mismo scope que alimenta al DataSource: al autenticar abre la caja
+            // del usuario; al cerrar sesión la desliga.
+            progressBoxScope,
+          ),
         ),
         // GameController compuesto con sus dependencias concretas (DIP). Ahora
         // carga los niveles oficiales vía ILevelRepository (front#8) en lugar de

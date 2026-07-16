@@ -14,6 +14,7 @@ import 'package:flutter_arrow_maze/domain/auth/repositories/i_auth_token_storage
 import 'package:flutter_arrow_maze/domain/auth/value_objects/auth_token.dart';
 import 'package:flutter_arrow_maze/infrastructure/repositories/in_memory_session_token_store.dart';
 
+import '../../support/auth_fakes.dart';
 import 'auth_form_controller_test.mocks.dart';
 
 @GenerateMocks([IAuthRepository, IAuthTokenStorage])
@@ -31,7 +32,10 @@ void main() {
         authRepositoryProvider.overrideWithValue(repo),
         authControllerProvider.overrideWith(
           () => AuthController(
-              storage, RestoreSessionUseCase(storage), InMemorySessionTokenStore()),
+              storage,
+              RestoreSessionUseCase(storage),
+              InMemorySessionTokenStore(),
+              NoopUserScopedStorage()),
         ),
       ]);
 

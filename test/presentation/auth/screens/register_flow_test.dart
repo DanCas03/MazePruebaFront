@@ -22,6 +22,7 @@ import 'package:flutter_arrow_maze/presentation/auth/screens/register_screen.dar
 import 'package:flutter_arrow_maze/presentation/home/screens/home_screen.dart';
 import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 
+import '../../../support/auth_fakes.dart';
 import 'register_flow_test.mocks.dart';
 
 // front#18: AuthGate ahora dispara el sync de progreso al pasar a Authenticated,
@@ -55,7 +56,10 @@ void main() {
           authRepositoryProvider.overrideWithValue(repo),
           authControllerProvider.overrideWith(
             () => AuthController(
-                storage, RestoreSessionUseCase(storage), InMemorySessionTokenStore()),
+                storage,
+                RestoreSessionUseCase(storage),
+                InMemorySessionTokenStore(),
+                NoopUserScopedStorage()),
           ),
           remoteProgressRepositoryProvider.overrideWithValue(_FakeRemote()),
         ],

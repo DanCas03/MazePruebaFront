@@ -361,9 +361,14 @@ void main() {
       final container = _container(_repoWithBoard(_singleArrowBoard()));
       addTearDown(container.dispose);
       await tester.pumpWidget(_host(container));
+      // El id debe coincidir con el de la GameScreen montada (`_host` usa
+      // LevelId('1')): en producción initState llama loadLevel(widget.levelId),
+      // así que _currentLevel == widget.levelId. La navegación de victoria exige
+      // esa coincidencia (invariante por nivel, front#98), por lo que el test
+      // debe cargar el MISMO nivel que pinta la pantalla.
       await container
           .read(gameControllerProvider.notifier)
-          .loadLevel(LevelId('level-1'));
+          .loadLevel(LevelId('1'));
       await tester.pump();
 
       // Act — clear the only arrow, triggering GameWon -> navigation

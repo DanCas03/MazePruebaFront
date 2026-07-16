@@ -28,7 +28,11 @@ final levelCompletionObserverProvider = Provider<void>((ref) {
   final useCase = ref.watch(recordLevelCompletionUseCaseProvider);
   ref.listen<AsyncValue<GameState>>(gameControllerProvider, (previous, next) {
     final state = next.valueOrNull;
-    if (state is GameWon) {
+    // front#98: dispara SOLO en el BORDE de transición hacia GameWon. El estado
+    // de carga del siguiente nivel RETIENE el GameWon anterior (AsyncLoading
+    // preserva el último dato), así que sin la guarda de borde este listener
+    // re-escribiría el progreso del nivel ya ganado en CADA carga posterior.
+    if (state is GameWon && previous?.valueOrNull is! GameWon) {
       // Fire-and-forget: el use case traga sus errores; no `await` para no
       // bloquear la transición a la pantalla de victoria.
       unawaited(useCase.execute(

@@ -112,7 +112,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       // POST del score) es una instancia nueva; sin la guarda de borde el
       // listener re-ejecutaría pushReplacement y apilaría una segunda pantalla.
       // El mismo blindaje aplica a la transición simétrica GameLost → derrota.
-      if (state is GameWon && prevState is! GameWon) {
+      //
+      // front#98 (refuerzo): INVARIANTE POR NIVEL. El provider NO es autoDispose,
+      // así que tras ganar y volver al menú el estado queda en GameWon del nivel
+      // anterior; al entrar a OTRO nivel esta pantalla monta sobre ese GameWon
+      // rezagado. Exigimos `state.levelId == widget.levelId`: una pantalla solo
+      // navega a la victoria de SU PROPIO nivel, nunca a la de otro —blinda el
+      // síntoma "al entrar a un nivel reaparece la victoria del anterior" sea
+      // cual sea el momento en que el listener observe el estado rezagado.
+      if (state is GameWon &&
+          prevState is! GameWon &&
+          state.levelId == widget.levelId) {
         audio.play(GameSound.victory);
         audio.stopMusic();
         // La victoria viaja con el nivel (para "Next Level") y las métricas ya

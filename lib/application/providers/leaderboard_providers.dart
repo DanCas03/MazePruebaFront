@@ -28,7 +28,12 @@ final scoreSubmissionObserverProvider = Provider<void>((ref) {
   final useCase = ref.watch(submitScoreUseCaseProvider);
   ref.listen<AsyncValue<GameState>>(gameControllerProvider, (previous, next) {
     final state = next.valueOrNull;
-    if (state is GameWon) {
+    // front#98: dispara SOLO en el BORDE de transición hacia GameWon, no ante
+    // "el estado ES GameWon". Al cargar el siguiente nivel, el estado de carga
+    // RETIENE el valor GameWon anterior (Riverpod preserva el último dato en
+    // AsyncLoading), así que sin la guarda de borde este listener re-enviaría el
+    // score del nivel ya ganado en CADA carga posterior (POST duplicado).
+    if (state is GameWon && previous?.valueOrNull is! GameWon) {
       final entry = ScoreEntry(
         levelId: state.levelId,
         score: state.score,

@@ -28,3 +28,17 @@ Incidencias (regiones bajo objetivo / errores):
 - themed-happy_face: región `features` bajo objetivo (86% < 90%)
 - themed-heart: región `heart` bajo objetivo (82% < 90%)
 
+## Lote — modo denso (#118) · seeds 0..99 · objetivo 90%
+
+Dos corridas `--mask` (heart, happy_face) fusionadas a mano en una sección.
+Selección de seed = criterio de los guardianes (detalle al 100% → profundidad
+máxima de hueco <= 2 → mayor cobertura), NO cobertura sola. Los JSON emiten
+`silhouette` (fill completo de la máscara). `themed-bunny` está CONGELADO
+(benchmark estético): no se regeneró, solo ganó `silhouette` vía
+`add_silhouette.dart` — sus 37 flechas quedan byte-idénticas.
+
+| figura | dims | seed usado | flechas colocadas | cobertura por rol | objetivo alcanzado | timeLimitSec |
+|---|---|---|---|---|---|---|
+| themed-heart | 36×24 | 67 | 190 | heart:99% | sí | ninguno |
+| themed-happy_face | 24×22 | 41 | 129 | face:98% features:100% | sí | ninguno |
+

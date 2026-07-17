@@ -64,6 +64,7 @@ Future<void> main(List<String> args) async {
   final seeds = [for (var s = opts.seedStart; s <= opts.seedEnd; s++) s];
   stdout.writeln('Producing ${maskFiles.length} themed mask'
       '${maskFiles.length == 1 ? '' : 's'} · '
+      'mode ${opts.dense ? 'dense' : 'legacy'} · '
       'coverage target ${_pct(opts.coverage)} · maxlen ${opts.maxLen} · '
       'seeds ${opts.seedStart}..${opts.seedEnd} · out ${outDir.path}');
 
@@ -81,6 +82,7 @@ Future<void> main(List<String> args) async {
             coverageTarget: opts.coverage,
             maxPathLen: opts.maxLen,
             seeds: seeds,
+            dense: opts.dense,
           ));
 
       File('${outDir.path}/${result.levelId}.json')
@@ -159,7 +161,8 @@ void _appendManifest(
       ..writeln();
   }
   buf
-    ..writeln('## Lote — seeds ${opts.seedStart}..${opts.seedEnd} · '
+    ..writeln('## Lote — modo ${opts.dense ? 'denso' : 'legacy'} · '
+        'seeds ${opts.seedStart}..${opts.seedEnd} · '
         'objetivo ${_pct(opts.coverage)} · maxlen ${opts.maxLen}')
     ..writeln()
     ..writeln('| figura | dims | seed usado | flechas colocadas | '
@@ -196,6 +199,7 @@ class Options {
   final int seedStart;
   final int seedEnd;
   final int maxLen;
+  final bool dense;
   final bool help;
 
   const Options({
@@ -206,6 +210,7 @@ class Options {
     required this.seedStart,
     required this.seedEnd,
     required this.maxLen,
+    required this.dense,
     required this.help,
   });
 
@@ -214,7 +219,8 @@ class Options {
       return const Options(
           maskPath: null, masksDir: null, out: _defaultOut,
           coverage: _defaultCoverage, seedStart: _defaultSeedStart,
-          seedEnd: _defaultSeedEnd, maxLen: _defaultMaxLen, help: true);
+          seedEnd: _defaultSeedEnd, maxLen: _defaultMaxLen, dense: true,
+          help: true);
     }
 
     final maskPath = _flag(args, '--mask');
@@ -246,6 +252,17 @@ class Options {
       throw _UsageException('--maxlen must be an integer >= 2, got "$rawMaxLen"');
     }
 
+    final rawDense = _flag(args, '--dense');
+    final bool dense;
+    switch (rawDense) {
+      case null || 'true':
+        dense = true;
+      case 'false':
+        dense = false;
+      default:
+        throw _UsageException('--dense must be "true" or "false", got "$rawDense"');
+    }
+
     return Options(
       maskPath: maskPath,
       masksDir: masksDir,
@@ -254,6 +271,7 @@ class Options {
       seedStart: seedStart,
       seedEnd: seedEnd,
       maxLen: maxLen,
+      dense: dense,
       help: false,
     );
   }
@@ -312,12 +330,20 @@ Requeridos (exactamente uno):
 Opciones:
   --out <dir>         Directorio de salida (se crea si no existe). Default: $_defaultOut
   --coverage <0..1>   Cobertura objetivo por región. Default: $_defaultCoverage
-  --seeds <A..B>      Rango inclusivo de semillas a reintentar. Default: $_defaultSeedStart..$_defaultSeedEnd
-  --maxlen <n>        Largo máximo del cuerpo de cada flecha (>= 2). Default: $_defaultMaxLen
+  --seeds <A..B>      Rango de semillas: en denso se BARRE completo y se elige
+                      con el criterio de los guardianes (detalle lleno →
+                      profundidad de hueco <= 2 → mayor cobertura); en legacy
+                      se reintenta hasta alcanzar el objetivo. Default: $_defaultSeedStart..$_defaultSeedEnd
+  --dense <bool>      Modo denso (#118): generateThemedDense + criterio de
+                      selección de los guardianes. Default: true
+  --maxlen <n>        Largo máximo del cuerpo de cada flecha (>= 2), SOLO en
+                      modo legacy (--dense false); en denso la política de
+                      longitudes está congelada con los guardianes. Default: $_defaultMaxLen
   -h, --help          Muestra esta ayuda.
 
 Salida:
-  <out>/themed-<name>.json         JSON arrow-path temático (sin timeLimitSec: temático v1 no tiene límite).
+  <out>/themed-<name>.json         JSON arrow-path temático con silhouette (fill de la máscara);
+                                   sin timeLimitSec: temático v1 no tiene límite.
   <out>/themed-<name>.preview.txt  Vista previa ANSI para curación (█ ocupado, ░ hueco de cobertura).
   <out>/manifest-themed.md         Manifiesto del lote (se apéndice por corrida).
 ''';

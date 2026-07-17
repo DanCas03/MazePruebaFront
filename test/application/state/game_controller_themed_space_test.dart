@@ -40,11 +40,13 @@ ArrowBoard _board() => ArrowBoard(
     );
 
 void _stubLevel(MockILevelRepository repo, ArrowBoard board,
-        {Map<String, String>? palette}) =>
+        {Map<String, String>? palette,
+        Map<String, List<Position>>? silhouette}) =>
     when(repo.getLevel(any)).thenAnswer((_) async => Right(Level(
           id: LevelId('1'),
           board: board,
           palette: palette,
+          silhouette: silhouette,
         )));
 
 ProviderContainer _container(MockILevelRepository repo, MockRemoveArrowUseCase uc) {
@@ -73,6 +75,27 @@ void main() {
     final state = c.read(gameControllerProvider).valueOrNull as GamePlaying;
     expect(state.board.space, RectSpace(4, 4));
     expect(state.board.arrows.length, 2); // mismas flechas
+  });
+
+  test('themed level (silhouette != null) exposes it on GamePlaying state',
+      () async {
+    // Arrange
+    final repo = MockILevelRepository();
+    final uc = MockRemoveArrowUseCase();
+    final silhouette = {
+      'body': [Position(row: 0, col: 0), Position(row: 0, col: 1)],
+    };
+    _stubLevel(repo, _board(),
+        palette: const {'fill': '#ff0000'}, silhouette: silhouette);
+    final c = _container(repo, uc);
+
+    // Act
+    await c.read(gameControllerProvider.notifier).loadLevel(LevelId('1'));
+
+    // Assert — front#114: la silueta viaja al estado de partida, espejo de palette.
+    final state = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(state.silhouette, isNotNull);
+    expect(state.silhouette, silhouette);
   });
 
   test('campaign level (palette == null) keeps its RectSpace untouched', () async {

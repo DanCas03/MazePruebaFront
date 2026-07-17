@@ -162,6 +162,7 @@ class GameController extends AsyncNotifier<GameState> {
       moves: const MoveCount(0),
       strikes: _strikes, // expone el presupuesto del nivel al HUD desde el inicio
       palette: level.palette,
+      silhouette: level.silhouette,
       canUndo: false,
       remainingSeconds: _remainingSeconds,
     ));
@@ -196,6 +197,7 @@ class GameController extends AsyncNotifier<GameState> {
           moves: current.moves,
           strikes: _strikes,
           palette: _currentLevelData?.palette,
+          silhouette: _currentLevelData?.silhouette,
           blockedArrow: arrowId,
           blockedNonce: _blockedNonce,
           exitNonce: _exitNonce,
@@ -241,6 +243,7 @@ class GameController extends AsyncNotifier<GameState> {
             moves: newMoves,
             strikes: _strikes,
             palette: _currentLevelData?.palette,
+            silhouette: _currentLevelData?.silhouette,
             exitingArrow: removed,
             exitNonce: _exitNonce,
             blockedNonce: _blockedNonce,
@@ -286,6 +289,7 @@ class GameController extends AsyncNotifier<GameState> {
       moves: previousMoves,
       strikes: _strikes,
       palette: _currentLevelData?.palette,
+      silhouette: _currentLevelData?.silhouette,
       blockedNonce: _blockedNonce,
       exitNonce: _exitNonce,
       canUndo: _invoker.canUndo,
@@ -354,6 +358,7 @@ class GameController extends AsyncNotifier<GameState> {
       moves: const MoveCount(0),
       strikes: StrikeCount(0, max: level.maxErrors), // HUD coherente con el nivel
       palette: level.palette,
+      silhouette: level.silhouette,
       hintPlaying: true,
     ));
     await Future<void>.delayed(hintStepDelay);
@@ -372,6 +377,7 @@ class GameController extends AsyncNotifier<GameState> {
         moves: const MoveCount(0),
         strikes: StrikeCount(0, max: level.maxErrors),
         palette: level.palette,
+        silhouette: level.silhouette,
         hintPlaying: true,
         exitingArrow: removed,
         exitNonce: _exitNonce,
@@ -397,6 +403,7 @@ class GameController extends AsyncNotifier<GameState> {
         moves: s.moves,
         strikes: s.strikes,
         palette: s.palette,
+        silhouette: s.silhouette,
         blockedArrow: s.blockedArrow,
         blockedNonce: s.blockedNonce,
         exitingArrow: s.exitingArrow,
@@ -430,6 +437,7 @@ class GameController extends AsyncNotifier<GameState> {
           moves: current.moves,
           strikes: current.strikes,
           palette: current.palette,
+          silhouette: current.silhouette,
           blockedArrow: current.blockedArrow,
           blockedNonce: current.blockedNonce,
           exitingArrow: current.exitingArrow,

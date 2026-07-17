@@ -3,6 +3,7 @@ import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
+import '../../domain/game_core/value_objects/position.dart';
 import '../../domain/game_core/value_objects/score.dart';
 import '../../domain/game_core/value_objects/stars.dart';
 import '../../domain/game_core/value_objects/strike_count.dart';
@@ -22,6 +23,11 @@ class GamePlaying extends GameState {
   // el seam de color en BoardView. Los tableros generados nunca lo llevan.
   final Map<String, String>? palette;
 
+  // Silueta de figura (front#114): rol→celdas de su región de máscara, o null
+  // en campaña. Dato de presentación constante durante la partida —espejo de
+  // [palette]— consumido por el SilhouettePainter para rellenar la figura.
+  final Map<String, List<Position>>? silhouette;
+
   // Señales TRANSITORIAS de presentación (no son reglas de dominio):
   final ArrowId? blockedArrow; // última flecha tocada que no puede salir
   final int blockedNonce; // ++ por bloqueo → re-dispara el shake
@@ -40,6 +46,7 @@ class GamePlaying extends GameState {
     required this.moves,
     this.strikes = const StrikeCount(0),
     this.palette,
+    this.silhouette,
     this.blockedArrow,
     this.blockedNonce = 0,
     this.exitingArrow,

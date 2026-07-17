@@ -115,6 +115,43 @@ DenseSeedMetrics? selectDenseSeed(Iterable<DenseSeedMetrics> metrics) {
   return best;
 }
 
+/// Regiones de [mask] ordenadas con las de detalle PRIMERO (las más
+/// pequeñas): las regiones de detalle (ojos/boca en happy_face) reservan su
+/// carril de salida con el tablero aún vacío; si la región exterior se
+/// llenara primero ninguna flecha interior encontraría carril libre. MISMO
+/// orden que usan el producer y los guardianes de
+/// `graph_board_themed_dense_test.dart`.
+List<MaskRegion> orderRegionsDetailFirst(MaskSpec mask) => mask.regions
+    .toList()
+  ..sort((a, b) => a.cells.length.compareTo(b.cells.length));
+
+/// Specs de región para el modo denso (#118), en orden detalle-primero:
+/// `arrowCount` = |celdas| de la región (la pasada principal barre sin tope
+/// real; el objetivo es la densidad, no la cuenta de flechas) y `maxPathLen`
+/// 6 para regiones >= 100 celdas, 4 para el resto. Política congelada,
+/// compartida por el producer y los guardianes.
+List<ThemedRegionSpec> denseRegionSpecs(MaskSpec mask) => [
+      for (final region in orderRegionsDetailFirst(mask))
+        ThemedRegionSpec(
+          role: region.role,
+          cells: region.cells,
+          arrowCount: region.cells.length,
+          maxPathLen: region.cells.length >= 100 ? 6 : 4,
+        ),
+    ];
+
+/// Celdas de las regiones "de detalle" de [mask]: todas salvo la mayor
+/// (identidad de la figura — ojos/boca en happy_face); vacío si la máscara
+/// tiene menos de 2 regiones (en heart no hay detalle). MISMA definición que
+/// usa [selectDenseSeed] vía `DenseSeedMetrics.detailFull` y los guardianes.
+Set<Position> detailCellsOf(MaskSpec mask) {
+  final ordered = orderRegionsDetailFirst(mask);
+  if (ordered.length < 2) return const {};
+  return {
+    for (final region in ordered.take(ordered.length - 1)) ...region.cells,
+  };
+}
+
 /// Produce un nivel temático solvable a partir de [mask].
 ///
 /// Con [dense] (default, #118) usa `generateThemedDense`: barre TODAS las
@@ -160,37 +197,18 @@ ThemedResult _produceDense(
   final generator = GraphBoardGenerator();
   final levelId = 'themed-${mask.name}';
 
-  // Mismo orden detalle-primero que el modo legacy (ver _produceLegacy) y la
-  // MISMA política de regiones que los guardianes (congelada en
-  // graph_board_themed_dense_test.dart): arrowCount = |celdas| — un tope menor
-  // frena la pasada principal, el gap-fill toma el relevo y el ratio de codos
-  // CAE — y maxPathLen 6/4 según el tamaño de la región.
-  final orderedRegions = mask.regions.toList()
-    ..sort((a, b) => a.cells.length.compareTo(b.cells.length));
-  final regionSpecs = <ThemedRegionSpec>[
-    for (final region in orderedRegions)
-      ThemedRegionSpec(
-        role: region.role,
-        cells: region.cells,
-        arrowCount: region.cells.length,
-        maxPathLen: region.cells.length >= 100 ? 6 : 4,
-      ),
-  ];
+  // Orden detalle-primero + política de región compartida con los guardianes
+  // (ver `orderRegionsDetailFirst`/`denseRegionSpecs`/`detailCellsOf`).
+  final regionSpecs = denseRegionSpecs(mask);
 
   final maskCells = <Position>{
     for (final region in mask.regions) ...region.cells,
   };
-  // Regiones de detalle = todas salvo la mayor (misma definición que los
-  // guardianes; con una sola región no hay detalle).
-  final detailCells = <Position>{
-    if (mask.regions.length >= 2)
-      for (final region in orderedRegions.take(orderedRegions.length - 1))
-        ...region.cells,
-  };
+  final detailCells = detailCellsOf(mask);
   // La profundidad al borde depende SOLO de la máscara (no del tablero): se
   // calcula una vez y se reutiliza en todas las seeds.
   final depthByRegion = [
-    for (final region in mask.regions) _borderDepth(region.cells),
+    for (final region in mask.regions) borderDepth(region.cells),
   ];
 
   final metricsBySeed = <DenseSeedMetrics>[];
@@ -365,10 +383,11 @@ Map<String, Set<Position>> _silhouetteOf(MaskSpec mask) => {
 
 /// Distancia BFS multi-source de cada celda de la región a su borde (celda de
 /// borde = adyacente a fuera-de-región o fuera de tablero; profundidad 0).
-/// Copia LITERAL de la definición congelada en
-/// `test/infrastructure/generators/graph_board_themed_dense_test.dart` — el
-/// producer debe medir con la MISMA regla que los guardianes; no inventar otra.
-Map<Position, int> _borderDepth(Set<Position> cells) {
+/// Fuente única (#118 fix): el producer y los guardianes de
+/// `test/infrastructure/generators/graph_board_themed_dense_test.dart` miden
+/// con esta MISMA regla — el guardián importa este símbolo en vez de
+/// re-declararlo.
+Map<Position, int> borderDepth(Set<Position> cells) {
   final depth = <Position, int>{};
   final queue = <Position>[];
   for (final c in cells) {

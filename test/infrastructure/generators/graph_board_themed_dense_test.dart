@@ -8,6 +8,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'package:flutter_arrow_maze/infrastructure/generators/graph_board_generator.dart';
 
 import '../../../tool/level_production/mask_spec.dart';
+import '../../../tool/level_production/themed_producer.dart';
 import '../../../tool/level_production/validation.dart';
 
 // ---------------------------------------------------------------------------
@@ -77,34 +78,6 @@ import '../../../tool/level_production/validation.dart';
 
 const _maskDir = 'tool/level_production/masks';
 
-/// Regiones densas desde una máscara: las regiones pequeñas (detalle: ojos,
-/// boca) van PRIMERO — sus carriles de salida se reservan con el tablero aún
-/// vacío, igual que hace themed_producer.dart — y `arrowCount` se fija al
-/// tamaño de la región (la pasada principal barre sin tope; el objetivo real
-/// del modo denso es la densidad, no la cuenta de flechas).
-List<ThemedRegionSpec> _denseRegions(MaskSpec mask) {
-  final sorted = mask.regions.toList()
-    ..sort((a, b) => a.cells.length.compareTo(b.cells.length));
-  return [
-    for (final r in sorted)
-      ThemedRegionSpec(
-        role: r.role,
-        cells: r.cells,
-        arrowCount: r.cells.length,
-        maxPathLen: r.cells.length >= 100 ? 6 : 4,
-      ),
-  ];
-}
-
-/// Roles de detalle = todas las regiones salvo la mayor (en happy_face:
-/// `features`; en heart no hay ninguna).
-Set<String> _detailRoles(MaskSpec mask) {
-  if (mask.regions.length < 2) return {};
-  final sorted = mask.regions.toList()
-    ..sort((a, b) => a.cells.length.compareTo(b.cells.length));
-  return {for (final r in sorted.take(sorted.length - 1)) r.role};
-}
-
 Direction _stepDir(Position from, Position to) {
   if (to.row < from.row) return Direction.up;
   if (to.row > from.row) return Direction.down;
@@ -123,42 +96,6 @@ int _elbowCount(Arrow a) {
     }
   }
   return elbows;
-}
-
-/// Distancia BFS de cada celda de la región a su borde (borde = profundidad 0).
-Map<Position, int> _borderDepth(Set<Position> cells) {
-  final depth = <Position, int>{};
-  final queue = <Position>[];
-  for (final c in cells) {
-    final neighbors = [
-      Position(row: c.row + 1, col: c.col),
-      Position(row: c.row, col: c.col + 1),
-      if (c.row > 0) Position(row: c.row - 1, col: c.col),
-      if (c.col > 0) Position(row: c.row, col: c.col - 1),
-    ];
-    final isBorder =
-        c.row == 0 || c.col == 0 || neighbors.any((n) => !cells.contains(n));
-    if (isBorder) {
-      depth[c] = 0;
-      queue.add(c);
-    }
-  }
-  var i = 0;
-  while (i < queue.length) {
-    final c = queue[i++];
-    final neighbors = [
-      Position(row: c.row + 1, col: c.col),
-      Position(row: c.row, col: c.col + 1),
-      if (c.row > 0) Position(row: c.row - 1, col: c.col),
-      if (c.col > 0) Position(row: c.row, col: c.col - 1),
-    ];
-    for (final n in neighbors) {
-      if (!cells.contains(n) || depth.containsKey(n)) continue;
-      depth[n] = depth[c]! + 1;
-      queue.add(n);
-    }
-  }
-  return depth;
 }
 
 /// true si existe una terna anti-columnas (ver definición en la cabecera).
@@ -207,26 +144,6 @@ bool _hasParallelStraightTriple(ArrowBoard board) {
   return false;
 }
 
-/// Medida de una seed del barrido: exactamente lo que el criterio de selección
-/// necesita para decidir, con los helpers congelados de este archivo.
-class _SeedMetrics {
-  final int seed;
-  final double coverage;
-  final int maxDepth;
-  final bool detailFull;
-
-  const _SeedMetrics({
-    required this.seed,
-    required this.coverage,
-    required this.maxDepth,
-    required this.detailFull,
-  });
-
-  /// Admisible = cumple los criterios 1 y 2 de la cabecera. La cobertura NO
-  /// entra aquí: solo desempata entre admisibles.
-  bool get qualifies => detailFull && maxDepth <= 2;
-}
-
 /// Fixture por máscara: escaneo determinista de seeds 0..99 y tablero elegido.
 class _DenseFixture {
   final MaskSpec mask;
@@ -252,26 +169,24 @@ class _DenseFixture {
   factory _DenseFixture.scan(String maskName) {
     final mask =
         parseMaskSpec(File('$_maskDir/$maskName.mask').readAsStringSync());
-    final regions = _denseRegions(mask);
+    // Regiones, detalle y profundidad de borde: fuente única en
+    // themed_producer.dart (#118 fix) — el guardián ya no re-declara su
+    // propio criterio, lo importa.
+    final regions = denseRegionSpecs(mask);
     final maskCells = <Position>{
       for (final r in mask.regions) ...r.cells,
     };
-    final detailRoles = _detailRoles(mask);
-    final detailCells = <Position>{
-      for (final r in mask.regions)
-        if (detailRoles.contains(r.role)) ...r.cells,
-    };
+    final detailCells = detailCellsOf(mask);
     // La profundidad al borde depende SOLO de la máscara (no del tablero), así
     // que se calcula una vez y se reutiliza en las 100 seeds.
     final depthByRegion = [
-      for (final r in mask.regions) _borderDepth(r.cells),
+      for (final r in mask.regions) borderDepth(r.cells),
     ];
 
     final generator = GraphBoardGenerator();
-    ArrowBoard? best;
-    _SeedMetrics? bestMetrics;
     final coverageBySeed = <double>[];
-    final metricsBySeed = <_SeedMetrics>[];
+    final metricsBySeed = <DenseSeedMetrics>[];
+    final boardBySeed = <int, ArrowBoard>{};
     for (var seed = 0; seed < 100; seed++) {
       final board = generator.generateThemedDense(
         cols: mask.cols,
@@ -292,23 +207,18 @@ class _DenseFixture {
           if (depth > maxDepth) maxDepth = depth;
         }
       }
-      final metrics = _SeedMetrics(
+      metricsBySeed.add(DenseSeedMetrics(
         seed: seed,
         coverage: coverage,
-        maxDepth: maxDepth,
+        maxHoleDepth: maxDepth,
         detailFull: detailCells.isEmpty || covered.containsAll(detailCells),
-      );
-      metricsBySeed.add(metrics);
-      // Selección lexicográfica (ver cabecera): solo compiten las admisibles y
-      // entre ellas gana la de mayor cobertura; el `>` estricto conserva la
-      // primera vista, luego los empates los gana la seed más baja.
-      if (!metrics.qualifies) continue;
-      if (bestMetrics == null || metrics.coverage > bestMetrics.coverage) {
-        bestMetrics = metrics;
-        best = board;
-      }
+      ));
+      boardBySeed[seed] = board;
     }
-    if (best == null) {
+    // Selección lexicográfica: fuente única en themed_producer.dart (#118
+    // fix) — el mismo `selectDenseSeed` que usa el producer, no una copia.
+    final chosen = selectDenseSeed(metricsBySeed);
+    if (chosen == null) {
       // Rojo ruidoso, nunca una elección silenciosa: si una regresión del
       // generador borra a TODAS las candidatas, el barrido no tiene nada
       // legítimo que medir y este fixture lo dice con los datos en la mano, en
@@ -322,16 +232,17 @@ class _DenseFixture {
       final top = ranked
           .take(3)
           .map((m) => 'seed=${m.seed} cobertura=${m.coverage.toStringAsFixed(4)}'
-              ' maxDepth=${m.maxDepth} detalleCompleto=${m.detailFull}')
+              ' maxDepth=${m.maxHoleDepth} detalleCompleto=${m.detailFull}')
           .join(' | ');
       throw StateError(
         '${mask.name}: NINGUNA seed de 0..99 cumple el criterio de selección '
         '(detalle al 100% Y profundidad máxima <= 2). Con detalle completo: '
         '${metricsBySeed.where((m) => m.detailFull).length}/100; con '
-        'profundidad <= 2: ${metricsBySeed.where((m) => m.maxDepth <= 2).length}'
+        'profundidad <= 2: ${metricsBySeed.where((m) => m.maxHoleDepth <= 2).length}'
         '/100. Mejores por cobertura: $top',
       );
     }
+    final best = boardBySeed[chosen.seed]!;
     final covered = <Position>{
       for (final a in best.arrows) ...a.cells,
     };
@@ -339,7 +250,7 @@ class _DenseFixture {
       mask,
       regions,
       maskCells,
-      bestMetrics!.seed,
+      chosen.seed,
       best,
       covered,
       coverageBySeed,
@@ -365,6 +276,20 @@ void main() {
   });
 
   group('GraphBoardGenerator.generateThemedDense — guardianes (#118)', () {
+    test(
+        'selección de seed: heart elige 67 y happy_face elige 41 con el '
+        'criterio de themed_producer.dart (#118 fix — fuente única)', () {
+      // Arrange: fixture escaneada en setUpAll con `selectDenseSeed` +
+      // `DenseSeedMetrics` importados de themed_producer.dart. Si esta
+      // aserción falla, el criterio del producer y el del guardián YA habían
+      // derivado antes de este fix: no es un umbral a ajustar, es un hallazgo
+      // mayor (ver task-7-fix-context.md).
+      // Act + Assert
+      expect(heart.bestSeed, 67, reason: 'heart: seed elegida por el barrido');
+      expect(happyFace.bestSeed, 41,
+          reason: 'happy_face: seed elegida por el barrido');
+    });
+
     test(
         'densidad: heart cubre >= 0.90 del total (608 celdas) con la seed '
         'elegida de 0..99', () {
@@ -449,7 +374,7 @@ void main() {
         var maxDepth = 0;
         Position? deepest;
         for (final region in fx.mask.regions) {
-          final depth = _borderDepth(region.cells);
+          final depth = borderDepth(region.cells);
           for (final cell in region.cells) {
             if (fx.covered.contains(cell)) continue;
             total += depth[cell]!;

@@ -2066,3 +2066,18 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - Tests front (66 en las suites temáticas: `tool/level_production/`, `masked_space`, `graph_board_themed`, certificación `arrow_board_masked_space`, `themed_selection_screen`, `game_controller_themed_space`) → **verde**. Ningún test hardcodea las dims viejas.
 - README no modificado (sin nuevo contrato público; el tooling y su uso no cambian). El sign-off estético final de las figuras corresponde al mantenedor (criterio de aceptación de back#47).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 113 — #114 (Task 6): `SilhouettePainter` + integración en el tablero
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Cerrar la Task 6 del plan SDD de #114: pintar el relleno de silueta temática (rol→celdas, producido en tareas previas junto a `state.palette`) DEBAJO de las flechas, para que la figura temática no muestre huecos donde ninguna flecha inicial cubre una celda de la máscara.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5) — rol `frontend-architect` (skill arrowmaze-frontend), ejecutando el brief de la Task 6 (`.superpowers/sdd/task-6-brief.md`) en TDD.
+**Prompt o instrucción proporcionada:** > "Task 6: create SilhouettePainter and paint the themed silhouette under the arrows" (brief con código de referencia del painter y del punto de inserción exacto en `board_widget.dart`).
+**Resultado obtenido:**
+- Nuevo `lib/presentation/game/painters/silhouette_painter.dart`: `SilhouettePainter extends CustomPainter` recibe `frame` (`BoundingBox`), `cell`, `silhouette` (`Map<String, List<Position>>`) y `palette` (`Map<String, String>`); por cada rol resuelve el hex vía `ThemedArrowColorResolver.parseHexColor` y pinta un `drawRect` por celda con `color.withValues(alpha: 0.30)`, con offset relativo al `frame` (`(p.col - frame.minCol) * cell`, `(p.row - frame.minRow) * cell`) — mismo sistema de coordenadas que `BoardSurfacePainter` y las flechas. Roles ausentes de la paleta o con hex inválido se saltan silenciosamente (misma tolerancia que el seam de color de flechas, front#67): dato opaco que nunca rompe el render.
+- `board_widget.dart`: se inserta un `Positioned.fill(child: CustomPaint(painter: SilhouettePainter(...)))` dentro del `Stack` de `_boardContent`, inmediatamente DESPUÉS del `BoardSurfacePainter` y ANTES del loop de flechas, guardado por `if (state.silhouette != null && state.palette != null)` — así el camino de campaña (sin silueta) no construye el painter y queda byte-idéntico a antes.
+- **Tests (AAA)** en `test/presentation/game/painters/silhouette_painter_test.dart`, siguiendo el patrón de `board_surface_painter_test.dart` (canvas-recording vía `paints`/`paintsExactlyCountTimes` sobre el `RenderObject` de un `CustomPaint` montado a tamaño exacto): un rol con 2 celdas y hex válido registra exactamente 2 `drawRect` en los offsets esperados relativos a un `frame` con `minRow/minCol` ≠ 0 (verifica la resta de offset); un rol ausente de la paleta y un rol con hex inválido registran 0 `drawRect` cada uno. Rojo confirmado primero (painter inexistente → error de compilación), verde tras implementar.
+- Suite completa del front **810** verde (antes 807; test file nuevo con 3 casos). `flutter analyze` no ejecutado explícitamente en este fragmento (fuera del alcance del brief).
+- Fuera de alcance (respetado): tareas 1-5 y 7+ del plan SDD de #114 (siluetas/paleta ya entregadas por tareas previas; posteriores quedan para sus propios fragmentos).
+- Rama `feat/#114-themed-silhouette-fill` (checked out por el orquestador, no creada en este fragmento).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -1,14 +1,13 @@
 // tool/level_production/themed_producer.dart
 //
-// Producción PURA de un nivel temático (front#68): mask → regiones →
-// `generateThemed` por semilla → validar → medir cobertura → serializar.
+// Producción PURA de un nivel temático (front#68/front#114): mask → regiones →
+// `generateThemedFull` (determinista) → validar → medir cobertura → serializar.
 // Sin IO ni argumentos de CLI — todo eso vive en `produce_themed.dart`
 // (mismo reparto puro/CLI que candidate_producer.dart / produce.dart, front#65).
 //
-// La estrategia de cobertura: se piden deliberadamente MÁS flechas de las que
-// caben (una por celda de la región) y el generador se auto-limita por
-// intentos; luego se reintentan semillas hasta que TODAS las regiones alcanzan
-// la cobertura objetivo, o se agotan las semillas y se usa la mejor vista.
+// La estrategia de cobertura (front#114): `generateThemedFull` pela la figura
+// celda a celda con flechas rectas ≥2 y cubre ~100% de cada región de forma
+// DETERMINISTA (sin semillas ni rng), así que ya no hay búsqueda por semillas.
 
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
@@ -32,11 +31,12 @@ class ThemedResult {
   /// flechas de ese rol / celdas totales de la región.
   final Map<String, double> coveragePerRole;
 
+  /// Siempre 0 desde front#114: la generación es determinista y sin semillas.
+  /// Se conserva por compatibilidad con el manifiesto/CLI.
   final int seedUsed;
   final int placedArrows;
 
-  /// true si TODAS las regiones alcanzaron la cobertura objetivo con
-  /// [seedUsed]; false si se agotaron las semillas y se usó la mejor vista.
+  /// true si TODAS las regiones quedaron a cobertura ~total (>= 99.9%).
   final bool allRegionsMetTarget;
 
   /// Grid ASCII coloreado (ANSI truecolor), `rows` líneas × `cols` chars:
@@ -55,35 +55,30 @@ class ThemedResult {
   });
 }
 
-/// Produce un nivel temático solvable a partir de [mask], reintentando las
-/// [seeds] EN ORDEN hasta que todas las regiones alcancen [coverageTarget].
+/// Produce un nivel temático solvable a partir de [mask] con
+/// `generateThemedFull`: relleno ~100% de cada región, determinista.
 ///
-/// - Cada semilla se genera con `generateThemed` y se valida con
-///   `validateCandidate`; una semilla inválida se salta sin abortar.
-/// - Se rastrea la mejor semilla vista (la de MAYOR cobertura mínima entre
-///   regiones); si ninguna alcanza el objetivo en todas las regiones, se usa
-///   esa mejor (`allRegionsMetTarget == false`).
+/// - El tablero generado se valida con `validateCandidate`; si no es solvable
+///   la excepción se propaga (fallo real de generación, no se enmascara).
 /// - El JSON se emite SIN `order` ni `timeLimitSec`: temático v1 no tiene
 ///   límite de tiempo, y como el encoder omite campos null, la AUSENCIA de
 ///   `timeLimitSec` es la anotación de "sin límite".
 ///
-/// Con [seeds] vacío se intenta solo la semilla 0 (un intento determinista).
-/// Lanza [StateError] si ninguna semilla produce un tablero válido.
+/// [coverageTarget] y [seeds] se conservan en la firma por compatibilidad con
+/// la CLI, pero se IGNORAN desde front#114: la generación es determinista
+/// (sin rng) y cubre la figura casi por completo por construcción.
 ThemedResult produceThemed(
   MaskSpec mask, {
-  double coverageTarget = 0.9,
+  double coverageTarget = 0.9, // ignorado (front#114): cobertura ~total fija
   int maxPathLen = 4,
-  Iterable<int> seeds = const [],
+  Iterable<int> seeds = const [], // ignorado (front#114): sin rng
 }) {
   final generator = GraphBoardGenerator();
   final levelId = 'themed-${mask.name}';
 
-  // Orden detalle-primero: las regiones pequeñas (interiores: ojos, boca) se
-  // colocan antes que las grandes (cara, pelaje). El generateThemed exige que
-  // cada flecha tenga su lane de salida al borde libre en el momento de
-  // colocarla; si la región exterior se llenara primero, ninguna flecha
-  // interior encontraría lane libre y esa región quedaría en 0%. Colocando los
-  // detalles sobre el tablero (aún) vacío, todas las regiones reciben flechas.
+  // Orden detalle-primero (regiones pequeñas antes que grandes), conservado
+  // por estabilidad de salida; generateThemedFull pela por grado celda a
+  // celda, así que el orden de regiones ya no condiciona la cobertura.
   final orderedRegions = mask.regions.toList()
     ..sort((a, b) => a.cells.length.compareTo(b.cells.length));
 
@@ -92,68 +87,31 @@ ThemedResult produceThemed(
       ThemedRegionSpec(
         role: region.role,
         cells: region.cells,
-        // Sobreoferta deliberada: una flecha "pedida" por celda. El generador
-        // se auto-limita por intentos, así que esto maximiza el relleno de la
-        // figura en vez de quedarse corto por un conteo conservador.
+        // generateThemedFull rellena la región completa; arrowCount solo
+        // satisface el contrato del spec (no limita el relleno).
         arrowCount: region.cells.length,
         maxPathLen: maxPathLen,
       ),
   ];
 
-  final seedList = seeds.isEmpty ? const <int>[0] : List<int>.of(seeds);
+  // Una sola llamada determinista (front#114): sin semillas ni mejor-vista.
+  final ArrowBoard board = generator.generateThemedFull(
+    cols: mask.cols,
+    rows: mask.rows,
+    regions: regionSpecs,
+  );
 
-  ArrowBoard? bestBoard;
-  Map<String, double>? bestCoverage;
-  var bestSeed = 0;
-  var bestMinCoverage = -1.0;
-  var metTarget = false;
+  // Solvabilidad obligatoria: si el tablero no se vacía, es un fallo real de
+  // generación y la excepción debe propagarse (no hay semillas que reintentar).
+  validateCandidate(board);
 
-  for (final seed in seedList) {
-    final board = generator.generateThemed(
-      cols: mask.cols,
-      rows: mask.rows,
-      regions: regionSpecs,
-      seed: seed,
-    );
-    try {
-      validateCandidate(board);
-    } on CandidateValidationException {
-      continue; // semilla mala: se salta y se sigue probando
-    }
-
-    final coverage = _coveragePerRole(mask, board);
-    if (coverage.values.every((c) => c >= coverageTarget)) {
-      // Todas las regiones en objetivo: esta semilla gana y se corta la
-      // búsqueda (determinista: siempre la PRIMERA semilla que lo logra).
-      bestBoard = board;
-      bestCoverage = coverage;
-      bestSeed = seed;
-      metTarget = true;
-      break;
-    }
-
-    final minCoverage =
-        coverage.values.reduce((a, b) => a < b ? a : b);
-    if (minCoverage > bestMinCoverage) {
-      bestMinCoverage = minCoverage;
-      bestBoard = board;
-      bestCoverage = coverage;
-      bestSeed = seed;
-    }
-  }
-
-  if (bestBoard == null || bestCoverage == null) {
-    throw StateError(
-      'no seed in ${seedList.first}..${seedList.last} produced a valid '
-      'board for mask "${mask.name}"',
-    );
-  }
+  final coverage = _coveragePerRole(mask, board);
 
   return ThemedResult(
     levelId: levelId,
     json: const LevelJsonEncoder().encode(
       levelId: levelId,
-      board: bestBoard,
+      board: board,
       palette: mask.palette,
       // Silueta de figura (front#114): rol→TODAS las celdas de su región,
       // ordenadas por (fila, columna) para salida determinista. La consume el
@@ -165,11 +123,11 @@ ThemedResult produceThemed(
             ..sort((a, b) => a.row != b.row ? a.row - b.row : a.col - b.col)),
       },
     ),
-    coveragePerRole: bestCoverage,
-    seedUsed: bestSeed,
-    placedArrows: bestBoard.arrows.length,
-    allRegionsMetTarget: metTarget,
-    preview: _renderPreview(mask, bestBoard),
+    coveragePerRole: coverage,
+    seedUsed: 0, // sin semillas desde front#114 (generación determinista)
+    placedArrows: board.arrows.length,
+    allRegionsMetTarget: coverage.values.every((c) => c >= 0.999),
+    preview: _renderPreview(mask, board),
   );
 }
 

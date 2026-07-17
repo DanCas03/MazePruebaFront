@@ -43,3 +43,14 @@ Incidencias (regiones bajo objetivo / errores):
 - themed-happy_face: región `features` bajo objetivo (86% < 90%)
 - themed-heart: región `heart` bajo objetivo (82% < 90%)
 
+## Lote — seeds 0..150 · objetivo 90% · maxlen 8
+
+| figura | dims | seed usado | flechas colocadas | cobertura por rol | objetivo alcanzado | timeLimitSec |
+|---|---|---|---|---|---|---|
+| themed-bunny | 16×20 | 0 | 40 | fur:100% pink:92% eye:67% | no | ninguno |
+| themed-happy_face | 24×22 | 0 | 80 | face:100% features:100% | sí | ninguno |
+| themed-heart | 24×16 | 0 | 48 | heart:100% | sí | ninguno |
+
+Incidencias (regiones bajo objetivo / errores):
+- themed-bunny: región `eye` bajo objetivo (67% < 90%)
+

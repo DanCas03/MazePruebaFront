@@ -21,10 +21,12 @@ AAA...
 ...BBB
 ''';
 
-/// GOLDEN: salida byte-estable de `produceThemed(mini, seeds: [0])`, capturada
-/// de una corrida real (práctica golden estándar) y pegada verbatim. Fija:
-/// levelId derivado, claves del wire contract, paintRole por flecha, palette
-/// top-level, y la AUSENCIA de `order`/`timeLimitSec` (temático v1 sin límite).
+/// GOLDEN: salida byte-estable de `produceThemed(mini)` (determinista desde
+/// front#114: `generateThemedFull`, sin semillas), capturada de una corrida
+/// real (práctica golden estándar) y pegada verbatim. Fija: levelId derivado,
+/// claves del wire contract, paintRole por flecha, cobertura TOTAL de la
+/// figura (flechas rectas ≥2), palette top-level, y la AUSENCIA de
+/// `order`/`timeLimitSec` (temático v1 sin límite).
 const _goldenJson = '''
 {
   "levelId": "themed-mini",
@@ -33,55 +35,6 @@ const _goldenJson = '''
   "arrows": [
     {
       "id": "arrow-0",
-      "headDir": "right",
-      "cells": [
-        [
-          0,
-          1
-        ],
-        [
-          1,
-          1
-        ],
-        [
-          1,
-          2
-        ]
-      ],
-      "paintRole": "alpha"
-    },
-    {
-      "id": "arrow-1",
-      "headDir": "down",
-      "cells": [
-        [
-          0,
-          0
-        ],
-        [
-          1,
-          0
-        ]
-      ],
-      "paintRole": "alpha"
-    },
-    {
-      "id": "arrow-2",
-      "headDir": "right",
-      "cells": [
-        [
-          3,
-          3
-        ],
-        [
-          3,
-          4
-        ]
-      ],
-      "paintRole": "beta"
-    },
-    {
-      "id": "arrow-3",
       "headDir": "left",
       "cells": [
         [
@@ -89,15 +42,72 @@ const _goldenJson = '''
           5
         ],
         [
+          3,
+          4
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "paintRole": "beta"
+    },
+    {
+      "id": "arrow-1",
+      "headDir": "left",
+      "cells": [
+        [
           2,
           5
         ],
         [
           2,
           4
+        ],
+        [
+          2,
+          3
         ]
       ],
       "paintRole": "beta"
+    },
+    {
+      "id": "arrow-2",
+      "headDir": "left",
+      "cells": [
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "paintRole": "alpha"
+    },
+    {
+      "id": "arrow-3",
+      "headDir": "left",
+      "cells": [
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "paintRole": "alpha"
     }
   ],
   "palette": {
@@ -163,17 +173,41 @@ const _goldenJson = '''
 
 void main() {
   group('produceThemed — golden de la máscara mini', () {
-    test('con la semilla fija 0 el JSON es byte-idéntico al golden', () {
+    test('el JSON es byte-idéntico al golden (determinista, seeds ignoradas)',
+        () {
       // Arrange
       final mask = parseMaskSpec(_miniMask);
 
-      // Act
+      // Act — seeds se pasa por compatibilidad de firma; se ignora (front#114).
       final result = produceThemed(mask, seeds: const [0]);
 
       // Assert
       expect(result.json, _goldenJson);
       expect(result.levelId, 'themed-mini');
+      // seedUsed es siempre 0 desde front#114 (sin rng ni búsqueda de semillas).
       expect(result.seedUsed, 0);
+    });
+
+    test('el golden cubre la figura al 100% con flechas rectas de >= 2 celdas',
+        () {
+      // Arrange
+      final mask = parseMaskSpec(_miniMask);
+
+      // Act
+      final result = produceThemed(mask, seeds: const [0]);
+      final map = jsonDecode(result.json) as Map<String, dynamic>;
+
+      // Assert — cobertura total por región (generateThemedFull) y ninguna
+      // flecha degenerada de 1 celda.
+      expect(result.allRegionsMetTarget, isTrue);
+      for (final value in result.coveragePerRole.values) {
+        expect(value, 1.0);
+      }
+      for (final arrow
+          in (map['arrows'] as List<dynamic>).cast<Map<String, dynamic>>()) {
+        expect((arrow['cells'] as List<dynamic>).length,
+            greaterThanOrEqualTo(2));
+      }
     });
 
     test('el golden NO lleva order ni timeLimitSec (temático v1 sin límite)',
@@ -250,8 +284,8 @@ void main() {
       }
     });
 
-    test('para la semilla golden la cobertura coincide con covered/total '
-        'recomputado desde las flechas del JSON', () {
+    test('la cobertura coincide con covered/total recomputado desde las '
+        'flechas del JSON', () {
       // Arrange
       final mask = parseMaskSpec(_miniMask);
       final result = produceThemed(mask, seeds: const [0]);
@@ -293,14 +327,14 @@ void main() {
       expect(result.placedArrows, greaterThan(0));
     });
 
-    test('misma máscara + mismas semillas ⇒ JSON idéntico', () {
+    test('misma máscara ⇒ JSON idéntico incluso con semillas DISTINTAS '
+        '(seeds se ignora: generación determinista sin rng)', () {
       // Arrange
       final mask = parseMaskSpec(_miniMask);
-      const seeds = [0, 1, 2, 3, 4];
 
-      // Act
-      final a = produceThemed(mask, seeds: seeds);
-      final b = produceThemed(mask, seeds: seeds);
+      // Act — semillas distintas a propósito: no deben influir en la salida.
+      final a = produceThemed(mask, seeds: const [0, 1, 2, 3, 4]);
+      final b = produceThemed(mask, seeds: const [99, 1234]);
 
       // Assert
       expect(a.json, b.json);
@@ -309,11 +343,12 @@ void main() {
     });
   });
 
-  group('produceThemed — orden detalle-primero', () {
+  group('produceThemed — regiones interiores encerradas', () {
     test('una región interior encerrada recibe flechas (no queda en 0%)', () {
-      // Arrange — 'inner' (2x2) queda totalmente rodeada por 'outer': cada lane
-      // de salida de sus celdas cruza la región exterior. Si 'outer' se llenara
-      // primero, 'inner' no encontraría lane libre y quedaría en 0%.
+      // Arrange — 'inner' (2x2) queda totalmente rodeada por 'outer'.
+      // generateThemedFull pela la figura celda a celda (las flechas salen en
+      // orden inverso a la colocación), así que las regiones interiores se
+      // cubren igual que las exteriores.
       const enclosed = '''
 name: enclosed
 legend:
@@ -337,8 +372,7 @@ OOOOOOO
         maxPathLen: 3,
       );
 
-      // Assert — el orden detalle-primero coloca 'inner' sobre el tablero vacío,
-      // así que recibe al menos una flecha.
+      // Assert — la región interior recibe al menos una flecha.
       expect(result.coveragePerRole['inner'], greaterThan(0.0));
     });
   });

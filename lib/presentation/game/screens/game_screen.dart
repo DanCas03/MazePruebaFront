@@ -35,9 +35,28 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   // ya no es accesible. El provider no es autoDispose, asi que es estable.
   late final IAudioService _audio;
 
-  // #32: umbral de elegibilidad de la pista, fuente única compartida con el
-  // controlador. Decide si se pinta el botón de la bombilla en este nivel.
+  // #102: elegibilidad del auto-solver (toda la campaña + temáticos), fuente
+  // única compartida con el controlador. Decide si se pinta el botón en este
+  // nivel.
   static const _hintPolicy = HintPolicy();
+
+  // #102: contexto de la ruta del diálogo de confirmación mientras está
+  // abierto, o null si no hay ninguno. La cuenta atrás del nivel sigue
+  // corriendo detrás del diálogo (el confirm-cancel es sobre el auto-solver,
+  // no sobre el reloj); si expira mientras el jugador decide, la navegación
+  // terminal a derrota debe primero CERRAR este diálogo — de lo contrario
+  // `pushReplacementNamed` (sin `oldRoute`) reemplaza la ruta activa MÁS
+  // ALTA del Navigator, que sería el propio diálogo, no GameScreen, dejando
+  // la partida terminada atrapada debajo de la pantalla de derrota.
+  BuildContext? _autoSolveDialogContext;
+
+  void _dismissAutoSolveDialogIfOpen() {
+    final dialogContext = _autoSolveDialogContext;
+    if (dialogContext == null) return;
+    if (Navigator.of(dialogContext).canPop()) {
+      Navigator.of(dialogContext).pop(false);
+    }
+  }
 
   @override
   void initState() {
@@ -57,6 +76,42 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // front#5: detiene la musica de fondo al salir de la partida.
     _audio.stopMusic();
     super.dispose();
+  }
+
+  // #102: el auto-solver es explícito y destructivo para el intento en curso,
+  // así que exige confirmación antes de arrancar. Cancelar no toca el juego;
+  // confirmar dispara playHint() (reproduce la Solución y reinicia el nivel,
+  // sin puntuar). Async separado del onPressed del botón para que la UI no
+  // bloquee mientras el diálogo está abierto.
+  Future<void> _confirmAndAutoSolve(AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        _autoSolveDialogContext = dialogContext;
+        return AlertDialog(
+          title: Text(l10n.autoSolveConfirmTitle),
+          content: Text(l10n.autoSolveConfirmBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.autoSolveConfirmCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.autoSolveConfirmAction),
+            ),
+          ],
+        );
+      },
+    );
+    _autoSolveDialogContext = null;
+    // `mounted`: el diálogo pudo cerrarse por una navegación que ya desmontó
+    // esta pantalla (p. ej. system-back, o la derrota por cuenta atrás
+    // agotada mientras el diálogo seguía abierto — ver
+    // _dismissAutoSolveDialogIfOpen) mientras estaba abierto.
+    if (confirmed == true && mounted) {
+      ref.read(gameControllerProvider.notifier).playHint();
+    }
   }
 
   @override
@@ -96,12 +151,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         if (state.blockedNonce > prevState.blockedNonce) {
           audio.play(GameSound.collision);
         }
-        // #32: la pista falló o expiró (el back no respondió a tiempo). La
-        // partida queda intacta; solo avisamos con un snackbar no intrusivo.
+        // #102 (evolución de #32): el auto-solver falló o expiró (el back no
+        // respondió a tiempo). La partida queda intacta; solo avisamos con un
+        // snackbar no intrusivo.
         if (state.hintErrorNonce > prevState.hintErrorNonce) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(l10n.hintError)));
+            ..showSnackBar(SnackBar(content: Text(l10n.autoSolveError)));
         }
       }
 
@@ -125,6 +181,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           state.levelId == widget.levelId) {
         audio.play(GameSound.victory);
         audio.stopMusic();
+        // #102: si el diálogo de confirmación del auto-solver sigue abierto,
+        // cerrarlo primero — sin esto, `pushReplacementNamed` (sin `oldRoute`)
+        // reemplazaría la ruta del diálogo en vez de la de GameScreen.
+        _dismissAutoSolveDialogIfOpen();
         // La victoria viaja con el nivel (para "Next Level") y las métricas ya
         // evaluadas por el controller (front#16). La pantalla es una vista
         // pasiva que solo las pinta.
@@ -141,6 +201,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       } else if (state is GameLost && prevState is! GameLost) {
         audio.play(GameSound.defeat);
         audio.stopMusic();
+        // #102: la cuenta atrás sigue corriendo detrás del diálogo de
+        // confirmación del auto-solver; si expira mientras el jugador decide,
+        // cerrarlo primero por la misma razón que en la rama de victoria.
+        _dismissAutoSolveDialogIfOpen();
         // La derrota lleva el LevelId para que el CTA "Retry" recargue el nivel.
         Navigator.pushReplacementNamed(
           context,
@@ -189,21 +253,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 : const <Widget>[],
             orElse: () => const <Widget>[],
           ),
-          // #32: botón de pista, solo en niveles elegibles y durante el juego.
-          // La bombilla se transforma en un spinner mientras la solución viaja
-          // (mitiga dobles clics) y queda inerte durante la reproducción.
+          // #102 (evolución de #32): botón de auto-solver, en TODO nivel de
+          // campaña (elegibilidad abierta) durante el juego. El icono se
+          // transforma en un spinner mientras la solución viaja (mitiga dobles
+          // clics) y queda inerte durante la reproducción.
           ...asyncState.maybeWhen(
             data: (s) => s is GamePlaying &&
                     _hintPolicy.isEligible(widget.levelId,
                         themed: s.palette != null)
                 ? [
-                    _HintButton(
+                    _AutoSolveButton(
                       loading: s.hintLoading,
                       playing: s.hintPlaying,
                       color: accent,
-                      tooltip: l10n.hintTooltip,
-                      onPressed: () =>
-                          ref.read(gameControllerProvider.notifier).playHint(),
+                      tooltip: l10n.autoSolveTooltip,
+                      onPressed: () => _confirmAndAutoSolve(l10n),
                     )
                   ]
                 : const <Widget>[],
@@ -211,7 +275,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           ),
           IconButton(
             icon: Icon(Icons.undo, color: accent),
-            // Undo deshabilitado mientras la pista está activa (#32).
+            // Undo deshabilitado mientras el auto-solver está activo (#102).
             onPressed: asyncState.maybeWhen(
               data: (s) =>
                   s is GamePlaying && (s.hintLoading || s.hintPlaying)
@@ -300,19 +364,22 @@ class _ErrorsChip extends StatelessWidget {
   }
 }
 
-/// Botón de la pista auto-resolutora (#32). Tres aspectos según el sub-estado:
-/// - inactivo: bombilla de contorno, pulsable (dispara [onPressed]).
-/// - cargando: un spinner sustituye a la bombilla y el botón queda inerte, para
+/// Botón del auto-solver (#102, evolución de la "pista" #32) — icono de vara
+/// mágica en vez de la bombilla vieja para que se lea como "resuélvelo por
+/// mí", no como una ayuda vaga. Tres aspectos según el sub-estado:
+/// - inactivo: pulsable, dispara [onPressed] (que en `GameScreen` abre la
+///   confirmación antes de reproducir — el progreso del intento se pierde).
+/// - cargando: un spinner sustituye al icono y el botón queda inerte, para
 ///   mitigar dobles clics mientras la solución viaja por HTTP.
-/// - reproduciendo: bombilla rellena y atenuada, inerte (la demo está en curso).
-class _HintButton extends StatelessWidget {
+/// - reproduciendo: icono relleno y atenuado, inerte (la demo está en curso).
+class _AutoSolveButton extends StatelessWidget {
   final bool loading;
   final bool playing;
   final Color color;
   final String tooltip;
   final VoidCallback onPressed;
 
-  const _HintButton({
+  const _AutoSolveButton({
     required this.loading,
     required this.playing,
     required this.color,
@@ -341,13 +408,13 @@ class _HintButton extends StatelessWidget {
     }
     if (playing) {
       return IconButton(
-        icon: Icon(Icons.lightbulb, color: color.withValues(alpha: 0.38)),
+        icon: Icon(Icons.auto_fix_high, color: color.withValues(alpha: 0.38)),
         tooltip: tooltip,
         onPressed: null, // inerte durante la reproducción de la solución
       );
     }
     return IconButton(
-      icon: Icon(Icons.lightbulb_outline, color: color),
+      icon: Icon(Icons.auto_fix_high, color: color),
       tooltip: tooltip,
       onPressed: onPressed,
     );

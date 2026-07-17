@@ -14,6 +14,7 @@ import 'package:flutter_arrow_maze/domain/board/repositories/i_level_progress_re
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/move_count.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
+import 'package:flutter_arrow_maze/application/state/game_state.dart';
 import 'package:flutter_arrow_maze/application/use_cases/remove_arrow_use_case.dart';
 import 'package:flutter_arrow_maze/application/use_cases/submit_score_use_case.dart';
 import 'package:flutter_arrow_maze/core/aspects/logger_service_adapter.dart';
@@ -62,11 +63,13 @@ class _FakeLevelRepo implements ILevelRepository {
 class _FakeSolutionRepo implements ISolutionRepository {
   Either<SolutionFailure, List<ArrowId>>? response;
   Completer<Either<SolutionFailure, List<ArrowId>>>? deferred;
+  int calls = 0;
 
   _FakeSolutionRepo({this.response, this.deferred});
 
   @override
   Future<Either<SolutionFailure, List<ArrowId>>> getSolution(LevelId id) {
+    calls++;
     if (deferred != null) return deferred!.future;
     return Future.value(response);
   }
@@ -144,7 +147,7 @@ ProviderContainer _container(_FakeLevelRepo levelRepo, _FakeSolutionRepo solutio
         CommandInvoker(),
         const NullTicker(),
         solutionRepo,
-        Duration.zero,
+        (_) => Duration.zero,
       ),
     ),
     submitScoreUseCaseProvider.overrideWithValue(
@@ -161,33 +164,74 @@ ProviderContainer _container(_FakeLevelRepo levelRepo, _FakeSolutionRepo solutio
 }
 
 void main() {
-  testWidgets('renders the hint button on an eligible level (>= 7)',
+  testWidgets(
+      'renders the auto-solve button even on a level below the old #32 threshold (#102)',
       (tester) async {
-    // Arrange — el GameScreen auto-carga vía su callback post-frame.
+    // Arrange — el GameScreen auto-carga vía su callback post-frame. Nivel 1:
+    // por debajo del viejo umbral (>= 7), ahora elegible para todo campaña.
     final container = _container(
       _FakeLevelRepo(_twoArrowBoard()),
       _FakeSolutionRepo(response: Right([const ArrowId('a0'), const ArrowId('a2')])),
     );
     // Act
-    await tester.pumpWidget(_host(container, LevelId('7')));
+    await tester.pumpWidget(_host(container, LevelId('1')));
     await tester.pumpAndSettle();
-    // Assert — la bombilla está presente en el AppBar.
-    expect(find.byIcon(Icons.lightbulb_outline), findsOneWidget);
+    // Assert — el control del auto-solver está presente en el AppBar,
+    // explícitamente presentado (vara mágica, no la bombilla vieja de "pista").
+    expect(find.byIcon(Icons.auto_fix_high), findsOneWidget);
   });
 
-  testWidgets('hides the hint button on an ineligible level (< 7)',
+  testWidgets(
+      'tapping the button opens a confirmation dialog warning progress will be lost',
       (tester) async {
     final container = _container(
       _FakeLevelRepo(_twoArrowBoard()),
-      _FakeSolutionRepo(response: const Left(SolutionUnavailable())),
+      _FakeSolutionRepo(response: Right([const ArrowId('a0'), const ArrowId('a2')])),
     );
-    await tester.pumpWidget(_host(container, LevelId('3')));
+    await tester.pumpWidget(_host(container, LevelId('7')));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.lightbulb_outline), findsNothing);
-    expect(find.byIcon(Icons.lightbulb), findsNothing);
+
+    // Act — pulsa el control del auto-solver.
+    await tester.tap(find.byIcon(Icons.auto_fix_high));
+    await tester.pumpAndSettle();
+
+    // Assert — el diálogo de confirmación aparece con sus dos acciones; el
+    // auto-solver todavía NO corrió (ninguna petición de solución en vuelo).
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Auto-solve this level?'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Auto-solve'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('transforms the bulb into a spinner while the solution loads',
+  testWidgets('canceling the confirmation dialog leaves the game untouched',
+      (tester) async {
+    final solutionRepo =
+        _FakeSolutionRepo(response: Right([const ArrowId('a0'), const ArrowId('a2')]));
+    final container = _container(_FakeLevelRepo(_twoArrowBoard()), solutionRepo);
+    await tester.pumpWidget(_host(container, LevelId('7')));
+    await tester.pumpAndSettle();
+
+    // Act — abre el diálogo y pulsa Cancel.
+    await tester.tap(find.byIcon(Icons.auto_fix_high));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    // Assert — el diálogo se cerró, NUNCA se pidió la Solución, y la partida
+    // sigue exactamente igual (sin carga ni reproducción, tablero intacto).
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(solutionRepo.calls, 0);
+    final s = container.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(s.hintLoading, isFalse);
+    expect(s.hintPlaying, isFalse);
+    expect(s.board.arrows.length, 2);
+    expect(find.byIcon(Icons.auto_fix_high), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets(
+      'confirming the dialog transforms the icon into a spinner while the solution loads',
       (tester) async {
     // Arrange — respuesta diferida: la petición queda en tránsito.
     final deferred = Completer<Either<SolutionFailure, List<ArrowId>>>();
@@ -198,21 +242,24 @@ void main() {
     await tester.pumpWidget(_host(container, LevelId('7')));
     await tester.pumpAndSettle();
 
-    // Act — pulsa la bombilla.
-    await tester.tap(find.byIcon(Icons.lightbulb_outline));
+    // Act — abre el diálogo y confirma.
+    await tester.tap(find.byIcon(Icons.auto_fix_high));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Auto-solve'));
+    await tester.pump(); // cierra el diálogo y dispara playHint()
     await tester.pump();
 
-    // Assert — la bombilla se transforma en un spinner (anti doble-clic) y ya no
-    // hay icono pulsable de bombilla.
+    // Assert — el icono se transforma en un spinner (anti doble-clic) y ya no
+    // hay icono pulsable del auto-solver.
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.byIcon(Icons.lightbulb_outline), findsNothing);
+    expect(find.byIcon(Icons.auto_fix_high), findsNothing);
 
     // Cierra la petición para no dejar el future colgado.
     deferred.complete(const Left(SolutionUnavailable()));
     await tester.pumpAndSettle();
   });
 
-  testWidgets('shows an error snackbar when the hint fetch fails',
+  testWidgets('shows an error snackbar when the auto-solve fetch fails',
       (tester) async {
     final container = _container(
       _FakeLevelRepo(_twoArrowBoard()),
@@ -221,12 +268,14 @@ void main() {
     await tester.pumpWidget(_host(container, LevelId('7')));
     await tester.pumpAndSettle();
 
-    // Act — pulsa la bombilla; el fetch falla y debe emerger el snackbar.
-    await tester.tap(find.byIcon(Icons.lightbulb_outline));
-    await tester.pump(); // dispara el fetch
+    // Act — confirma el diálogo; el fetch falla y debe emerger el snackbar.
+    await tester.tap(find.byIcon(Icons.auto_fix_high));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Auto-solve'));
+    await tester.pump(); // cierra el diálogo y dispara el fetch
     await tester.pump(); // deja emerger el snackbar
 
     // Assert
-    expect(find.text('Couldn\'t load the hint. Try again.'), findsOneWidget);
+    expect(find.text('Couldn\'t auto-solve this level. Try again.'), findsOneWidget);
   });
 }

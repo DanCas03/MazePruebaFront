@@ -5,6 +5,7 @@ import '../../../application/state/game_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/arrows/entities/arrow.dart';
 import '../../../domain/arrows/value_objects/arrow_id.dart';
+import '../../../domain/board/services/auto_solve_pacing.dart';
 import '../../../domain/game_core/space/bounding_box.dart';
 import '../../../domain/game_core/value_objects/position.dart';
 import '../../../application/state/game_controller.dart';
@@ -234,6 +235,8 @@ class BoardView extends StatelessWidget {
         cell: cell,
         color: colorResolver.colorFor(arrow, state.palette),
         nonce: nonce,
+        duration:
+            state.autoSolveExitDuration ?? AutoSolvePacing.standardExitDuration,
       ),
     );
   }

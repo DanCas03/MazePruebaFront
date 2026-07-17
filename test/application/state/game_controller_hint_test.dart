@@ -86,7 +86,7 @@ ProviderContainer _container(
         CommandInvoker(),
         const NullTicker(),
         solutionRepo,
-        Duration.zero,
+        (_) => Duration.zero,
       ),
     ),
   ]);
@@ -187,11 +187,13 @@ void main() {
     expect(s.moves.value, 0);
   });
 
-  test('playHint se ignora en niveles no elegibles (< 7)', () async {
-    // Arrange — nivel 3: por debajo del umbral de pista.
+  test(
+      'playHint funciona en un nivel de campaña que antes era inelegible (< 7, #102)',
+      () async {
+    // Arrange — nivel 3: bajo el viejo umbral #32, ahora elegible.
     final levelRepo = _FakeLevelRepo(_level('3'));
     final solutionRepo = _FakeSolutionRepo(
-      response: Right([const ArrowId('a0')]),
+      response: Right([const ArrowId('a0'), const ArrowId('a2')]),
     );
     final c = _container(levelRepo, solutionRepo);
     final notifier = c.read(gameControllerProvider.notifier);
@@ -200,11 +202,86 @@ void main() {
     // Act
     await notifier.playHint();
 
-    // Assert — no se pidió la solución y el estado no arrancó ninguna pista.
-    expect(solutionRepo.calls, 0);
+    // Assert — se pidió la solución y la demo corrió normalmente.
+    expect(solutionRepo.calls, 1);
     final s = c.read(gameControllerProvider).valueOrNull as GamePlaying;
     expect(s.hintLoading, isFalse);
     expect(s.hintPlaying, isFalse);
+    expect(s.board.arrows.length, 2);
+  });
+
+  test(
+      'playHint deriva el delay entre pasos del largo de la Solución, no de una constante (#102)',
+      () async {
+    // Arrange — un stepDelayFor espía: registra el conteo con que se invoca en
+    // vez de esperar tiempo real, para verificar el WIRING sin depender de
+    // relojes de verdad.
+    final seenArrowCounts = <int>[];
+    Duration spyStepDelay(int arrowCount) {
+      seenArrowCounts.add(arrowCount);
+      return Duration.zero;
+    }
+
+    final levelRepo = _FakeLevelRepo(_level('7'));
+    final solutionRepo = _FakeSolutionRepo(
+      response: Right([const ArrowId('a0'), const ArrowId('a2')]),
+    );
+    final c = ProviderContainer(overrides: [
+      gameControllerProvider.overrideWith(
+        () => GameController(
+          levelRepo,
+          RemoveArrowUseCase(),
+          CommandInvoker(),
+          const NullTicker(),
+          solutionRepo,
+          spyStepDelay,
+        ),
+      ),
+    ]);
+    addTearDown(c.dispose);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('7'));
+
+    // Act
+    await notifier.playHint();
+
+    // Assert — se invocó UNA vez, con el largo real de la Solución (2
+    // flechas) — nunca con una constante ajena al tamaño de la demo. El mismo
+    // delay se reutiliza en todos los pasos (no se recalcula por flecha).
+    expect(seenArrowCounts, [2]);
+  });
+
+  test(
+      'la demo del auto-solver expone la duración de salida comprimida en el estado (#102)',
+      () async {
+    // Arrange — una Solución de 2 flechas: por debajo del piso "chico" de
+    // AutoSolvePacing, así que la duración de salida esperada es la estándar
+    // (360 ms) — igual sirve para verificar que el campo viaja en el estado.
+    final levelRepo = _FakeLevelRepo(_level('7'));
+    final solutionRepo = _FakeSolutionRepo(
+      response: Right([const ArrowId('a0'), const ArrowId('a2')]),
+    );
+    final c = _container(levelRepo, solutionRepo);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('7'));
+
+    var sawExitDurationDuringPlayback = false;
+    c.listen(gameControllerProvider, (_, next) {
+      final s = next.valueOrNull;
+      if (s is GamePlaying && s.hintPlaying) {
+        expect(s.autoSolveExitDuration, const Duration(milliseconds: 360));
+        sawExitDurationDuringPlayback = true;
+      }
+    });
+
+    // Act
+    await notifier.playHint();
+
+    // Assert — se emitió al menos un estado de reproducción con el campo
+    // seteado, y al reiniciar (nivel jugable de nuevo) vuelve a null.
+    expect(sawExitDurationDuringPlayback, isTrue);
+    final s = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(s.autoSolveExitDuration, isNull);
   });
 
   test('tapArrow se ignora mientras la pista está en carga', () async {

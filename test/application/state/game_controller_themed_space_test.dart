@@ -129,7 +129,7 @@ ProviderContainer _hintContainer(
           CommandInvoker(),
           const NullTicker(),
           solutionRepo,
-          Duration.zero,
+          (_) => Duration.zero,
         )),
   ]);
   addTearDown(c.dispose);

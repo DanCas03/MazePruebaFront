@@ -10,6 +10,7 @@ import '../../../domain/game_core/value_objects/position.dart';
 import '../../../application/state/game_controller.dart';
 import '../arrow_color_resolver.dart';
 import '../painters/board_surface_painter.dart';
+import '../painters/silhouette_painter.dart';
 import 'arrow_widget.dart';
 import 'board_viewport.dart';
 import 'exiting_arrow_widget.dart';
@@ -163,6 +164,21 @@ class BoardView extends StatelessWidget {
               ),
             ),
           ),
+          // Relleno de silueta temática (front#114): pinta cada celda de
+          // región con el color tenue de su rol, DEBAJO de las flechas, para
+          // que la figura no muestre huecos. Dato opaco: solo se dibuja
+          // cuando el nivel trae silueta Y paleta.
+          if (state.silhouette != null && state.palette != null)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: SilhouettePainter(
+                  frame: frame,
+                  cell: cell,
+                  silhouette: state.silhouette!,
+                  palette: state.palette!,
+                ),
+              ),
+            ),
           // Culling de flechas: solo se construyen (con su AnimationController)
           // las que caen dentro de la cámara. Fuera de zoom, el encuadre cubre
           // todo el tablero, así que se construyen todas (comportamiento previo).

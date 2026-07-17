@@ -1,5 +1,33 @@
 # AI History — MazePruebaFront
 
+## Entrada 120 — test(front/generators): pick themed seeds by detail-full then hole-depth, not coverage alone (#118)
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** Cerrar en VERDE el guardián `maxDepth <= 2` que la Entrada 119 dejó rojo (heart seed 98: celdas libres a profundidad 4 y 3, un agujero en mitad de la figura). El hallazgo de la 119 planteaba el dilema "arreglar el generador o mover la cota", pero un barrido completo 0..99 muestra que **el defecto no estaba en ninguno de los dos: estaba en el criterio con el que el test ELEGÍA la seed**. Elegir por cobertura sola no es Pareto-óptimo. Trabajo **solo de test**: `graph_board_generator.dart` no se toca (está aprobado y es correcto), y **no se mueve ni un umbral ni se salta ni un test**.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8 1M context, rol frontend-architect / qa-engineer, ejecución vía subagente SDD)
+**Prompt o instrucción proporcionada:** > "El defecto es el criterio de selección de seed, no el generador. Cambia el criterio a: (1) regiones de detalle llenas, (2) `maxDepth <= 2`, (3) mejor cobertura entre las supervivientes — y deja TODOS los umbrales exactamente donde están. Verifica mis números tú mismo antes de fiarte de ellos; si la realidad me contradice, repórtalo, no dobles nada para que encaje. Que la selección sea determinista y que el test siga fallando RUIDOSAMENTE si NINGUNA seed cumple el criterio."
+**Resultado obtenido:**
+- **Verificación independiente (arnés temporal, borrado antes del commit)**, reutilizando VERBATIM los helpers congelados del propio test (cobertura, codos, BFS de profundidad al borde, longitudes). La tabla del barrido **coincide exactamente**, dígito a dígito:
+
+  | máscara | seed | cobertura | maxDepth | codos | dominós | len≥4 | detalle |
+  |---|---|---|---|---|---|---|---|
+  | heart | 98 (elegida por el criterio VIEJO) | 0.9901 (602/608) | **4** | 0.4822 | 0.4822 | 0.2792 | n/a |
+  | heart | **67 (elegida por el criterio NUEVO)** | 0.9885 (601/608) | **0** | 0.4842 | 0.4947 | 0.3579 | n/a |
+  | happy_face | **41 (elegida por AMBOS criterios)** | 0.9796 (384/392) | **1** | 0.4806 | 0.4884 | 0.3101 | **64/64** |
+
+  Seeds admisibles (detalle 100% ∧ `maxDepth<=2`): heart **8** `[4, 15, 23, 43, 52, 55, 67, 83]`; happy_face **11** `[8, 27, 41, 44, 48, 58, 77, 79, 87, 89, 97]`. Ambas cifras coinciden con el barrido previo.
+- **El coste real del arreglo es UNA celda de 608** (0.9901 → 0.9885) y a cambio **desaparece la bolsa interior por completo**: heart seed 67 tiene `maxDepth = 0`, es decir *todas* sus 7 celdas libres tocan el borde de la región. happy_face no cambia de seed.
+- **Cambios en `test/infrastructure/generators/graph_board_themed_dense_test.dart`** (único archivo de código tocado):
+  1. **Criterio de selección** (el defecto): la clave aditiva `(detailFull ? 10.0 : 0.0) + coverage` se sustituye por un filtro de ADMISIÓN + desempate. Nuevo `_SeedMetrics` con `qualifies => detailFull && maxDepth <= 2`; solo las admisibles compiten y entre ellas gana la de mayor cobertura (`>` estricto ⇒ empates a la seed más baja ⇒ **determinista**).
+  2. **Rojo ruidoso si el conjunto admisible queda VACÍO**: `_DenseFixture.scan` lanza `StateError` con los datos en la mano (cuántas seeds tienen detalle completo, cuántas `maxDepth<=2`, y las 3 mejores por cobertura con sus números) en vez de degradarse a "la de más cobertura" y dejar pasar los guardianes de forma sobre un tablero con la cara mordida o un agujero central. **Verificado a mano** forzando `qualifies` a `maxDepth <= -1`: `(setUpAll) [E] Bad state: heart: NINGUNA seed de 0..99 cumple el criterio de selección ... Con detalle completo: 100/100; con profundidad <= 2: 8/100` → `Some tests failed.`
+  3. **Principio de dominio documentado en la cabecera** (regla del maintainer, para que nadie "simplifique" luego el criterio de detalle creyéndolo redundante): *la gravedad de un hueco depende de si el INTERIOR de esa figura carga su identidad*. La cara feliz **ES** sus ojos y su boca — un hueco ahí rompe la cara; el corazón se reconoce por su **silueta** y su interior es relleno plano de un solo color. Por eso `features` al 100% es el criterio **innegociable** y **no** lo implica la cobertura: la cobertura promedia sobre 392 celdas y no ve las 64 que dan la identidad — medido, **seed 53 tiene MÁS cobertura (0.9821) que la elegida 41 (0.9796) y deja `features` incompleta**. Aun así se sostienen **AMBAS** máscaras contra el `<= 2` estricto porque los datos lo permiten **gratis** (8 y 11 seeds admisibles): gastar la tolerancia del maintainer sin necesidad sería estrictamente peor.
+  4. **Micro-optimización honesta**: la profundidad BFS al borde depende solo de la máscara, no del tablero ⇒ se calcula una vez por región y se reutiliza en las 100 seeds.
+  5. Comentarios y números pinchados actualizados a la seed elegida (histograma de longitudes de heart: seed 98 → **seed 67** `{2:94, 3:28, 4:27, 5:25, 6:16}` sobre 190 ⇒ dominós 0.4947, len≥4 0.3579). La ilustración de por qué la media es ciega se conserva citando explícitamente heart seed 98 como medida histórica.
+- **Umbrales: NINGUNO movido.** media ≤1.5, cobertura ≥0.90 (elegida Y mínimo sobre seeds), codos ≥0.40, dominós ≤0.55, len≥4 ≥0.20, anti-terna, solvencia, determinismo — todos intactos. Ningún test saltado.
+- **Verificación real:** `flutter test test/infrastructure/generators/` → **+45 All tests passed!** (la 119 dejaba +44 -1; el rojo era el hallazgo, ahora cerrado sin tocar producción). `flutter analyze` → `No issues found!`.
+- `graph_board_generator.dart` **intacto** (verificado con `git diff --stat`: un solo archivo de código tocado). README no modificado: no cambia contrato público.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 119 — test(front/generators): make dense-fill guardians bite — max hole depth, min-seed density, length mix (#118)
 
 **Fecha:** 2026-07-17

@@ -2081,3 +2081,17 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - Fuera de alcance (respetado): tareas 1-5 y 7+ del plan SDD de #114 (siluetas/paleta ya entregadas por tareas previas; posteriores quedan para sus propios fragmentos).
 - Rama `feat/#114-themed-silhouette-fill` (checked out por el orquestador, no creada en este fragmento).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 114 — #114: relleno de silueta temática (wire + producción + estado)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** Rellenar visualmente las figuras temáticas sin huecos. El generador de flechas tiene un techo de cobertura estructural (~72-83%) por el invariante DAG de solubilidad, así que las celdas sin flecha se veían como fondo. Solución (decisión del mantenedor): pintar CADA celda de la figura con el color de su región, tenue, bajo las flechas — un dato de pintado opaco, sin tocar solubilidad. Complementa la Entrada 113 (SilhouettePainter).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8) — ejecución subagent-driven (implementador+revisor por tarea, revisión final de rama). Roles frontend-architect.
+**Prompt o instrucción proporcionada:** > "completa los huecos de cobertura de las tres figuras" → tras brainstorming, enfoque "relleno visual (silueta)".
+**Resultado obtenido:**
+- Nuevo campo de wire opaco `silhouette` (rol→celdas de su región) hermano de `palette`. `Level.silhouette` (`Map<String, List<Position>>?`), `LevelJsonEncoder`/`LevelJsonDecoder` (parseo estricto + golden round-trip encode∘decode).
+- `themed_producer.dart` lo emite desde `mask.regions` (celdas ordenadas por fila,columna); los 3 fixtures regenerados con `silhouette` — flechas byte-idénticas (seeds 74/94/11), solo se añade el campo.
+- `GamePlaying.silhouette` hilado en los 8 sitios que ya llevaban `palette`.
+- `CONTEXT.md` revisado: la silueta viaja en el wire como consecuencia de pintado (antes "la máscara no viaja").
+- Diseño y plan en `docs/superpowers/{specs,plans}/2026-07-16-themed-silhouette-fill*.md`. Suite 810 verde. Revisión final de rama: READY TO MERGE (0 Critical/Important). Cross-repo con back#50.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

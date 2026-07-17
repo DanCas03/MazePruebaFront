@@ -362,5 +362,123 @@ void main() {
       // Act & Assert
       expect(() => sut.decode(bad), throwsFormatException);
     });
+
+    // #118 — themed silhouette: role -> fill cells defining the playable
+    // shape of themed levels (heart, happy face...). Mirrors the CONTEXT-MAP
+    // themed extension example, plus a `silhouette` key that covers the
+    // themed arrow's cells (satisfies the Level containment invariant).
+    Map<String, Object?> themedWireMapWithSilhouette() => themedWireMap()
+      ..['silhouette'] = <String, Object?>{
+        'cara': <Object?>[
+          [3, 4],
+          [3, 5],
+          [3, 6],
+        ],
+      };
+
+    test('should_decode_null_silhouette_for_a_campaign_level', () {
+      // Arrange — the canonical campaign map carries no silhouette key.
+      final canonical = canonicalWireMap();
+      // Act
+      final level = sut.decode(canonical);
+      // Assert — absence means campaign, not a default.
+      expect(level.silhouette, isNull);
+    });
+
+    test('should_decode_silhouette_regions_as_position_sets_when_present', () {
+      // Arrange — a themed map with a single-role silhouette.
+      final themed = themedWireMapWithSilhouette();
+      // Act
+      final level = sut.decode(themed);
+      // Assert — the role maps to the exact set of decoded positions.
+      expect(
+        level.silhouette,
+        equals(<String, Set<Position>>{
+          'cara': {
+            Position(row: 3, col: 4),
+            Position(row: 3, col: 5),
+            Position(row: 3, col: 6),
+          },
+        }),
+      );
+    });
+
+    test('should_throw_format_exception_when_a_silhouette_cell_is_malformed', () {
+      // Arrange — a cell with only one coordinate instead of a [row, col] pair.
+      final bad = themedWireMapWithSilhouette();
+      (bad['silhouette'] as Map)['cara'] = [
+        [1],
+      ];
+      // Act & Assert
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
+
+    test('should_throw_format_exception_when_a_silhouette_cell_coord_is_not_an_int', () {
+      // Arrange — a cell whose row coordinate is a string.
+      final bad = themedWireMapWithSilhouette();
+      (bad['silhouette'] as Map)['cara'] = [
+        ['a', 2],
+      ];
+      // Act & Assert
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
+
+    test('should_throw_format_exception_when_a_silhouette_role_is_not_a_string', () {
+      // Arrange — a silhouette keyed by a non-string role. JSON object keys
+      // are always strings, but the decoder accepts any Dart Map, so we
+      // build one by hand to exercise the guard.
+      final bad = themedWireMapWithSilhouette();
+      bad['silhouette'] = <Object?, Object?>{
+        7: [
+          [3, 4],
+        ],
+      };
+      // Act & Assert
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
+
+    test('should_throw_format_exception_when_a_silhouette_region_value_is_not_a_list', () {
+      // Arrange — a region given as a string instead of a list of cells.
+      final bad = themedWireMapWithSilhouette();
+      (bad['silhouette'] as Map)['cara'] = 'not-a-list';
+      // Act & Assert
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
+
+    test(
+        'should_throw_format_exception_not_domain_exception_when_an_arrow_falls_outside_the_silhouette',
+        () {
+      // Arrange — the arrow's cells extend beyond the silhouette union,
+      // which violates the Level domain invariant.
+      final bad = themedWireMap()
+        ..['silhouette'] = {
+          'cara': [
+            [3, 4],
+          ],
+        };
+      // Act & Assert — the decoder must translate the domain invariant
+      // breach into a FormatException (throwsFormatException fails on a
+      // leaked InvalidLevelException), same pattern as the empty-arrows /
+      // zero-limit cases above.
+      expect(() => sut.decode(bad), throwsFormatException);
+    });
+
+    test('should_round_trip_a_themed_level_with_silhouette_through_encode', () {
+      // Arrange
+      const encoder = LevelJsonEncoder();
+      final themed = themedWireMapWithSilhouette();
+      // Act — JSON -> Level -> JSON, threading the silhouette back through
+      // the encoder.
+      final level = sut.decode(themed);
+      final reEncoded = encoder.toMap(
+        levelId: level.id.value,
+        board: level.board,
+        timeLimitSec: level.timeLimitSec,
+        palette: level.palette,
+        silhouette: level.silhouette,
+      );
+      // Assert — the silhouette survives the round-trip byte-for-byte.
+      expect(reEncoded, equals(themed));
+    });
   });
 }

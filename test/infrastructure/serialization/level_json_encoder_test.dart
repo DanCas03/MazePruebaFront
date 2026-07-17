@@ -167,6 +167,66 @@ void main() {
       expect(map['arrows'], isA<List<Object?>>());
     });
 
+    // #118 — themed silhouette: role -> fill cells defining the shape of
+    // themed levels. Ordering must be deterministic (row-major) for the
+    // byte-stable golden to hold regardless of Set iteration order.
+    test('should_emit_silhouette_with_row_major_ordered_cells_when_provided', () {
+      // Arrange — a board plus a silhouette whose cells are given out of order.
+      final board = ArrowBoard(
+        space: RectSpace(6, 6),
+        arrows: [
+          Arrow(
+            id: ArrowId('a'),
+            cells: [Position(row: 3, col: 4), Position(row: 3, col: 5)],
+            headDirection: Direction.right,
+          ),
+        ],
+      );
+      final silhouette = <String, Set<Position>>{
+        'cara': {
+          Position(row: 3, col: 5),
+          Position(row: 2, col: 9),
+          Position(row: 3, col: 4),
+        },
+      };
+
+      // Act — serialize with the silhouette.
+      final map = sut.toMap(levelId: 'themed', board: board, silhouette: silhouette);
+
+      // Assert — the key is present, cells sorted row-major (row, then col).
+      expect(map.containsKey('silhouette'), isTrue);
+      expect(
+        map['silhouette'],
+        equals(<String, Object?>{
+          'cara': [
+            [2, 9],
+            [3, 4],
+            [3, 5],
+          ],
+        }),
+      );
+    });
+
+    test('should_omit_silhouette_when_null', () {
+      // Arrange — a plain campaign board serialized without a silhouette.
+      final board = ArrowBoard(
+        space: RectSpace(3, 3),
+        arrows: [
+          Arrow(
+            id: ArrowId('a'),
+            cells: [Position(row: 0, col: 0), Position(row: 0, col: 1)],
+            headDirection: Direction.right,
+          ),
+        ],
+      );
+
+      // Act — serialize with silhouette left null.
+      final map = sut.toMap(levelId: 'no-silhouette', board: board);
+
+      // Assert — the key must be absent entirely, not present-with-null.
+      expect(map.containsKey('silhouette'), isFalse);
+    });
+
     test('should_end_with_newline_and_two_space_indent_when_encode_returns_string', () {
       // Arrange — a board whose encoded form we inspect as a raw string.
       final board = ArrowBoard(

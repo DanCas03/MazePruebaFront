@@ -1,5 +1,19 @@
 # AI History — MazePruebaFront
 
+## Entrada 114 — feat(front/serialization): silhouette on the wire, strict + byte-stable (#118)
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** Task 2 del plan de tablero temático con silueta como forma del tablero (#118): poner `Level.silhouette` (Task 1) en el wire — decoder estricto y encoder byte-estable — sin tocar la sección temática del catálogo (`Level` no conoce `section`; la clave `silhouette` es opcional en el wire, ausente ⇒ campaña).
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol frontend-architect, ejecución vía subagente SDD)
+**Prompt o instrucción proporcionada:** > "Task 2 del plan #118: decoder/encoder de `silhouette` siguiendo TDD — tests primero con los casos exactos del brief, luego implementación con el patrón existente de traducción DomainException → FormatException."
+**Resultado obtenido:**
+- `lib/infrastructure/serialization/level_json_decoder.dart`: nuevo helper `_optionalSilhouette(json)` que valida `Map<String, List>` y decodifica cada celda reutilizando `_position` (rol no-string, valor no-lista o celda malformada → `FormatException`); se pasa al constructor de `Level` en `_decodeStrict`, tras `palette`. La violación de la invariante de contención (flecha fuera de la silueta) la lanza `Level` como `InvalidLevelException` y el `catch (DomainException)` de `decode` ya existente la traduce a `FormatException` — mismo patrón que `arrows` vacío o `timeLimitSec` no positivo, sin código nuevo de traducción.
+- `lib/infrastructure/serialization/level_json_encoder.dart`: `toMap`/`encode` ganan el named param opcional `Map<String, Set<Position>>? silhouette`; se emite con spread condicional (como `palette`) serializando cada región ordenada row-major (`row`, luego `col`) para que el orden no determinista de un `Set` no rompa la salida byte-estable; ausente conserva el JSON original.
+- `test/infrastructure/serialization/level_json_decoder_test.dart` y `level_json_encoder_test.dart`: casos AAA nuevos — ausencia ⇒ `null`; silueta válida ⇒ `Map<String, Set<Position>>` correcto; celda malformada / coord no-int / rol no-string / región no-lista ⇒ `FormatException`; flecha fuera de la silueta ⇒ `FormatException` (invariante de dominio traducida); encoder emite/omite la clave y ordena row-major; round-trip golden de un nivel temático con silueta.
+- Desviación menor de test (no de implementación): el fixture `themedWireMapWithSilhouette()` tipa explícitamente `<String, Object?>`/`<Object?>[...]` en el literal de `silhouette` — sin ello Dart infiere `Map<String, List<List<int>>>` y las mutaciones de los tests de error (`['cara'] = 'not-a-list'`, coords no-int) fallan en runtime con un `TypeError` propio del test antes de llegar al decoder.
+- Verificación: `flutter test test/infrastructure/serialization/level_json_decoder_test.dart test/infrastructure/serialization/level_json_encoder_test.dart` → 36/36 verde. `flutter test test/tool/level_production/golden_boards_regression_test.dart test/infrastructure/serialization/level_generation_determinism_test.dart` → 4/4 verde (golden intacto). `flutter analyze` → sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 113 — feat(front/domain): añadir campo silhouette a Level con invariantes de contención (#118)
 
 **Fecha:** 2026-07-17

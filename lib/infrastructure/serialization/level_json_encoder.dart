@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../domain/arrows/entities/arrow_board.dart';
+import '../../domain/game_core/value_objects/position.dart';
 
 /// Serializa un [ArrowBoard] al JSON arrow-path del wire contract
 /// (CONTEXT-MAP raíz). Emite las claves del contrato para que el JSON sea
@@ -19,6 +20,7 @@ class LevelJsonEncoder {
     int? order,
     int? maxErrors,
     Map<String, String>? palette,
+    Map<String, Set<Position>>? silhouette,
   }) =>
       {
         'levelId': levelId,
@@ -44,6 +46,22 @@ class LevelJsonEncoder {
             },
         ],
         if (palette != null) 'palette': palette,
+        // Silueta temática (#118): solo se emite cuando se provee; ausente en
+        // campaña conserva el JSON original. Cada región se serializa
+        // ordenada row-major (row, luego col) para que el orden de un Set
+        // (no determinista) no rompa la salida byte-estable.
+        ...(silhouette != null
+            ? {
+                'silhouette': {
+                  for (final e in silhouette.entries)
+                    e.key: (e.value.toList()
+                          ..sort((a, b) =>
+                              a.row != b.row ? a.row - b.row : a.col - b.col))
+                        .map((p) => [p.row, p.col])
+                        .toList(),
+                },
+              }
+            : {}),
       };
 
   /// JSON con indent de 2 espacios y newline final: salida byte-estable para
@@ -55,6 +73,7 @@ class LevelJsonEncoder {
     int? order,
     int? maxErrors,
     Map<String, String>? palette,
+    Map<String, Set<Position>>? silhouette,
   }) =>
-      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, order: order, maxErrors: maxErrors, palette: palette))}\n';
+      '${const JsonEncoder.withIndent('  ').convert(toMap(levelId: levelId, board: board, timeLimitSec: timeLimitSec, order: order, maxErrors: maxErrors, palette: palette, silhouette: silhouette))}\n';
 }

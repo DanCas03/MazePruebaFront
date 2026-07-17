@@ -46,6 +46,13 @@ class LevelJsonDecoder {
       // temáticos. Ausente = campaña. Se valida la FORMA (Map<String,String>);
       // la validez del hex la resuelve el seam de color con fallback (front#67).
       palette: _optionalStringMap(json, 'palette'),
+      // Silueta temática opcional (#118): mapa rol→celdas del fill que define
+      // la forma jugable de niveles temáticos. Ausente = campaña. La
+      // contención (celda dentro de bounds, flechas dentro de la unión) la
+      // valida el constructor de Level; su violación se traduce a
+      // FormatException en el catch de arriba, mismo patrón que maxErrors/
+      // timeLimitSec/arrows vacío.
+      silhouette: _optionalSilhouette(json),
     );
   }
 
@@ -133,6 +140,27 @@ class LevelJsonDecoder {
         throw FormatException('"$key" must map strings to strings');
       }
       result[k] = v;
+    });
+    return result;
+  }
+
+  Map<String, Set<Position>>? _optionalSilhouette(Map<String, Object?> json) {
+    final value = json['silhouette'];
+    if (value == null) return null;
+    if (value is! Map) {
+      throw const FormatException('"silhouette" must be an object when present');
+    }
+    final result = <String, Set<Position>>{};
+    value.forEach((role, cells) {
+      if (role is! String) {
+        throw FormatException('"silhouette" role must be a string, got $role');
+      }
+      if (cells is! List) {
+        throw FormatException('"silhouette" region "$role" must be a list of cells');
+      }
+      result[role] = {
+        for (final cell in cells) _position(cell, 'silhouette:$role'),
+      };
     });
     return result;
   }

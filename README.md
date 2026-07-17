@@ -104,24 +104,71 @@ celda + un legend `glyph = rol : #hex`. Sin visión por computadora, sin
 dependencias nuevas; el grid lo cura una persona por vista previa. El `.` es el
 fondo (sin flechas): la figura flota sobre un tablero vacío.
 
-    dart run tool/level_production/produce_themed.dart --masks-dir <dir> [--out <dir>] [--coverage <0..1>] [--seeds <A..B>] [--maxlen <n>]
+    dart run tool/level_production/produce_themed.dart --masks-dir <dir> [--out <dir>] [--coverage <0..1>] [--seeds <A..B>] [--dense <bool>] [--maxlen <n>]
     dart run tool/level_production/produce_themed.dart --mask <file.mask> [opciones]
 
 El productor confina **cada flecha a una sola región de color** (una flecha = un
-color; sale entera) vía `GraphBoardGenerator.generateThemed`, tag `paintRole` por
-flecha + `palette` de roles→hex a nivel de nivel (ADR 0004; el back los guarda y
-sirve como datos opacos). Las regiones se generan **detalle-primero** (menor a
-mayor tamaño) para que las interiores encuentren lane de salida libre; comparten
-una ocupación **global** que preserva la solubilidad (el tablero se vacía en orden
-inverso de colocación, verificado con `validateCandidate`). Reintenta semillas
-hasta que cada región alcanza la cobertura objetivo (~0.9) o usa la mejor vista, y
-reporta cobertura por rol en `manifest-themed.md` + una **vista previa ANSI a
-color** por figura para curación. Los niveles temáticos **no llevan límite de
-tiempo** en v1 (la ausencia del campo `timeLimitSec` es la anotación).
+color; sale entera), tag `paintRole` por flecha + `palette` de roles→hex a nivel
+de nivel (ADR 0004; el back los guarda y sirve como datos opacos). Las regiones
+se generan **detalle-primero** (menor a mayor tamaño) para que las interiores
+encuentren lane de salida libre; comparten una ocupación **global** que preserva
+la solubilidad (el tablero se vacía en orden inverso de colocación, verificado
+con `validateCandidate`). El JSON emite además la **`silhouette`** (#118): el
+fill completo de las regiones de la máscara, rol→celdas — la forma jugable del
+nivel (ver sección siguiente), independiente de la cobertura de flechas.
 
-Los 3 fixtures congelados viven en `tool/level_production/themed/` (comando
-reproducible: `--masks-dir tool/level_production/masks --seeds 0..150 --maxlen 8`)
-y alimentan la Sección temática del back (reemplazan el smoke `t-smoke`).
+Desde #118 el modo por defecto es el **denso** (`--dense true`):
+`GraphBoardGenerator.generateThemedDense` rellena la figura al ~97-99% y la
+semilla se elige **barriendo el rango completo** con el mismo criterio
+lexicográfico que los guardianes de `graph_board_themed_dense_test.dart` —
+1) regiones de detalle al 100% (los ojos/boca de la cara feliz SON su
+identidad), 2) ninguna celda libre a profundidad > 2 del borde de su región
+(sin agujeros en mitad de la figura), 3) y solo entonces mayor cobertura.
+Elegir por cobertura sola no es Pareto-óptimo y está prohibido: ganaba una
+celda dejando bolsas interiores visibles. Sin semilla admisible el productor
+falla ruidosamente (ampliar `--seeds` o retocar la máscara). `--maxlen` solo
+aplica al modo legacy (`--dense false`, el `generateThemed` original que
+reintenta hasta la cobertura objetivo); en denso la política de longitudes está
+congelada con los guardianes. Reporta cobertura por rol en `manifest-themed.md`
++ una **vista previa ANSI a color** por figura para curación. Los niveles
+temáticos **no llevan límite de tiempo** en v1 (la ausencia del campo
+`timeLimitSec` es la anotación).
+
+Los 3 fixtures congelados viven en `tool/level_production/themed/` y alimentan
+la Sección temática del back (reemplazan el smoke `t-smoke`). `themed-heart`
+(36×24, seed 67) y `themed-happy_face` (24×22, seed 41) se producen con
+`--mask <heart|happy_face>.mask --out tool/level_production/themed --coverage 0.90 --seeds 0..99`.
+`themed-bunny` está **congelado** (benchmark estético del maintainer): no se
+regenera — sus 37 flechas quedan byte-idénticas, protegidas por
+`themed_bunny_characterization_test.dart` — y ganó su `silhouette` vía el
+one-off `tool/level_production/add_silhouette.dart`.
+
+### Niveles temáticos — la silueta ES el tablero (front#118)
+
+Un nivel temático se juega sobre la **figura**, no sobre su caja: fuera de la
+silueta **no hay tablero** — no se pinta nada y no se aceptan toques. El wire
+del nivel trae, junto al board rectangular, una **Silueta**
+([`Level.silhouette`](lib/domain/board/entities/level.dart)): un mapa rol→celdas
+del fill de la figura (nulo en campaña; `silhouetteUnion` da su unión).
+
+El montaje ocurre en un único **seam** de la capa de aplicación,
+`GameController._mountedBoard`, invocado en cada arranque, reinicio, undo y demo
+de pista: si el nivel declara silueta, su board se **re-monta** (`ArrowBoard.remountedOn`)
+sobre un [`MaskedSpace`](lib/domain/game_core/space/masked_space.dart) con la
+unión de la silueta como celdas activas; si no la declara —campaña—, conserva
+intacto el `RectSpace` del wire. Como una celda enmascarada es **frontera**
+(`step` → `null`), la mecánica de salida (`exitLane`/`canExit`) opera sobre
+cualquier figura sin tocar una línea de sus consumidores (OCP), y presentación
+se adapta sola: `BoardSurfacePainter` toma su camino celda a celda y
+`BoardWidget` veta el toque con `space.contains` antes de resolver flecha alguna.
+El invariante *flechas ⊆ silueta* lo garantiza el constructor de `Level`, así que
+la figura nunca deja una flecha fuera del tablero.
+
+Esto **revierte la decisión "caja completa"** de front#99/#107 **solo** para los
+temáticos con silueta: aquella evitaba los agujeros a mitad de tablero que dejaba
+recortar por las celdas de las flechas (front#88), pero la silueta explícita ya
+incluye las celdas interiores de la figura, así que la forma se dibuja entera y
+sin huecos. La campaña no cambia: mismo `RectSpace`, mismo render.
 
 ### Campaña remota (front#8)
 

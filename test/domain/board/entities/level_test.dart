@@ -240,5 +240,87 @@ void main() {
       // Assert
       expect(result, isFalse);
     });
+
+    // #118 — Silueta temática: mapa rol→celdas del fill que define la forma
+    // jugable de niveles temáticos (corazón, carita feliz...). Nula en campaña.
+    test(
+        'should_expose_silhouette_and_derive_silhouetteUnion_when_arrows_are_contained',
+        () {
+      // Arrange
+      final id = LevelId('t-heart');
+      final board = _boardWithOneArrow(); // celdas de la flecha: (0,0), (0,1)
+      final silhouette = {
+        'relleno': {
+          Position(row: 0, col: 0),
+          Position(row: 0, col: 1),
+          Position(row: 1, col: 0),
+        },
+      };
+      // Act
+      final level = Level(id: id, board: board, silhouette: silhouette);
+      // Assert
+      expect(level.silhouette, silhouette);
+      expect(level.silhouetteUnion, {
+        Position(row: 0, col: 0),
+        Position(row: 0, col: 1),
+        Position(row: 1, col: 0),
+      });
+    });
+
+    test('should_derive_null_silhouetteUnion_when_silhouette_is_omitted', () {
+      // Arrange
+      final id = LevelId('1');
+      final board = _boardWithOneArrow();
+      // Act
+      final level = Level(id: id, board: board);
+      // Assert
+      expect(level.silhouette, isNull);
+      expect(level.silhouetteUnion, isNull);
+    });
+
+    test(
+        'should_throw_InvalidLevelException_when_an_arrow_cell_falls_outside_the_silhouette_union',
+        () {
+      // Arrange
+      final id = LevelId('t-heart');
+      final board = _boardWithOneArrow(); // celdas de la flecha: (0,0), (0,1)
+      final silhouette = {
+        'relleno': {Position(row: 0, col: 0)}, // falta (0,1)
+      };
+      // Act
+      Level act() => Level(id: id, board: board, silhouette: silhouette);
+      // Assert
+      expect(act, throwsA(isA<InvalidLevelException>()));
+    });
+
+    test(
+        'should_throw_InvalidLevelException_when_a_silhouette_cell_falls_outside_the_board_bounds',
+        () {
+      // Arrange
+      final id = LevelId('t-heart');
+      final board = _boardWithOneArrow(); // 4x4 → filas/columnas válidas 0..3
+      final silhouette = {
+        'relleno': {
+          Position(row: 0, col: 0),
+          Position(row: 0, col: 1),
+          Position(row: 5, col: 5), // fuera de la caja 4x4
+        },
+      };
+      // Act
+      Level act() => Level(id: id, board: board, silhouette: silhouette);
+      // Assert
+      expect(act, throwsA(isA<InvalidLevelException>()));
+    });
+
+    test('should_throw_InvalidLevelException_when_silhouette_map_is_empty',
+        () {
+      // Arrange
+      final id = LevelId('t-heart');
+      final board = _boardWithOneArrow();
+      // Act
+      Level act() => Level(id: id, board: board, silhouette: const {});
+      // Assert
+      expect(act, throwsA(isA<InvalidLevelException>()));
+    });
   });
 }

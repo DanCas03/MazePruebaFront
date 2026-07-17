@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../arrows/entities/arrow_board.dart';
 import '../../core/exceptions/invalid_level_exception.dart';
+import '../../game_core/value_objects/position.dart';
 import '../../game_core/value_objects/strike_count.dart';
 import '../value_objects/level_id.dart';
 
@@ -28,12 +29,23 @@ class Level extends Equatable {
   /// la dificultad actual de los niveles que aún no lo declaran.
   final int maxErrors;
 
+  /// Silueta temática (#118): mapa rol→celdas del fill que define la forma
+  /// jugable de niveles temáticos (corazón, carita feliz...). Nula en
+  /// campaña. Invariantes si está presente: no vacía, toda celda dentro de la
+  /// caja `cols×rows` del board (frame, no existencia en el espacio — ver
+  /// `BoundingBox.contains`), y toda celda de toda flecha del board pertenece
+  /// a la unión de sus regiones — el tablero jugable nunca desborda la
+  /// silueta. Sienta la base del decoder y del seam de montaje que la
+  /// consumirán (front#119+).
+  final Map<String, Set<Position>>? silhouette;
+
   Level({
     required this.id,
     required this.board,
     this.timeLimitSec,
     this.palette,
     this.maxErrors = StrikeCount.defaultMax,
+    this.silhouette,
   }) {
     if (board.arrows.isEmpty) {
       throw const InvalidLevelException('a level must have at least one arrow');
@@ -45,8 +57,37 @@ class Level extends Equatable {
     if (maxErrors <= 0) {
       throw InvalidLevelException('maxErrors must be > 0, got $maxErrors');
     }
+    final regions = silhouette;
+    if (regions != null) {
+      final union = silhouetteUnion!;
+      if (regions.isEmpty || union.isEmpty) {
+        throw const InvalidLevelException(
+            'silhouette must have at least one region with at least one cell');
+      }
+      final bounds = board.space.bounds;
+      for (final cell in union) {
+        if (!bounds.contains(cell)) {
+          throw InvalidLevelException(
+              'silhouette cell $cell falls outside the board bounds');
+        }
+      }
+      for (final arrow in board.arrows) {
+        for (final cell in arrow.cells) {
+          if (!union.contains(cell)) {
+            throw InvalidLevelException(
+                'arrow ${arrow.id} cell $cell falls outside the silhouette union');
+          }
+        }
+      }
+    }
   }
 
+  /// Unión de todas las regiones de [silhouette]. `null` si no hay silueta
+  /// (campaña).
+  Set<Position>? get silhouetteUnion => silhouette?.values
+      .fold<Set<Position>>(<Position>{}, (acc, cells) => acc..addAll(cells));
+
   @override
-  List<Object?> get props => [id, board, timeLimitSec, palette, maxErrors];
+  List<Object?> get props =>
+      [id, board, timeLimitSec, palette, maxErrors, silhouette];
 }

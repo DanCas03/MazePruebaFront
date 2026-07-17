@@ -185,8 +185,10 @@ _Avoid_: curva implícita en los fixtures, blueprint, configuración del generad
 **Máscara (de figura)**:
 Partición de las celdas del tablero en regiones de color, derivada de una **imagen de
 referencia** aportada al producir un Nivel temático. Restricción de producción: cada flecha
-se confina a una sola región (una flecha = un color; sale entera). La máscara no viaja en el
-wire — solo sus consecuencias (las Instrucciones de pintado).
+se confina a una sola región (una flecha = un color; sale entera). La máscara como tal no
+viaja en el wire; sí viajan sus consecuencias de pintado: las Instrucciones de pintado y,
+desde front#114, la **silueta** (rol→celdas de su región) que el cliente pinta tenue bajo las
+flechas para rellenar la figura sin huecos. Dato opaco: no afecta solubilidad ni mecánica.
 _Avoid_: plantilla, stencil, sprite.
 
 ### Vocabulario retirado (no usar)

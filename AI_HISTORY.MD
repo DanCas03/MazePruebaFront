@@ -1,5 +1,19 @@
 # AI History — MazePruebaFront
 
+## Entrada 115 — feat(front/domain): ArrowBoard.remountedOn as mounting seam (#118)
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** Task 3 del plan de tablero temático con silueta como forma del tablero (#118): añadir el seam de montaje que la Task 4 usará para remontar niveles temáticos sobre un `MaskedSpace` — un método que toma un `ArrowBoard` existente y devuelve el mismo contenido de flechas montado sobre un `BoardSpace` DISTINTO.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol frontend-architect, ejecución vía subagente SDD)
+**Prompt o instrucción proporcionada:** > "Task 3 del plan #118: `ArrowBoard.remountedOn(BoardSpace)` siguiendo TDD — tests primero con los casos del brief, luego implementación."
+**Resultado obtenido:**
+- El brief describía la validación como "los invariantes del constructor de `ArrowBoard` se re-ejecutan (celda fuera del espacio nuevo ⇒ excepción de dominio existente)". Falso: el constructor de `ArrowBoard` es `const` con cuerpo vacío, sin asserts ni throws — no hay invariantes que re-ejecutar. Añadirlos ahí forzaría perder `const`, que es interfaz pública documentada (la caché de ocupación por `Expando` de `arrow_board.dart` existe justamente para preservarlo; `test/tool/level_production/candidate_producer_test.dart:98` construye en contexto const), y añadiría un pase O(celdas) a CADA construcción, incluida `removeArrow`, que corre en cada movimiento de la partida.
+- **Decisión:** `remountedOn(BoardSpace newSpace)` valida LOCALMENTE — recorre las celdas de todas las flechas y, si alguna no está en `newSpace` (`newSpace.contains(cell)`, membresía real del espacio, no `bounds.contains` que solo prueba el marco — así un agujero de `MaskedSpace` sí rechaza), lanza `InvalidArrowException` (ya existente en `lib/domain/core/exceptions/invalid_arrow_exception.dart`). Si todas las celdas están contenidas, devuelve un `ArrowBoard` nuevo con las mismas `arrows` y el `space` dado. En producción esta guarda nunca debería dispararse (`Level` ya exige flechas ⊆ `silhouetteUnion`, y la máscara se construye desde esa misma unión) — es defensa en profundidad del seam, documentada así en el comentario inline, no código muerto.
+- `test/domain/entities/arrow_board_remount_test.dart` (nuevo): 3 casos AAA — remount a un `MaskedSpace` que contiene todas las flechas ⇒ mismas `arrows`, `space` nuevo; remount a un espacio que EXCLUYE una celda de una flecha ⇒ lanza `InvalidArrowException` (caso adaptado del brief: el brief pedía "la excepción del constructor", pero es `remountedOn` quien la lanza, no el constructor); remount preserva igualdad de flechas vía `Equatable`.
+- Verificado rojo→verde: sin el método, error de compilación (`remountedOn` no definido); con la implementación, `flutter test test/domain/entities/arrow_board_remount_test.dart` → 3/3 verde.
+- Verificación: `flutter test test/domain/` → 280/280 verde. `flutter analyze` → sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 114 — feat(front/serialization): silhouette on the wire, strict + byte-stable (#118)
 
 **Fecha:** 2026-07-17

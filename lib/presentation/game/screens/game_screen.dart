@@ -40,6 +40,24 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   // nivel.
   static const _hintPolicy = HintPolicy();
 
+  // #102: contexto de la ruta del diálogo de confirmación mientras está
+  // abierto, o null si no hay ninguno. La cuenta atrás del nivel sigue
+  // corriendo detrás del diálogo (el confirm-cancel es sobre el auto-solver,
+  // no sobre el reloj); si expira mientras el jugador decide, la navegación
+  // terminal a derrota debe primero CERRAR este diálogo — de lo contrario
+  // `pushReplacementNamed` (sin `oldRoute`) reemplaza la ruta activa MÁS
+  // ALTA del Navigator, que sería el propio diálogo, no GameScreen, dejando
+  // la partida terminada atrapada debajo de la pantalla de derrota.
+  BuildContext? _autoSolveDialogContext;
+
+  void _dismissAutoSolveDialogIfOpen() {
+    final dialogContext = _autoSolveDialogContext;
+    if (dialogContext == null) return;
+    if (Navigator.of(dialogContext).canPop()) {
+      Navigator.of(dialogContext).pop(false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -68,23 +86,29 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Future<void> _confirmAndAutoSolve(AppLocalizations l10n) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.autoSolveConfirmTitle),
-        content: Text(l10n.autoSolveConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.autoSolveConfirmCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.autoSolveConfirmAction),
-          ),
-        ],
-      ),
+      builder: (dialogContext) {
+        _autoSolveDialogContext = dialogContext;
+        return AlertDialog(
+          title: Text(l10n.autoSolveConfirmTitle),
+          content: Text(l10n.autoSolveConfirmBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.autoSolveConfirmCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.autoSolveConfirmAction),
+            ),
+          ],
+        );
+      },
     );
+    _autoSolveDialogContext = null;
     // `mounted`: el diálogo pudo cerrarse por una navegación que ya desmontó
-    // esta pantalla (p. ej. system-back) mientras estaba abierto.
+    // esta pantalla (p. ej. system-back, o la derrota por cuenta atrás
+    // agotada mientras el diálogo seguía abierto — ver
+    // _dismissAutoSolveDialogIfOpen) mientras estaba abierto.
     if (confirmed == true && mounted) {
       ref.read(gameControllerProvider.notifier).playHint();
     }
@@ -157,6 +181,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           state.levelId == widget.levelId) {
         audio.play(GameSound.victory);
         audio.stopMusic();
+        // #102: si el diálogo de confirmación del auto-solver sigue abierto,
+        // cerrarlo primero — sin esto, `pushReplacementNamed` (sin `oldRoute`)
+        // reemplazaría la ruta del diálogo en vez de la de GameScreen.
+        _dismissAutoSolveDialogIfOpen();
         // La victoria viaja con el nivel (para "Next Level") y las métricas ya
         // evaluadas por el controller (front#16). La pantalla es una vista
         // pasiva que solo las pinta.
@@ -173,6 +201,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       } else if (state is GameLost && prevState is! GameLost) {
         audio.play(GameSound.defeat);
         audio.stopMusic();
+        // #102: la cuenta atrás sigue corriendo detrás del diálogo de
+        // confirmación del auto-solver; si expira mientras el jugador decide,
+        // cerrarlo primero por la misma razón que en la rama de victoria.
+        _dismissAutoSolveDialogIfOpen();
         // La derrota lleva el LevelId para que el CTA "Retry" recargue el nivel.
         Navigator.pushReplacementNamed(
           context,

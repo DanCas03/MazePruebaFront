@@ -512,6 +512,52 @@ void main() {
       });
     });
 
+    // ── #102: el diálogo de confirmación del auto-solver no debe tragarse una
+    // navegación terminal que llega mientras sigue abierto ────────────────────
+    group('auto-solve confirm dialog vs. terminal navigation race (#102)', () {
+      testWidgets(
+          'a GameLost that arrives while the confirm dialog is open still replaces the GameScreen route, not the dialog',
+          (tester) async {
+        // Arrange — nivel jugable con el auto-solver disponible (elegibilidad
+        // abierta a toda la campaña, #102).
+        final controller = _ScriptableGameController();
+        final container =
+            ProviderContainer(overrides: _overridesWith(() => controller));
+        addTearDown(container.dispose);
+        final observer = _TerminalNavObserver();
+        await tester.pumpWidget(_observedHost(container, observer));
+        controller.emit(
+          GamePlaying(board: _singleArrowBoard(), moves: const MoveCount(0)),
+        );
+        await tester.pumpAndSettle();
+
+        // Act — abre el diálogo de confirmación y, ANTES de que el jugador
+        // responda, la partida transita a GameLost (p. ej. el reloj se agotó
+        // detrás del diálogo).
+        await tester.tap(find.byIcon(Icons.auto_fix_high));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsOneWidget);
+
+        controller.emit(GameLost(
+          moves: const MoveCount(0),
+          strikes: const StrikeCount(5, max: 5),
+        ));
+        await tester.pumpAndSettle();
+
+        // Assert — navegó a derrota UNA vez, el diálogo se cerró, y la ruta de
+        // GameScreen fue REEMPLAZADA (no quedó apilada debajo del diálogo, que
+        // es lo que pasaría si `pushReplacementNamed` hubiera reemplazado el
+        // diálogo en vez de GameScreen): sin nada debajo, no se puede hacer pop.
+        expect(observer.entries, [AppRouter.defeat]);
+        expect(find.byType(DefeatScreen), findsOneWidget);
+        expect(find.byType(AlertDialog), findsNothing);
+        final nav = tester.state<NavigatorState>(find.byType(Navigator));
+        expect(nav.canPop(), isFalse,
+            reason:
+                'GameScreen route should have been replaced by defeat, not left stacked beneath it');
+      });
+    });
+
     // ── Rama de error: discrimina el LevelFailure (front#8, Task 10) ──────────
     group('error branch', () {
       testWidgets(

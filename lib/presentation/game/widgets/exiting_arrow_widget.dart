@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../domain/arrows/entities/arrow.dart';
+import '../../../domain/board/services/auto_solve_pacing.dart';
 import '../painters/snake_exit_painter.dart';
 
 /// Overlay cosmético de la flecha removida: retracción "serpiente" cabeza
@@ -16,9 +17,10 @@ class ExitingArrowWidget extends StatefulWidget {
   final Color color;
   final int nonce;
 
-  // Duración del slide de salida. Fija en 360 ms para el gameplay normal; el
-  // auto-solver (#102) la comprime en tableros grandes para poder acelerar su
-  // ritmo sin cortar la animación a mitad de camino (ver AutoSolvePacing).
+  // Duración del slide de salida. Fija en AutoSolvePacing.standardExitDuration
+  // para el gameplay normal; el auto-solver (#102) la comprime en tableros
+  // grandes para poder acelerar su ritmo sin cortar la animación a mitad de
+  // camino (ver AutoSolvePacing.exitDurationFor).
   final Duration duration;
 
   const ExitingArrowWidget({
@@ -31,7 +33,7 @@ class ExitingArrowWidget extends StatefulWidget {
     required this.cell,
     required this.color,
     required this.nonce,
-    this.duration = const Duration(milliseconds: 360),
+    this.duration = AutoSolvePacing.standardExitDuration,
   });
 
   @override

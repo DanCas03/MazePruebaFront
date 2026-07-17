@@ -454,6 +454,7 @@ class GameController extends AsyncNotifier<GameState> {
           hintLoading: current.hintLoading,
           hintPlaying: current.hintPlaying,
           hintErrorNonce: current.hintErrorNonce,
+          autoSolveExitDuration: current.autoSolveExitDuration,
         ));
       }
     });

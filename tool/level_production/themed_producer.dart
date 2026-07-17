@@ -67,10 +67,12 @@ class ThemedResult {
 /// [coverageTarget] y [seeds] se conservan en la firma por compatibilidad con
 /// la CLI, pero se IGNORAN desde front#114: la generación es determinista
 /// (sin rng) y cubre la figura casi por completo por construcción.
+/// [maxPathLen] SÍ se honra: acota la longitud de las flechas rectas que
+/// `generateThemedFull` coloca (por defecto 6, igual que el generador).
 ThemedResult produceThemed(
   MaskSpec mask, {
   double coverageTarget = 0.9, // ignorado (front#114): cobertura ~total fija
-  int maxPathLen = 4,
+  int maxPathLen = 6,
   Iterable<int> seeds = const [], // ignorado (front#114): sin rng
 }) {
   final generator = GraphBoardGenerator();
@@ -99,6 +101,7 @@ ThemedResult produceThemed(
     cols: mask.cols,
     rows: mask.rows,
     regions: regionSpecs,
+    maxPathLen: maxPathLen,
   );
 
   // Solvabilidad obligatoria: si el tablero no se vacía, es un fallo real de

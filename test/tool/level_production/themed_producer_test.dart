@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/infrastructure/serialization/level_json_decoder.dart';
 
 import '../../../tool/level_production/mask_spec.dart';
 import '../../../tool/level_production/themed_producer.dart';
@@ -102,6 +103,60 @@ const _goldenJson = '''
   "palette": {
     "alpha": "#FF0000",
     "beta": "#0000FF"
+  },
+  "silhouette": {
+    "alpha": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "beta": [
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        5
+      ]
+    ]
   }
 }
 ''';
@@ -155,6 +210,25 @@ void main() {
       expect(arrows, isNotEmpty);
       for (final arrow in arrows.cast<Map<String, dynamic>>()) {
         expect(palette.keys, contains(arrow['paintRole']));
+      }
+    });
+  });
+
+  group('produceThemed — silueta', () {
+    test('emite silhouette con TODAS las celdas de cada región de la máscara',
+        () {
+      // Arrange
+      final mask = parseMaskSpec(_miniMask);
+
+      // Act
+      final result = produceThemed(mask, seeds: const [0]);
+      final level = const LevelJsonDecoder()
+          .decode(jsonDecode(result.json) as Map<String, Object?>);
+
+      // Assert: cada rol lleva EXACTAMENTE las celdas de su región (relleno
+      // visual completo), independientemente de qué celdas ocupan las flechas.
+      for (final region in mask.regions) {
+        expect(level.silhouette![region.role]!.toSet(), region.cells);
       }
     });
   });

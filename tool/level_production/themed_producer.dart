@@ -155,6 +155,15 @@ ThemedResult produceThemed(
       levelId: levelId,
       board: bestBoard,
       palette: mask.palette,
+      // Silueta de figura (front#114): rol→TODAS las celdas de su región,
+      // ordenadas por (fila, columna) para salida determinista. La consume el
+      // render para rellenar la figura sin huecos; dato opaco (no afecta
+      // solubilidad ni mecánica).
+      silhouette: {
+        for (final region in mask.regions)
+          region.role: (region.cells.toList()
+            ..sort((a, b) => a.row != b.row ? a.row - b.row : a.col - b.col)),
+      },
     ),
     coveragePerRole: bestCoverage,
     seedUsed: bestSeed,

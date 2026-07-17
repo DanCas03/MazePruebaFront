@@ -60,7 +60,7 @@ Future<void> main(List<String> args) async {
   final errors = _ErrorManifest();
 
   stdout.writeln(
-      'Producing tier ${step.tier}${opts.finale ? ' (finale, 50×50)' : ''} · '
+      'Producing tier ${step.tier}${opts.finale ? ' (finale, ${step.cols}×${step.rows})' : ''} · '
       '${step.cols}×${step.rows} · fill ${step.fillRatio} · '
       'arrows ${step.arrowCount} · '
       '${step.timeLimitSec == null ? 'untimed' : 'timeLimit ${step.timeLimitSec}s'} · '
@@ -219,7 +219,7 @@ class _Manifest {
 
   String render() {
     final buf = StringBuffer()
-      ..writeln('# Candidatos — tier ${step.tier}${step.finale ? ' (remate 50×50)' : ''}')
+      ..writeln('# Candidatos — tier ${step.tier}${step.finale ? ' (remate ${step.cols}×${step.rows})' : ''}')
       ..writeln()
       ..writeln('Generado por `dart run tool/level_production/produce.dart` (front#65).')
       ..writeln('Rampa: ${step.cols}×${step.rows} · fillRatio ${step.fillRatio} · '

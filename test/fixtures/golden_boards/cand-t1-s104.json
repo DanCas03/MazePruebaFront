@@ -1,87 +1,80 @@
 {
-  "levelId": "cand-t1-s101",
+  "levelId": "cand-t1-s104",
   "order": 1,
   "cols": 6,
-  "rows": 8,
+  "rows": 10,
+  "timeLimitSec": 30,
   "arrows": [
     {
       "id": "arrow-0",
-      "headDir": "down",
+      "headDir": "right",
       "cells": [
         [
-          3,
+          6,
+          0
+        ],
+        [
+          6,
           1
         ],
         [
-          2,
-          1
-        ],
-        [
-          2,
+          6,
           2
         ]
       ]
     },
     {
       "id": "arrow-1",
-      "headDir": "left",
+      "headDir": "up",
       "cells": [
         [
-          7,
-          5
+          3,
+          2
         ],
         [
-          6,
-          5
-        ],
-        [
-          6,
-          4
+          2,
+          2
         ]
       ]
     },
     {
       "id": "arrow-2",
-      "headDir": "left",
+      "headDir": "right",
       "cells": [
         [
-          6,
-          2
+          7,
+          0
         ],
         [
-          6,
+          7,
           1
         ]
       ]
     },
     {
       "id": "arrow-3",
-      "headDir": "left",
+      "headDir": "right",
       "cells": [
         [
-          0,
-          4
-        ],
-        [
-          0,
-          5
+          1,
+          2
         ],
         [
           1,
-          5
+          3
         ]
       ]
     },
     {
       "id": "arrow-4",
-      "headDir": "right",
+      "headDir": "up",
       "cells": [
         [
-          2,
-          4
+          6,
+          5
         ],
         [
-          2,
+          5,
           5
         ]
       ]
@@ -91,16 +84,26 @@
       "headDir": "right",
       "cells": [
         [
-          4,
-          4
-        ],
-        [
-          5,
-          4
-        ],
-        [
-          5,
+          1,
           5
+        ],
+        [
+          0,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "arrow-6",
+      "headDir": "left",
+      "cells": [
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
         ]
       ]
     }

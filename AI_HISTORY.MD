@@ -1,5 +1,18 @@
 # AI History — MazePruebaFront
 
+## Entrada 113 — feat(front/domain): añadir campo silhouette a Level con invariantes de contención (#118)
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** Task 1 del plan de tablero temático con silueta como forma del tablero (#118): el dominio `Level` gana `silhouette: Map<String, Set<Position>>?` (rol→celdas del fill; `null` = campaña) sobre el que se apoyarán el decoder de infraestructura, el seam de montaje y el generador en tareas posteriores del mismo plan.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5, rol frontend-architect, ejecución vía subagente SDD)
+**Prompt o instrucción proporcionada:** > "Task 1 del plan #118: añade `Level.silhouette` (dominio) siguiendo TDD — tests primero con los casos exactos del brief, luego implementación con los invariantes de contención."
+**Resultado obtenido:**
+- `lib/domain/board/entities/level.dart`: nuevo named param opcional `silhouette` en el constructor de `Level` + getter derivado `silhouetteUnion` (unión de todas las regiones del mapa, `null` si `silhouette` es `null`). Invariantes en el cuerpo del constructor (mismo estilo que los existentes, lanzan `InvalidLevelException`): si `silhouette != null` → no vacío (mapa y unión), toda celda de la unión dentro de `board.space.bounds` (`BoundingBox.contains`, contención de marco — no exige que la celda exista en el `BoardSpace`), y toda celda de toda flecha del board ∈ `silhouetteUnion`. Campo añadido a `props` para preservar igualdad estructural.
+- `test/domain/board/entities/level_test.dart`: 5 casos nuevos AAA — silueta válida expone `silhouette`/`silhouetteUnion`; `silhouette` omitida ⇒ `silhouetteUnion == null` (campaña intacta); celda de flecha fuera de la unión ⇒ excepción; celda de la silueta fuera de la caja `cols×rows` ⇒ excepción; mapa vacío `{}` ⇒ excepción.
+- Desviación menor del snippet del brief: `silhouetteUnion` usa `fold<Set<Position>>(...)` con el tipo genérico explícito y operador null-aware (`silhouette?.values.fold(...)`) en vez de `silhouette == null ? null : silhouette!.values.fold(...)` — la versión ternaria no compilaba (`fold` inferìa `T = Set<Position>?` por el contexto del getter) y el ternario disparaba el lint `prefer_null_aware_operators`. Comportamiento idéntico.
+- Verificación: `flutter test test/domain/board/entities/level_test.dart` → 23/23 verde. `flutter analyze` → sin issues.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 111 — feat(front): pantalla del Leaderboard general desde el menú principal (ADR 0006)
 
 **Fecha:** 2026-07-16

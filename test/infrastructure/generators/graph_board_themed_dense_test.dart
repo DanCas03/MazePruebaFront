@@ -28,12 +28,28 @@ import '../../../tool/level_production/validation.dart';
 //    proyecciones sobre el eje de la línea comparten al menos una posición.
 //  - HUECOS AL BORDE: distancia BFS multi-source de cada celda LIBRE de una
 //    región a la celda de borde más cercana de esa región (celda de borde =
-//    adyacente a fuera-de-región o fuera de tablero; profundidad 0). Umbral
-//    congelado: media <= 1.5 (fijado por el plan y verificado alcanzable en
-//    ambas máscaras).
+//    adyacente a fuera-de-región o fuera de tablero; profundidad 0). Dos
+//    umbrales, porque miden cosas distintas:
+//      * media <= 1.5 (congelado por el plan), y
+//      * profundidad MÁXIMA <= 2, es decir NINGUNA celda libre a profundidad
+//        >= 3. La media sola NO ve el fallo que este guardián existe para
+//        cazar: con pocas celdas libres, varios huecos de borde (profundidad
+//        0) diluyen una bolsa interior profunda y la media pasa igual. Peor:
+//        la media PREMIA dejar muchos huecos superficiales. El máximo es el
+//        que expresa la regla real ("las celdas libres se pegan al borde,
+//        nunca se sientan en mitad de la figura").
 //  - DENSIDAD: se elige la mejor seed de 0..99 (determinista: primero
 //    detalle al 100%, luego mayor cobertura, luego seed más baja) y sobre ese
-//    tablero corren TODOS los guardianes de forma.
+//    tablero corren TODOS los guardianes de FORMA. La densidad, en cambio, se
+//    exige sobre TODAS las seeds (mínimo, no máximo): afirmar solo que la
+//    MEJOR seed llega a 0.90 es casi gratis y no restringe al generador.
+//  - MEZCLA DE LONGITUDES: la regla de variedad del plan dice "longitudes 2-5
+//    celdas mezcladas". El ratio de codos solo no la protege: un tablero de
+//    puros dominós (flechas de 2) más unas pocas serpientes largas puede
+//    superar el 40% de codos y aun así verse picado fino. Estos dos umbrales
+//    codifican el criterio estético del maintainer ("troncho como el conejo",
+//    `themed/themed-bunny.preview.txt`): techo de dominós y suelo de flechas
+//    largas.
 // ---------------------------------------------------------------------------
 
 const _maskDir = 'tool/level_production/masks';
@@ -177,8 +193,13 @@ class _DenseFixture {
   final ArrowBoard board;
   final Set<Position> covered;
 
+  /// Cobertura de CADA seed del barrido 0..99 (índice = seed). El barrido ya
+  /// generaba los 100 tableros para elegir el mejor; guardarlas permite exigir
+  /// el mínimo sin generar nada extra.
+  final List<double> coverageBySeed;
+
   _DenseFixture._(this.mask, this.regions, this.maskCells, this.bestSeed,
-      this.board, this.covered);
+      this.board, this.covered, this.coverageBySeed);
 
   factory _DenseFixture.scan(String maskName) {
     final mask =
@@ -197,6 +218,7 @@ class _DenseFixture {
     ArrowBoard? best;
     var bestSeed = -1;
     var bestKey = -1.0;
+    final coverageBySeed = <double>[];
     for (var seed = 0; seed < 100; seed++) {
       final board = generator.generateThemedDense(
         cols: mask.cols,
@@ -208,6 +230,7 @@ class _DenseFixture {
         for (final a in board.arrows) ...a.cells,
       };
       final coverage = covered.length / maskCells.length;
+      coverageBySeed.add(coverage);
       final detailFull =
           detailCells.isEmpty || covered.containsAll(detailCells);
       // clave: primero detalle completo, luego cobertura; empate -> seed baja.
@@ -221,10 +244,16 @@ class _DenseFixture {
     final covered = <Position>{
       for (final a in best!.arrows) ...a.cells,
     };
-    return _DenseFixture._(mask, regions, maskCells, bestSeed, best, covered);
+    return _DenseFixture._(
+        mask, regions, maskCells, bestSeed, best, covered, coverageBySeed);
   }
 
   double get coverage => covered.length / maskCells.length;
+
+  /// Peor seed del barrido: la afirmación que de verdad restringe al generador.
+  double get minCoverage => coverageBySeed.reduce((a, b) => a < b ? a : b);
+
+  int get worstSeed => coverageBySeed.indexOf(minCoverage);
 }
 
 void main() {
@@ -267,6 +296,25 @@ void main() {
               '$featuresCovered/${features.length}');
     });
 
+    test(
+        'densidad: TODAS las seeds 0..99 cubren >= 0.90 en ambas máscaras '
+        '(mínimo, no solo la mejor)', () {
+      // Arrange: los tests de arriba solo afirman la MEJOR seed, que es casi
+      // gratis (es un máximo sobre 100 muestras). La afirmación que restringe
+      // al generador es que NINGUNA seed baja de 0.90: así el producer de la
+      // Task 7 puede escanear seeds sin miedo a un tablero agujereado.
+      // Medido 2026-07-17: mínimo heart 0.9605 (seed 39), happy_face 0.9260
+      // (seed 78) => 0.90 pasa con margen honesto en ambas.
+      for (final fx in [heart, happyFace]) {
+        // Act
+        final min = fx.minCoverage;
+        // Assert
+        expect(min, greaterThanOrEqualTo(0.90),
+            reason: '${fx.mask.name}: peor seed=${fx.worstSeed} con cobertura '
+                '${min.toStringAsFixed(4)} sobre ${fx.maskCells.length} celdas');
+      }
+    });
+
     test('variedad: >= 40% de las flechas tienen >= 1 codo en ambas máscaras',
         () {
       for (final fx in [heart, happyFace]) {
@@ -293,18 +341,24 @@ void main() {
     });
 
     test(
-        'huecos al borde: distancia media de las celdas libres al borde de '
-        'su región <= 1.5', () {
+        'huecos al borde: media de las celdas libres <= 1.5 Y ninguna celda '
+        'libre a profundidad >= 3 (máximo <= 2)', () {
       for (final fx in [heart, happyFace]) {
         // Act
         var total = 0;
         var free = 0;
+        var maxDepth = 0;
+        Position? deepest;
         for (final region in fx.mask.regions) {
           final depth = _borderDepth(region.cells);
           for (final cell in region.cells) {
             if (fx.covered.contains(cell)) continue;
             total += depth[cell]!;
             free++;
+            if (depth[cell]! > maxDepth) {
+              maxDepth = depth[cell]!;
+              deepest = cell;
+            }
           }
         }
         final mean = free == 0 ? 0.0 : total / free;
@@ -312,6 +366,52 @@ void main() {
         expect(mean, lessThanOrEqualTo(1.5),
             reason: '${fx.mask.name} seed=${fx.bestSeed}: media $mean '
                 'sobre $free celdas libres');
+        // El máximo es lo que la media no puede ver: una bolsa interior
+        // profunda se esconde detrás de varios huecos de borde. Con las 6
+        // celdas libres de heart, un singleton a profundidad 4 pasa la media.
+        expect(maxDepth, lessThanOrEqualTo(2),
+            reason: '${fx.mask.name} seed=${fx.bestSeed}: celda libre más '
+                'profunda a $maxDepth (row=${deepest?.row}, col=${deepest?.col}) '
+                'sobre $free libres; las celdas libres deben pegarse al borde');
+      }
+    });
+
+    test(
+        'variedad: mezcla de longitudes — dominós <= 55% y flechas de >= 4 '
+        'celdas >= 20% en ambas máscaras', () {
+      // Arrange: el plan pide "longitudes 2-5 celdas mezcladas", pero hasta
+      // ahora solo el ratio de codos lo vigilaba, y el ratio de codos no
+      // distingue un tablero troncho de uno picado fino. Estos dos umbrales
+      // codifican el criterio estético del maintainer ("troncho como el
+      // conejo"): un techo de dominós impide que el relleno degenere en
+      // teselado de 2 celdas, y un suelo de flechas largas obliga a que haya
+      // cuerpos con presencia. Medido 2026-07-17 sobre la mejor seed:
+      //   heart      seed 98: 2:95 3:47 4:22 5:15 6:18 (197) =>
+      //                       dominós 95/197 = 0.4822, len>=4 55/197 = 0.2792
+      //   happy_face seed 41: 2:63 3:26 4:23 5:14 6:3  (129) =>
+      //                       dominós 63/129 = 0.4884, len>=4 40/129 = 0.3101
+      // Los umbrales (0.55 / 0.20) dejan margen honesto sobre esos valores sin
+      // regalar espacio a la degeneración: el intento anterior murió por
+      // exceso de flechas cortas.
+      for (final fx in [heart, happyFace]) {
+        // Act
+        final total = fx.board.arrows.length;
+        final dominoes =
+            fx.board.arrows.where((a) => a.cells.length == 2).length;
+        final long = fx.board.arrows.where((a) => a.cells.length >= 4).length;
+        final histogram = <int, int>{};
+        for (final a in fx.board.arrows) {
+          histogram[a.cells.length] = (histogram[a.cells.length] ?? 0) + 1;
+        }
+        final sorted = Map.fromEntries(
+            histogram.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
+        // Assert
+        expect(dominoes / total, lessThanOrEqualTo(0.55),
+            reason: '${fx.mask.name} seed=${fx.bestSeed}: dominós '
+                '$dominoes/$total; histograma $sorted');
+        expect(long / total, greaterThanOrEqualTo(0.20),
+            reason: '${fx.mask.name} seed=${fx.bestSeed}: flechas de >= 4 '
+                'celdas $long/$total; histograma $sorted');
       }
     });
 

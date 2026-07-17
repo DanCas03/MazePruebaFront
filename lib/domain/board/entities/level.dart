@@ -23,9 +23,11 @@ class Level extends Equatable {
   /// (front#67). Espejo de la decisión del back (back#31).
   final Map<String, String>? palette;
 
-  /// Silueta de figura (front#114): rol→celdas de su región de máscara. Dato
-  /// OPACO como [palette] — solo pintura, no afecta solubilidad ni mecánica.
-  /// Nulo en campaña. Lo consume el SilhouettePainter para rellenar la figura.
+  /// Silueta de figura (front#114): rol→celdas de su región. En niveles
+  /// temáticos define la MÁSCARA del tablero: el board se monta sobre un
+  /// `MaskedSpace` cuyas celdas activas son la unión de estas celdas, así solo
+  /// la figura existe (los cuadros fuera de ella no se ven) y el hit-testing y
+  /// los carriles de salida operan sobre esa silueta. Nula en campaña.
   final Map<String, List<Position>>? silhouette;
 
   /// Presupuesto de errores del nivel (front#83): cuántos choques admite antes

@@ -24,8 +24,9 @@ class GamePlaying extends GameState {
   final Map<String, String>? palette;
 
   // Silueta de figura (front#114): rol→celdas de su región de máscara, o null
-  // en campaña. Dato de presentación constante durante la partida —espejo de
-  // [palette]— consumido por el SilhouettePainter para rellenar la figura.
+  // en campaña. Dato constante durante la partida —espejo de [palette]—: su
+  // presencia señala nivel temático (el tablero se monta enmascarado a la
+  // figura y BoardView omite la superficie: solo se dibujan las flechas).
   final Map<String, List<Position>>? silhouette;
 
   // Señales TRANSITORIAS de presentación (no son reglas de dominio):

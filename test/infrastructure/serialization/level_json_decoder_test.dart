@@ -401,7 +401,7 @@ void main() {
       };
       // Act
       final level = const LevelJsonDecoder().decode(json);
-      final map = const LevelJsonEncoder().toMap(
+      final map = encoder.toMap(
         levelId: level.id.value, board: level.board,
         palette: level.palette, silhouette: level.silhouette);
       // Assert

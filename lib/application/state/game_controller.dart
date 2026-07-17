@@ -11,7 +11,9 @@ import '../../domain/board/repositories/i_solution_repository.dart';
 import '../../domain/board/services/hint_policy.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/services/i_ticker.dart';
+import '../../domain/game_core/space/masked_space.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
+import '../../domain/game_core/value_objects/position.dart';
 import '../../domain/game_core/value_objects/score.dart';
 import '../../domain/game_core/value_objects/stars.dart';
 import '../../domain/game_core/value_objects/strike_count.dart';
@@ -128,18 +130,22 @@ class GameController extends AsyncNotifier<GameState> {
     );
   }
 
-  // Realiza el tablero del nivel para montarlo (front#99): TODO nivel —temático
-  // o campaña— se juega sobre su caja rectangular completa (`level.board`, cuyo
-  // espacio es un RectSpace). Antes (front#88) los temáticos se recortaban a la
-  // SILUETA = unión de las celdas de las flechas iniciales; pero esa unión deja
-  // sin pintar cualquier celda interior de la figura que ninguna flecha ocupe,
-  // apareciendo como AGUJERO en medio del tablero. El mantenedor aceptó mostrar
-  // el rectángulo completo: la identidad temática la aportan los colores de las
-  // flechas (`palette`), no el contorno del tablero. Así no hay agujeros y los
-  // taps solo caen sobre celdas pintadas (toda la caja lo está).
-  // Identidad (no altera el espacio ya rectangular); se conserva como seam donde
-  // vive la POLÍTICA de montaje, invocada en cada arranque/restart/undo.
-  ArrowBoard _mountedBoard(Level level) => level.board;
+  // Realiza el tablero del nivel para montarlo — seam donde vive la POLÍTICA de
+  // montaje, invocada en cada arranque/restart/undo/pista.
+  ArrowBoard _mountedBoard(Level level) {
+    final silhouette = level.silhouette;
+    if (silhouette == null) return level.board; // campaña: caja completa, intacta
+    // Temático (front#114): el tablero se enmascara a la FIGURA — solo existen
+    // las celdas de la silueta (unión de todas sus regiones), así los cuadros
+    // fuera de la figura no se ven ni reciben taps. Las flechas se generaron
+    // con esta misma máscara (carriles de salida computados sobre la figura
+    // completa), así que la solubilidad se preserva.
+    final active = <Position>{for (final cells in silhouette.values) ...cells};
+    return ArrowBoard(
+      arrows: level.board.arrows,
+      space: MaskedSpace(level.board.cols, level.board.rows, activeCells: active),
+    );
+  }
 
   // Monta el nivel [level] en el estado de partida. Reutilizado por loadLevel
   // (tras el fetch) y por restartLevel (sin refetch). Arranca el cronómetro y,

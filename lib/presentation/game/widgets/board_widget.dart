@@ -10,7 +10,6 @@ import '../../../domain/game_core/value_objects/position.dart';
 import '../../../application/state/game_controller.dart';
 import '../arrow_color_resolver.dart';
 import '../painters/board_surface_painter.dart';
-import '../painters/silhouette_painter.dart';
 import 'arrow_widget.dart';
 import 'board_viewport.dart';
 import 'exiting_arrow_widget.dart';
@@ -153,29 +152,18 @@ class BoardView extends StatelessWidget {
           // front#87: panel + rejilla se pintan A TRAVÉS del espacio (solo
           // celdas existentes); con caja llena el painter reproduce el panel
           // redondeado previo píxel a píxel.
-          Positioned.fill(
-            child: CustomPaint(
-              painter: BoardSurfacePainter(
-                space: space,
-                cell: cell,
-                surfaceColor: surface.withValues(alpha: 0.30),
-                gridColor: gridColor,
-                visibleRect: visibleRect,
-              ),
-            ),
-          ),
-          // Relleno de silueta temática (front#114): pinta cada celda de
-          // región con el color tenue de su rol, DEBAJO de las flechas, para
-          // que la figura no muestre huecos. Dato opaco: solo se dibuja
-          // cuando el nivel trae silueta Y paleta.
-          if (state.silhouette != null && state.palette != null)
+          // front#114: en niveles TEMÁTICOS (con silueta) no se pinta superficie
+          // alguna — ni panel ni rejilla —: la figura la dibujan solo las
+          // flechas, y las celdas sin flecha simplemente no muestran nada.
+          if (state.silhouette == null)
             Positioned.fill(
               child: CustomPaint(
-                painter: SilhouettePainter(
-                  frame: frame,
+                painter: BoardSurfacePainter(
+                  space: space,
                   cell: cell,
-                  silhouette: state.silhouette!,
-                  palette: state.palette!,
+                  surfaceColor: surface.withValues(alpha: 0.30),
+                  gridColor: gridColor,
+                  visibleRect: visibleRect,
                 ),
               ),
             ),

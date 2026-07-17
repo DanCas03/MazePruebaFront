@@ -64,147 +64,147 @@ The rule that keeps the boundary honest: `domain/` imports nothing from Flutter,
 
 `BoardSpace` (`domain/game_core/space/`) concentrates the board's geometry — adjacency, exit lanes, the frontier a snake-arrow exits through — behind `step`/`contains` primitives; `RectSpace` is the only production implementation, and `ArrowBoard` holds a `space: BoardSpace` instead of raw `cols`/`rows` (ADR-0005). A second, test-only implementation (`HoledRectSpace`, holed board) certifies the seam is real: `ArrowBoard.canExit` runs over it with zero consumer changes. Every space also exposes a `BoundingBox get bounds` (default derived from `allCells`, `RectSpace` in O(1)); `ArrowBoard.cols/rows` delegate to it instead of downcasting to `RectSpace`, so a non-rectangular geometry no longer breaks the aggregate (#85, Fase 1 toward arbitrary board shapes and themed silhouettes). A second production implementation, `MaskedSpace`, extends `RectSpace` with a `Set<Position> activeCells` (an arbitrary subset of the cols×rows box): `contains` is in-box AND in-set, `allCells`/`cellCount` reflect the mask, and a masked-out cell is a frontier (a `step` landing on it returns null) — the production sibling of `HoledRectSpace` that renders silhouettes, certified over `ArrowBoard.canExit` with zero consumer changes (#86, Fase 1).
 
-- **Render consciente del espacio (front#87)**: `BoardView` dimensiona, pinta y hace hit-testing a través de `BoardSpace` (`space.bounds` + `contains`), no de un rectángulo `cols×rows`. `BoardSurfacePainter` pinta el panel redondeado completo (píxel-idéntico al render previo) cuando el espacio llena su bounding box, y solo las celdas existentes —con rejilla únicamente entre celdas vecinas existentes— cuando el espacio está enmascarado. Los toques sobre celdas que no existen se rechazan antes de resolver la flecha.
-- **Tablero temático como caja completa (front#99, revierte la silueta de #88)**: la silueta derivada de la **unión de las celdas de las flechas iniciales** (front#88) dejaba sin pintar cualquier celda interior de la figura que ninguna flecha ocupara, apareciendo como **agujeros a mitad de tablero** (la producción temática solo cubre ~90% de la máscara). Confirmado con el mantenedor que mostrar el **rectángulo completo** es aceptable, `GameController._mountedBoard` ahora monta **todo** nivel —temático o campaña— sobre su caja `cols×rows` (`RectSpace`): sin agujeros, y todo tap cae sobre celda pintada (la caja entera lo está). La identidad temática la aportan los **colores de las flechas** (`palette`), no el contorno del tablero. `ArrowBoard.withSilhouetteSpace()` se retira por quedar sin consumidor; `MaskedSpace` permanece como tipo de producción certificado (seam para máscaras finas persistidas → issue de máscaras temáticas más finas). El render consciente del espacio (front#87) queda intacto: al llenar la caja se pinta por el camino de panel lleno.
-- **Navegación sin dead-ends (front#103)**: el "camino de vuelta" al menú vive centralizado en `AppRouter` como fuente única — `backToLevels(context)` conserva la raíz `home` ('/') bajo el selector (la flecha del `AppBar` persiste; victoria/derrota/error de carga) y `exitToHome(context)` hace `popUntil` hasta esa raíz **sin borrarla** (preserva el `AuthGate`, por lo que el cierre de sesión reactivo sigue funcionando; usado por el "Exit" del flujo generado). Ninguna pantalla queda como raíz pelada. Auditoría ruta a ruta en [`docs/navigation-audit.md`](docs/navigation-audit.md).
+- **Space-aware rendering (front#87)**: `BoardView` sizes, paints, and hit-tests through `BoardSpace` (`space.bounds` + `contains`), not a `cols×rows` rectangle. `BoardSurfacePainter` paints the full rounded panel (pixel-identical to the previous render) when the space fills its bounding box, and only the existing cells — with grid lines only between existing neighboring cells — when the space is masked. Taps on cells that don't exist are rejected before resolving any arrow.
+- **Themed board as a full box (front#99, reverts the #88 silhouette)**: the silhouette derived from the **union of the initial arrows' cells** (front#88) left unpainted any interior cell of the figure that no arrow occupied, showing up as **mid-board holes** (themed production only covers ~90% of the mask). Confirmed with the maintainer that showing the **full rectangle** is acceptable, `GameController._mountedBoard` now mounts **every** level — themed or campaign — over its `cols×rows` box (`RectSpace`): no holes, and every tap lands on a painted cell (the entire box is). Themed identity comes from the **arrow colors** (`palette`), not the board's outline. `ArrowBoard.withSilhouetteSpace()` is removed for having no consumer left; `MaskedSpace` remains a certified production type (a seam for finer persisted masks → a future finer-themed-masks issue). Space-aware rendering (front#87) stays intact: filling the box paints through the full-panel path.
+- **No-dead-end navigation (front#103)**: the "way back" to the menu now lives centralized in `AppRouter` as a single source of truth — `backToLevels(context)` keeps the `home` root ('/') under the selector (the `AppBar`'s back arrow persists; victory/defeat/load-error) and `exitToHome(context)` does a `popUntil` back to that root **without removing it** (preserving `AuthGate`, so reactive sign-out keeps working; used by the "Exit" action in the generated-board flow). No screen is left as a bare root. Route-by-route audit in [`docs/navigation-audit.md`](docs/navigation-audit.md).
 
 ## Tooling
 
-### Producción de candidatos de nivel — Rampa + CLI (front#65)
+### Level candidate production — Ramp + CLI (front#65)
 
-    dart run tool/level_production/produce.dart --tier <1..5> --seeds <A..B> [--out <dir>] [--finale] [--budget <seg>]
+    dart run tool/level_production/produce.dart --tier <1..5> --seeds <A..B> [--out <dir>] [--finale] [--budget <sec>]
 
-Corre la **Rampa de producción** ([`tool/level_production/ramp.dart`](tool/level_production/ramp.dart)) —
-la curva de dificultad de la campaña, sucesora del retirado `LevelBlueprint`—
-sobre un rango de semillas y congela un JSON arrow-path por candidato más un
-manifiesto del lote. La Rampa mapea cada tier a dimensiones, densidad
-(`fillRatio`), largo máximo de camino y (de T3 en adelante) un `timeLimitSec`
-derivado (`arrowCount × 4`, redondeado hacia arriba a múltiplos de 30; T1–T2 sin
-límite). La campaña conserva su estructura 15 = 5 tiers × 3 y remata en un 50×50
-(`--tier 5 --finale`, nivel 15, `fillRatio` 0.65).
+Runs the **production Ramp** ([`tool/level_production/ramp.dart`](tool/level_production/ramp.dart)) —
+the campaign's difficulty curve, successor to the retired `LevelBlueprint` —
+over a range of seeds and freezes one arrow-path JSON per candidate plus a
+batch manifest. The Ramp maps each tier to dimensions, density
+(`fillRatio`), max path length, and (from T3 onward) a derived `timeLimitSec`
+(`arrowCount × 4`, rounded up to multiples of 30; T1–T2 have no
+limit). The campaign keeps its 15 = 5 tiers × 3 structure and finishes with a 50×50
+(`--tier 5 --finale`, level 15, `fillRatio` 0.65).
 
-Ejemplos:
+Examples:
 
     dart run tool/level_production/produce.dart --tier 3 --seeds 300..309
     dart run tool/level_production/produce.dart --tier 5 --finale --seeds 900..909
 
-Cada candidato lleva un id trazable `cand-tN-sNNN` (tier + seed; **placeholder**
-hasta que la curación asigne el identificador final) y un `order` placeholder =
-tier. Salida en `out/candidates/` por defecto (el directorio se crea recursivo
-si no existe):
+Each candidate carries a traceable `cand-tN-sNNN` id (tier + seed; a
+**placeholder** until curation assigns the final identifier) and a placeholder
+`order` = tier. Output goes to `out/candidates/` by default (the directory is
+created recursively if it doesn't exist):
 
 - `cand-tN-sNNN.json` — JSON `{levelId, order, cols, rows, timeLimitSec?, arrows[]}`.
-- `manifest-tN.md` — tabla del lote (dims, flechas colocadas/pedidas, densidad
-  lograda, duración).
-- `errors-tN.md` — manifiesto de errores (solo si alguna semilla falló).
+- `manifest-tN.md` — batch table (dims, arrows placed/requested, density
+  achieved, duration).
+- `errors-tN.md` — error manifest (only if some seed failed).
 
-**Determinista** (misma semilla + parámetros ⇒ JSON idéntico dentro de la misma
-versión del SDK; el artefacto congelado real es el JSON en git). **Validación
-integrada** antes de escribir: cada candidato pasa *sin solape* + *vaciado en
-orden inverso de colocación* (solubilidad por construcción). **Resiliente**:
-cada semilla se genera en un isolate con presupuesto de tiempo (`--budget`, 5 s
-por defecto); una semilla que exceda el tiempo o falle la validación se registra
-en el manifiesto de errores y el lote continúa. Los candidatos elegidos por la
-curación alimentan el seed del back (back#10).
+**Deterministic** (same seed + parameters ⇒ identical JSON within the same
+SDK version; the real frozen artifact is the JSON committed to git). **Built-in
+validation** before writing: every candidate passes *no-overlap* + *clears in
+reverse placement order* (solvability by construction). **Resilient**:
+each seed is generated in an isolate with a time budget (`--budget`, 5 s
+by default); a seed that exceeds the time limit or fails validation is logged
+in the error manifest and the batch continues. The candidates chosen during
+curation feed the back's seed (back#10).
 
-### Producción de niveles temáticos — Máscaras + CLI (front#68)
+### Themed level production — Masks + CLI (front#68)
 
-Extiende el mismo tooling para el apartado temático (ADR 0004): niveles cuyo
-tablero **dibuja una figura** (corazón, cara feliz, conejo — mínimo 3). La figura
-se deriva de una imagen de referencia a una **Máscara**: un spec de texto
-reviewable (`tool/level_production/masks/*.mask`) con un grid de un glyph por
-celda + un legend `glyph = rol : #hex`. Sin visión por computadora, sin
-dependencias nuevas; el grid lo cura una persona por vista previa. El `.` es el
-fondo (sin flechas): la figura flota sobre un tablero vacío.
+Extends the same tooling for the themed track (ADR 0004): levels whose
+board **draws a figure** (heart, happy face, bunny — at least 3). The figure
+is derived from a reference image into a **Mask**: a reviewable text spec
+(`tool/level_production/masks/*.mask`) with a grid of one glyph per
+cell plus a `glyph = role : #hex` legend. No computer vision, no
+new dependencies; a person curates the grid by preview. `.` is the
+background (no arrows): the figure floats over an empty board.
 
     dart run tool/level_production/produce_themed.dart --masks-dir <dir> [--out <dir>] [--coverage <0..1>] [--seeds <A..B>] [--dense <bool>] [--maxlen <n>]
-    dart run tool/level_production/produce_themed.dart --mask <file.mask> [opciones]
+    dart run tool/level_production/produce_themed.dart --mask <file.mask> [options]
 
-El productor confina **cada flecha a una sola región de color** (una flecha = un
-color; sale entera), tag `paintRole` por flecha + `palette` de roles→hex a nivel
-de nivel (ADR 0004; el back los guarda y sirve como datos opacos). Las regiones
-se generan **detalle-primero** (menor a mayor tamaño) para que las interiores
-encuentren lane de salida libre; comparten una ocupación **global** que preserva
-la solubilidad (el tablero se vacía en orden inverso de colocación, verificado
-con `validateCandidate`). El JSON emite además la **`silhouette`** (#118): el
-fill completo de las regiones de la máscara, rol→celdas — la forma jugable del
-nivel (ver sección siguiente), independiente de la cobertura de flechas.
+The producer confines **each arrow to a single color region** (one arrow = one
+color; it exits whole), tagging a `paintRole` per arrow plus a level-level
+`palette` of roles→hex (ADR 0004; the back stores and serves them as opaque
+data). Regions are generated **detail-first** (smallest to largest) so
+interior ones find a free exit lane; they share a **global** occupancy that
+preserves solvability (the board clears in reverse placement order, verified
+with `validateCandidate`). The JSON also emits the **`silhouette`** (#118): the
+full fill of the mask's regions, role→cells — the level's playable shape
+(see the next section), independent of arrow coverage.
 
-Desde #118 el modo por defecto es el **denso** (`--dense true`):
-`GraphBoardGenerator.generateThemedDense` rellena la figura al ~97-99% y la
-semilla se elige **barriendo el rango completo** con el mismo criterio
-lexicográfico que los guardianes de `graph_board_themed_dense_test.dart` —
-1) regiones de detalle al 100% (los ojos/boca de la cara feliz SON su
-identidad), 2) ninguna celda libre a profundidad > 2 del borde de su región
-(sin agujeros en mitad de la figura), 3) y solo entonces mayor cobertura.
-Elegir por cobertura sola no es Pareto-óptimo y está prohibido: ganaba una
-celda dejando bolsas interiores visibles. Sin semilla admisible el productor
-falla ruidosamente (ampliar `--seeds` o retocar la máscara). `--maxlen` solo
-aplica al modo legacy (`--dense false`, el `generateThemed` original que
-reintenta hasta la cobertura objetivo); en denso la política de longitudes está
-congelada con los guardianes. Reporta cobertura por rol en `manifest-themed.md`
-+ una **vista previa ANSI a color** por figura para curación. Los niveles
-temáticos **no llevan límite de tiempo** en v1 (la ausencia del campo
-`timeLimitSec` es la anotación).
+Since #118 the default mode is **dense** (`--dense true`):
+`GraphBoardGenerator.generateThemedDense` fills the figure to ~97-99% and the
+seed is chosen by **sweeping the full range** with the same lexicographic
+criterion as the guard tests in `graph_board_themed_dense_test.dart` —
+1) detail regions at 100% (the happy face's eyes/mouth ARE its
+identity), 2) no free cell at depth > 2 from its region's border
+(no holes in the middle of the figure), 3) and only then, higher coverage.
+Choosing by coverage alone is not Pareto-optimal and is forbidden: it would
+win a cell while leaving visible interior pockets. Without an admissible seed
+the producer fails loudly (widen `--seeds` or retouch the mask). `--maxlen`
+only applies to the legacy mode (`--dense false`, the original `generateThemed`
+which retries until it hits the target coverage); in dense mode the length
+policy is frozen by the guard tests. Reports per-role coverage in
+`manifest-themed.md` plus a **color ANSI preview** per figure for curation.
+Themed levels **carry no time limit** in v1 (the absence of the
+`timeLimitSec` field is the annotation).
 
-Los 3 fixtures congelados viven en `tool/level_production/themed/` y alimentan
-la Sección temática del back (reemplazan el smoke `t-smoke`). `themed-heart`
-(36×24, seed 67) y `themed-happy_face` (24×22, seed 41) se producen con
+The 3 frozen fixtures live in `tool/level_production/themed/` and feed
+the back's themed Section (replacing the `t-smoke` smoke fixture). `themed-heart`
+(36×24, seed 67) and `themed-happy_face` (24×22, seed 41) are produced with
 `--mask <heart|happy_face>.mask --out tool/level_production/themed --coverage 0.90 --seeds 0..99`.
-`themed-bunny` está **congelado** (benchmark estético del maintainer): no se
-regenera — sus 37 flechas quedan byte-idénticas, protegidas por
-`themed_bunny_characterization_test.dart` — y ganó su `silhouette` vía el
-one-off `tool/level_production/add_silhouette.dart`.
+`themed-bunny` is **frozen** (the maintainer's aesthetic benchmark): it is not
+regenerated — its 37 arrows stay byte-identical, protected by
+`themed_bunny_characterization_test.dart` — and it earned its `silhouette` via
+the one-off `tool/level_production/add_silhouette.dart`.
 
-### Niveles temáticos — la silueta ES el tablero (front#118)
+### Themed levels — the silhouette IS the board (front#118)
 
-Un nivel temático se juega sobre la **figura**, no sobre su caja: fuera de la
-silueta **no hay tablero** — no se pinta nada y no se aceptan toques. El wire
-del nivel trae, junto al board rectangular, una **Silueta**
-([`Level.silhouette`](lib/domain/board/entities/level.dart)): un mapa rol→celdas
-del fill de la figura (nulo en campaña; `silhouetteUnion` da su unión).
+A themed level is played over the **figure**, not its box: outside the
+silhouette **there is no board** — nothing is painted and no taps are accepted. The
+level's wire brings, alongside the rectangular board, a **Silhouette**
+([`Level.silhouette`](lib/domain/board/entities/level.dart)): a role→cells map
+of the figure's fill (null for campaign; `silhouetteUnion` gives its union).
 
-El montaje ocurre en un único **seam** de la capa de aplicación,
-`GameController._mountedBoard`, invocado en cada arranque, reinicio, undo y demo
-de pista: si el nivel declara silueta, su board se **re-monta** (`ArrowBoard.remountedOn`)
-sobre un [`MaskedSpace`](lib/domain/game_core/space/masked_space.dart) con la
-unión de la silueta como celdas activas; si no la declara —campaña—, conserva
-intacto el `RectSpace` del wire. Como una celda enmascarada es **frontera**
-(`step` → `null`), la mecánica de salida (`exitLane`/`canExit`) opera sobre
-cualquier figura sin tocar una línea de sus consumidores (OCP), y presentación
-se adapta sola: `BoardSurfacePainter` toma su camino celda a celda y
-`BoardWidget` veta el toque con `space.contains` antes de resolver flecha alguna.
-El invariante *flechas ⊆ silueta* lo garantiza el constructor de `Level`, así que
-la figura nunca deja una flecha fuera del tablero.
+Mounting happens in a single application-layer **seam**,
+`GameController._mountedBoard`, invoked on every start, restart, undo, and hint
+demo: if the level declares a silhouette, its board is **re-mounted** (`ArrowBoard.remountedOn`)
+over a [`MaskedSpace`](lib/domain/game_core/space/masked_space.dart) with the
+silhouette's union as active cells; if it doesn't declare one — campaign —, it
+keeps the wire's `RectSpace` intact. Since a masked cell is a **frontier**
+(`step` → `null`), the exit mechanics (`exitLane`/`canExit`) operate over
+any figure without touching a single line of their consumers (OCP), and presentation
+adapts on its own: `BoardSurfacePainter` walks its cell-by-cell path and
+`BoardWidget` vetoes the tap with `space.contains` before resolving any arrow.
+The *arrows ⊆ silhouette* invariant is guaranteed by `Level`'s constructor, so
+the figure never leaves an arrow outside the board.
 
-Esto **revierte la decisión "caja completa"** de front#99/#107 **solo** para los
-temáticos con silueta: aquella evitaba los agujeros a mitad de tablero que dejaba
-recortar por las celdas de las flechas (front#88), pero la silueta explícita ya
-incluye las celdas interiores de la figura, así que la forma se dibuja entera y
-sin huecos. La campaña no cambia: mismo `RectSpace`, mismo render.
+This **reverts the "full box" decision** from front#99/#107 **only** for
+themed levels with a silhouette: that decision avoided the mid-board holes left
+by cropping to the arrows' cells (front#88), but the explicit silhouette already
+includes the figure's interior cells, so the shape is drawn whole and
+with no gaps. The campaign is unchanged: same `RectSpace`, same render.
 
-### Campaña remota (front#8)
+### Remote campaign (front#8)
 
-Los niveles de la campaña ya no se generan localmente: los sirve el back oficial. `GET /levels` devuelve el Catálogo en orden de juego —una lista de `CatalogEntry { LevelId id; LevelSection section }`, con `section` aditivo (ausente ⇒ `campaign`; ver *Themed section* abajo)— y `GET /levels/:id` el nivel completo (`ArrowBoard` + arrows). La app depende del puerto [`ILevelRepository`](lib/domain/board/repositories/i_level_repository.dart) (`listCatalog()` + `getLevel()`); la implementación [`RemoteLevelRepository`](lib/infrastructure/repositories/remote_level_repository.dart) es network-first con fallback a caché: con red, refetchea y hace write-through a una box Hive `levels_cache`; sin red (o ante un error de servidor no-404), sirve la copia cacheada. Un 404 del back para un nivel concreto es autoritativo (`LevelNotFound`) y no consulta la caché.
+Campaign levels are no longer generated locally: the official back serves them. `GET /levels` returns the Catalog in play order —a list of `CatalogEntry { LevelId id; LevelSection section }`, with `section` additive (absent ⇒ `campaign`; see *Themed section* below)— and `GET /levels/:id` the full level (`ArrowBoard` + arrows). The app depends on the [`ILevelRepository`](lib/domain/board/repositories/i_level_repository.dart) port (`listCatalog()` + `getLevel()`); the [`RemoteLevelRepository`](lib/infrastructure/repositories/remote_level_repository.dart) implementation is network-first with a cache fallback: with network, it refetches and writes through to a `levels_cache` Hive box; without network (or on a non-404 server error), it serves the cached copy. A 404 from the back for a specific level is authoritative (`LevelNotFound`) and does not consult the cache.
 
-[`levelCatalogProvider`](lib/application/providers/level_catalog_provider.dart) (`LevelCatalogNotifier`, `AsyncNotifier`) carga el Catálogo al arrancar y dispara en segundo plano un prefetch secuencial de toda la campaña vía `getLevel` (que cachea como efecto colateral); los fallos individuales del prefetch se loggean y se tragan. Tras una visita online, la campaña queda jugable **offline**. "Siguiente nivel" en la pantalla de victoria sigue el orden del Catálogo **sobre los niveles de campaña** y **respeta el gating por Tier** (front#81): el CTA solo aparece si el siguiente nivel está desbloqueado. La app necesita alcanzar el back en `AppConfig.apiBaseUrl` (por defecto `http://10.0.2.2:3000` para el emulador de Android, configurable con `--dart-define=API_BASE_URL=...`).
+[`levelCatalogProvider`](lib/application/providers/level_catalog_provider.dart) (`LevelCatalogNotifier`, `AsyncNotifier`) loads the Catalog on startup and fires a background sequential prefetch of the whole campaign via `getLevel` (which caches as a side effect); individual prefetch failures are logged and swallowed. After one online visit, the campaign stays playable **offline**. "Next level" on the victory screen follows the Catalog's order **over campaign levels** and **respects Tier gating** (front#81): the CTA only appears if the next level is unlocked. The app needs to reach the back at `AppConfig.apiBaseUrl` (defaulting to `http://10.0.2.2:3000` for the Android emulator, configurable with `--dart-define=API_BASE_URL=...`).
 
-El generador local ([`GraphBoardGenerator`](lib/infrastructure/generators/graph_board_generator.dart)) se conserva en el código pero ya no alimenta la campaña; ahora alimenta la feature "Generar nivel" (front#36) de tableros efímeros — ver *Tooling → Player-generated boards*.
+The local generator ([`GraphBoardGenerator`](lib/infrastructure/generators/graph_board_generator.dart)) is kept in the code but no longer feeds the campaign; it now feeds the "Generate level" feature (front#36) for ephemeral boards — see *Tooling → Player-generated boards*.
 
-> **Nota (front#9 — reconciliación).** El *Strategy intercambiable remoto/procedural* que imaginaban el backlog (E1.5) y el issue front#9 —con la generación procedimental como "modo práctica/fallback"— **no se construyó, a propósito**. Tras el cutover (ADR 0001, en `docs/adr/` del workspace), la fuente de niveles de la campaña es **DIP puro**: el puerto [`ILevelRepository`](lib/domain/board/repositories/i_level_repository.dart) con un **único Adapter de producción** (`RemoteLevelRepository`), no una familia de estrategias dentro de `loadLevel`. El **offline** lo resuelve la **caché** (network-first, arriba), no un tablero generado; sin red ni caché el resultado es `LevelUnavailable`, no un board de reemplazo. La generación procedimental es una **feature aparte** —`GeneratedBoard`, front#36/#37—: sus tableros son efímeros, sin `LevelId`, sin score ni progreso, y **nunca** sustituyen a un `Level` oficial. (`GraphBoardGenerator` sí es un Strategy, pero de `ILevelGenerator`, no de la campaña.) Por eso front#9 se cierra como documentación: los criterios 1 y 3 los entregó front#8, y el criterio 2 quedó superado por este diseño.
+> **Note (front#9 — reconciliation).** The *swappable remote/procedural Strategy* envisioned by the backlog (E1.5) and issue front#9 —with procedural generation as a "practice/fallback mode"— was **deliberately not built**. After the cutover (ADR 0001, in the workspace's `docs/adr/`), the campaign's level source is **pure DIP**: the [`ILevelRepository`](lib/domain/board/repositories/i_level_repository.dart) port with a **single production Adapter** (`RemoteLevelRepository`), not a family of strategies inside `loadLevel`. **Offline** is solved by the **cache** (network-first, above), not a generated board; with neither network nor cache the result is `LevelUnavailable`, not a replacement board. Procedural generation is a **separate feature** —`GeneratedBoard`, front#36/#37—: its boards are ephemeral, have no `LevelId`, no score or progress, and **never** substitute for an official `Level`. (`GraphBoardGenerator` is indeed a Strategy, but of `ILevelGenerator`, not of the campaign.) That's why front#9 is closed as documentation: criteria 1 and 3 were delivered by front#8, and criterion 2 was superseded by this design.
 
-### Auto-solver (#102, evolución de la "pista" #32)
+### Auto-solver (#102, evolution of the "hint" #32)
 
-En **todo** nivel de campaña (elegibilidad abierta en [`HintPolicy`](lib/domain/board/services/hint_policy.dart); antes restringida a número ≥ 7) y en los temáticos, el AppBar muestra un control de **auto-solver** — explícitamente presentado como tal (icono de vara mágica, no una bombilla de "pista" ambigua) que reproduce la solución canónica del servidor como una **demo no puntuable**. Pulsarlo abre primero un **diálogo de confirmación** que advierte que el progreso del intento actual se perderá; *Cancel* no toca la partida. Solo al confirmar, `GameController.playHint()` pide la *Solución* al back (`GET /levels/:id/solution`, back#19) a través del puerto [`ISolutionRepository`](lib/domain/board/repositories/i_solution_repository.dart); la implementación [`RemoteSolutionRepository`](lib/infrastructure/repositories/remote_solution_repository.dart) mapea la respuesta (`{levelId, solution: [ids]}`) a `List<ArrowId>` en orden de vaciado. El cliente **reproduce ese orden verbatim** —nunca deriva la secuencia—: reinicia el tablero y anima la salida de cada flecha reutilizando el mismo mecanismo de *exit animation* (`exitingArrow` + `exitNonce`) que un tap real. Durante la demo el input y el undo quedan **bloqueados** y no se cuentan movimientos ni choques (la pila de undo del `CommandInvoker` no se toca); al terminar, el nivel **se reinicia y queda jugable**. No se envía score ni se marca el nivel completado.
+On **every** campaign level (eligibility opened up in [`HintPolicy`](lib/domain/board/services/hint_policy.dart); previously restricted to level number ≥ 7) and on themed levels, the AppBar shows an **auto-solver** control — explicitly presented as such (a magic-wand icon, not an ambiguous "hint" lightbulb) that replays the server's canonical solution as a **non-scoring demo**. Tapping it first opens a **confirmation dialog** warning that the current attempt's progress will be lost; *Cancel* leaves the game untouched. Only on confirm does `GameController.playHint()` request the *Solution* from the back (`GET /levels/:id/solution`, back#19) through the [`ISolutionRepository`](lib/domain/board/repositories/i_solution_repository.dart) port; the [`RemoteSolutionRepository`](lib/infrastructure/repositories/remote_solution_repository.dart) implementation maps the response (`{levelId, solution: [ids]}`) to `List<ArrowId>` in clearing order. The client **replays that order verbatim** — it never derives the sequence — resetting the board and animating each arrow's exit by reusing the same *exit animation* mechanism (`exitingArrow` + `exitNonce`) as a real tap. During the demo, input and undo are **locked** and neither moves nor collisions are counted (the `CommandInvoker`'s undo stack is untouched); when it finishes, the level **resets and stays playable**. No score is submitted and the level is not marked completed.
 
-**Ritmo escalado por tamaño ([`AutoSolvePacing`](lib/domain/board/services/auto_solve_pacing.dart), #102).** El delay entre pasos ya no es una constante: decrece con el número de flechas de la Solución (tableros T1 ~7 flechas reproducen deliberados a 420 ms/paso; T5 ~120-180 flechas aceleran hasta un piso de 120 ms/paso), con un **piso** que nunca deja que un paso arranque antes de que termine su animación de salida — ambas curvas convergen exactamente en ese mismo mínimo, así que el piso nunca "gana" por sorpresa sobre un target inalcanzable. Para los tableros más grandes ese piso mismo baja **comprimiendo la animación de salida** en este modo (de 360 ms hasta 120 ms) — `GamePlaying.autoSolveExitDuration` viaja en el estado solo durante `hintPlaying` y `ExitingArrowWidget` la usa en vez de su default (`AutoSolvePacing.standardExitDuration`, fuente única reutilizada también por `BoardView`); el gameplay normal nunca la ve.
+**Size-scaled pacing ([`AutoSolvePacing`](lib/domain/board/services/auto_solve_pacing.dart), #102).** The delay between steps is no longer a constant: it decreases with the Solution's arrow count (T1 boards with ~7 arrows replay deliberately at 420 ms/step; T5 boards with ~120-180 arrows speed up to a floor of 120 ms/step), with a **floor** that never lets a step start before its exit animation finishes — both curves converge exactly at that same minimum, so the floor never "wins" by surprise over an unreachable target. For the largest boards that same floor drops further by **compressing the exit animation** in this mode (from 360 ms down to 120 ms) — `GamePlaying.autoSolveExitDuration` travels in the state only during `hintPlaying`, and `ExitingArrowWidget` uses it instead of its default (`AutoSolvePacing.standardExitDuration`, the single source also reused by `BoardView`); normal gameplay never sees it.
 
-Dos refuerzos de robustez sobre lo pedido (heredados de #32):
+Two robustness additions beyond what was requested (inherited from #32):
 
-- **Sub-estado de carga.** Mientras la petición HTTP viaja, `GamePlaying.hintLoading` transforma el icono en un *spinner* inerte, mitigando dobles clics accidentales; un token de generación (`_hintRun`) invalida cualquier demo en vuelo si el jugador carga otro nivel, reinicia o la pantalla se destruye.
-- **Timeout estricto.** [`SolutionRemoteDataSource`](lib/infrastructure/data_sources/remote/solution_remote_data_source.dart) impone un `receiveTimeout` por request (5 s, más corto que el global del Dio): si el back tarda o falla, la llamada **rompe limpio** hacia `SolutionUnavailable`, se dispara un *snackbar* de error y **la partida en curso queda intacta**. No hay caché: el auto-solver es on-demand y offline resuelve "no disponible" en vez de servir una copia vieja. Un 404 mapea a `SolutionNotFound` y un 422 (nivel insoluble) a `SolutionUnsolvable`.
+- **Loading sub-state.** While the HTTP request is in flight, `GamePlaying.hintLoading` turns the icon into an inert *spinner*, mitigating accidental double-clicks; a generation token (`_hintRun`) invalidates any in-flight demo if the player loads another level, restarts, or the screen is destroyed.
+- **Strict timeout.** [`SolutionRemoteDataSource`](lib/infrastructure/data_sources/remote/solution_remote_data_source.dart) imposes a per-request `receiveTimeout` (5 s, shorter than Dio's global one): if the back is slow or fails, the call **breaks cleanly** to `SolutionUnavailable`, an error *snackbar* fires, and **the game in progress stays intact**. There is no cache: the auto-solver is on-demand, and offline resolves to "unavailable" instead of serving a stale copy. A 404 maps to `SolutionNotFound` and a 422 (unsolvable level) to `SolutionUnsolvable`.
 
-Coherente con **ADR 0002**: solo los niveles curados del back tienen *Solution*; los tableros generados (front#36) no la tienen y quedan fuera de esta feature.
+Consistent with **ADR 0002**: only the back's curated levels have a *Solution*; generated boards (front#36) don't have one and are out of scope for this feature.
 
 ### Auth flow
 
@@ -254,7 +254,7 @@ Gating lives in the pure domain service `TierGating`: the first Tier is always o
 
 ### Player-generated boards (front#36) — application half
 
-"Generar nivel" lets the player request an **ephemeral, locally generated, solvable board**: board dimensions, a difficulty preset, an optional timer and an optional seed. This issue ships the **domain + application half** of the feature; the UI that collects the input and plays the board is a separate issue. The resulting artifact is a **GeneratedBoard** (*Tablero generado*, see the glossary in [`CONTEXT.md`](CONTEXT.md)): unlike a `Level`, it has no `LevelId`, is never scored, never persisted, and never touches `Progress` or the leaderboard — it is played and discarded, reproducible via `(seed, config)` within the same app version.
+"Generate level" lets the player request an **ephemeral, locally generated, solvable board**: board dimensions, a difficulty preset, an optional timer and an optional seed. This issue ships the **domain + application half** of the feature; the UI that collects the input and plays the board is a separate issue. The resulting artifact is a **GeneratedBoard** (see the glossary in [`CONTEXT.md`](CONTEXT.md)): unlike a `Level`, it has no `LevelId`, is never scored, never persisted, and never touches `Progress` or the leaderboard — it is played and discarded, reproducible via `(seed, config)` within the same app version.
 
 **[`GeneratorConfig`](lib/domain/arrows/value_objects/generator_config.dart)** is a defensive value object: it can only be built through the `GeneratorConfig.create` factory, which validates that `cols` and `rows` fall in the playable range **4–50 inclusive** (`minDimension`/`maxDimension`, adjustable in one place; the ceiling rose from 10 to 50 in front#66 once the zoom/pan viewport made large boards legible on mobile) and throws the semantic domain failure [`InvalidGeneratorConfigException`](lib/domain/core/exceptions/invalid_generator_config_exception.dart) otherwise. **front#101:** on top of the dimension range, generated boards are also constrained to the app-wide **9:16 portrait band** ([`AspectBand`](lib/domain/arrows/value_objects/aspect_band.dart), `cols/rows` inclusive in **[0.53, 0.68]**) so a board fills a phone screen without large side margins — a shape outside the band (e.g. a square or a too-wide portrait) throws the same `InvalidGeneratorConfigException`. The player chooses *intent* (size, difficulty, timer); the internal generator parameters are **derived** from the [`Difficulty`](lib/domain/arrows/value_objects/difficulty.dart) preset constants:
 
@@ -269,7 +269,7 @@ Gating lives in the pure domain service `TierGating`: the first Tier is always o
 
 **[`GenerateBoardUseCase`](lib/application/use_cases/generate_board_use_case.dart)** consumes the existing [`ILevelGenerator`](lib/domain/arrows/services/i_level_generator.dart) port (implemented by `GraphBoardGenerator`, whose DAG construction makes every board **solvable by construction**). If the player did not fix a seed, the use case completes it through an injectable `SeedSource` (defaulting to `Random`) — randomness is the only non-deterministic effect and it is isolated behind that seam, so tests inject a fixed source and `execute` stays pure given its input. The result is a [`GeneratedBoard`](lib/domain/arrows/value_objects/generated_board.dart) bundling the `ArrowBoard`, the **effective config** and the **seed used** (always surfaced: same seed + same config ⇒ identical board). The generator's graceful degradation (fewer arrows than requested on dense configs) is accepted as-is. The use case performs **no persistence** — no Hive boxes, no `Progress`, no score submission.
 
-> **Distribución homogénea.** `GraphBoardGenerator` coloca las flechas **interior-primero por bandas concéntricas** (spec [`2026-07-15-generator-band-density-design.md`](docs/superpowers/specs/2026-07-15-generator-band-density-design.md)): las centrales se colocan con el tablero vacío y el perímetro al final, de modo que la densidad del interior es comparable a la del borde (se elimina el anillo perimetral de los tableros grandes). El determinismo se conserva: mismo seed + misma config ⇒ mismo tablero.
+> **Homogeneous distribution.** `GraphBoardGenerator` places arrows **interior-first, by concentric bands** (spec [`2026-07-15-generator-band-density-design.md`](docs/superpowers/specs/2026-07-15-generator-band-density-design.md)): central ones are placed while the board is still empty and the perimeter last, so the interior's density is comparable to the edge's (removing the perimeter ring seen on large boards). Determinism is preserved: same seed + same config ⇒ same board.
 
 Presentation reaches the use case through `generateBoardUseCaseProvider` in the composition root ([`dependency_providers.dart`](lib/core/di/dependency_providers.dart)), which composes the `ILevelGenerator` port with the AOP logger (the seed is logged for reproducibility).
 
@@ -279,12 +279,12 @@ Per **ADR 0002**, the canonical auto-solve *Solution* is produced by the backend
 
 ### Player-generated boards (front#37) — UI half
 
-The player half of "Generar nivel" is a self-contained flow — **Home → configurator → generated game → post-game** — that reuses the campaign's play mechanics but is walled off from all persistence.
+The player half of "Generate level" is a self-contained flow — **Home → configurator → generated game → post-game** — that reuses the campaign's play mechanics but is walled off from all persistence.
 
 - **Zero-persistence firewall (structural).** [`GeneratedGameController`](lib/application/state/generated_game_controller.dart) (`AsyncNotifier<GameState>`) is composed with only `GenerateBoardUseCase` + `RemoveArrowUseCase` + `CommandInvoker` + `ITicker` — it has **no** `ILevelRepository`, `SubmitScoreUseCase` or `ILevelProgressRepository`, so it *cannot* write Hive, touch `Progress` or submit to the leaderboard. Unlike the campaign screen, the generated screen never watches `scoreSubmissionObserverProvider`, so clearing a board never fires a score POST. Victory is a dedicated `GeneratedCleared` state carrying only `MoveCount` — a mirror of `GameWon` with no `Score`/`Stars`/`LevelId`.
 - **Configurator.** [`ConfiguratorScreen`](lib/presentation/generated/configurator_screen.dart) collects the player's *intent*: one-tap **size presets** (S 6×10, M 9×16, L 14×25, XL 19×34 — [`kSizePresets`](lib/presentation/generated/size_presets.dart), retuned in front#101 to sit inside the 9:16 band; front#66) plus `cols`/`rows` steppers clamped to 4–50, a `Difficulty` segmented button, a timed toggle and an optional seed. [`ConfiguratorController`](lib/application/state/configurator_controller.dart) (an `autoDispose` `NotifierProvider`) drives an immutable [`ConfiguratorState`](lib/application/state/configurator_state.dart) (default shape 6×10) whose `isValid` **disables the "Play" button reactively** when the optional seed is not a whole number, dimensions fall outside the playable range, or the shape falls outside `AspectBand` (front#101).
 - **Game HUD.** [`GeneratedGameScreen`](lib/presentation/generated/generated_game_screen.dart) reuses the shared `BoardView` (extracted from `BoardWidget` so both flows render identically), the move counter, the countdown (only when the player enabled the timer), undo and audio. It shows the **seed subtly** at the foot with a **copy-to-clipboard** button (`SeedChip`) and hides hints, scores and stars entirely.
-- **Post-game.** [`GeneratedResultScreen`](lib/presentation/generated/generated_result_screen.dart) carries no score/stars/next-level. It surfaces the final seed (copyable) and the four required actions: **Otro tablero** (`anotherBoard` — same config, new seed), **Repetir** (`repeat` — same seed and config ⇒ identical board), **Cambiar parámetros** (back to the configurator) and **Salir** (Home).
+- **Post-game.** [`GeneratedResultScreen`](lib/presentation/generated/generated_result_screen.dart) carries no score/stars/next-level. It surfaces the final seed (copyable) and the four required actions: **Another board** (`anotherBoard` — same config, new seed), **Replay** (`repeat` — same seed and config ⇒ identical board), **Change parameters** (back to the configurator) and **Exit** (Home).
 
 Routes `/generate`, `/generate/play` and `/generate/result` live in `AppRouter`; `main.dart` overrides `generatedGameControllerProvider` with the real `GraphBoardGenerator`, the pure mechanics and `SystemTicker`.
 

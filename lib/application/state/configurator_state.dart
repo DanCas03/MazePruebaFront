@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../domain/arrows/value_objects/aspect_band.dart';
 import '../../domain/arrows/value_objects/difficulty.dart';
 import '../../domain/arrows/value_objects/generator_config.dart';
 
@@ -22,7 +23,7 @@ class ConfiguratorState extends Equatable {
 
   const ConfiguratorState({
     this.cols = 6,
-    this.rows = 8,
+    this.rows = 10,
     this.difficulty = Difficulty.medium,
     this.timed = false,
     this.seedText = '',
@@ -31,16 +32,18 @@ class ConfiguratorState extends Equatable {
   /// La semilla es válida si está vacía (aleatoria) o parsea a entero.
   bool get isSeedValid => seedText.isEmpty || int.tryParse(seedText) != null;
 
-  /// El formulario es jugable si dimensiones y semilla son válidas. Los
-  /// selectores acotan cols/rows al rango jugable, así que en la práctica la
-  /// única fuente de invalidez es una semilla no numérica; se comprueban ambas
-  /// por robustez (fuente única de la regla de habilitación del CTA "Jugar").
+  /// El formulario es jugable si dimensiones, aspecto y semilla son válidos.
+  /// Los selectores acotan cols/rows al rango jugable Y a la banda portrait
+  /// (front#101, [AspectBand]), así que en la práctica la única fuente de
+  /// invalidez es una semilla no numérica; se comprueban todas por robustez
+  /// (fuente única de la regla de habilitación del CTA "Jugar").
   bool get isValid =>
       isSeedValid &&
       cols >= GeneratorConfig.minDimension &&
       cols <= GeneratorConfig.maxDimension &&
       rows >= GeneratorConfig.minDimension &&
-      rows <= GeneratorConfig.maxDimension;
+      rows <= GeneratorConfig.maxDimension &&
+      AspectBand.contains(cols, rows);
 
   /// Semilla efectiva a pasar al caso de uso: null (aleatoria) si el texto está
   /// vacío. Solo debe leerse cuando [isValid] es true.

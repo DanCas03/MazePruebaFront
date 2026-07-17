@@ -9,6 +9,7 @@ import '../../domain/arrows/value_objects/generator_config.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
+import 'size_presets.dart';
 
 /// Configurador del flujo de tableros generados (front#37). El jugador elige su
 /// INTENCIÓN — tamaño (4–10), dificultad, contrarreloj y semilla opcional — y
@@ -130,19 +131,6 @@ class ConfiguratorScreen extends ConsumerWidget {
   }
 }
 
-/// Presets de tamaño del tablero (front#66). Atajos de un toque a los tamaños
-/// canónicos S/M/L/XL (hasta 50×50, el final de campaña / ADR 0003), sin obligar
-/// al jugador a pulsar el stepper decenas de veces. El stepper fino sigue
-/// disponible para tamaños intermedios. La fuente de los tamaños es esta tabla.
-typedef _Preset = ({String label, int cols, int rows});
-
-const List<_Preset> _kSizePresets = [
-  (label: 'S', cols: 6, rows: 8),
-  (label: 'M', cols: 10, rows: 12),
-  (label: 'L', cols: 25, rows: 25),
-  (label: 'XL', cols: 50, rows: 50),
-];
-
 class _PresetSelector extends StatelessWidget {
   final int selectedCols;
   final int selectedRows;
@@ -161,7 +149,7 @@ class _PresetSelector extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final p in _kSizePresets)
+        for (final p in kSizePresets)
           ChoiceChip(
             label: Text('${p.label} · ${l10n.configPresetTooltip(p.cols, p.rows)}'),
             selected: selectedCols == p.cols && selectedRows == p.rows,

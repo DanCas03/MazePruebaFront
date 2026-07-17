@@ -88,7 +88,7 @@ void main() {
       await container(ctx)
           .read(generatedGameControllerProvider.notifier)
           .startNew(GeneratorConfig.create(
-              cols: 4, rows: 4, difficulty: Difficulty.easy));
+              cols: 6, rows: 10, difficulty: Difficulty.easy));
       await tester.pump();
 
       expect(find.text('Otro tablero'), findsOneWidget);
@@ -127,7 +127,7 @@ void main() {
       await container(ctx)
           .read(generatedGameControllerProvider.notifier)
           .startNew(GeneratorConfig.create(
-              cols: 4, rows: 4, difficulty: Difficulty.easy));
+              cols: 6, rows: 10, difficulty: Difficulty.easy));
       await tester.pump();
 
       expect(find.textContaining('555'), findsOneWidget);

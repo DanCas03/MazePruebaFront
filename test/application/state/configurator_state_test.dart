@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_arrow_maze/application/state/configurator_state.dart';
+import 'package:flutter_arrow_maze/domain/arrows/value_objects/aspect_band.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/difficulty.dart';
 
 void main() {
@@ -31,13 +32,25 @@ void main() {
       expect(tooSmall.isValid, isFalse);
       expect(tooBig.isValid, isFalse);
     });
+
+    test('default configurator state is inside the aspect band', () {
+      const s = ConfiguratorState();
+      expect(AspectBand.contains(s.cols, s.rows), isTrue);
+    });
+
+    test('isValid is false when the current shape is out of band', () {
+      final s = const ConfiguratorState().copyWith(cols: 6, rows: 8); // 0.75
+      expect(s.isValid, isFalse);
+    });
   });
 
   group('ConfiguratorState · toConfig', () {
     test('traslada la intención del jugador a GeneratorConfig', () {
+      // front#101: 7×12 (0.583) está dentro de AspectBand; el 7×9 (0.778)
+      // original quedó fuera de banda tras el clamp del generador.
       const s = ConfiguratorState(
         cols: 7,
-        rows: 9,
+        rows: 12,
         difficulty: Difficulty.hard,
         timed: true,
         seedText: '42',
@@ -46,7 +59,7 @@ void main() {
       final config = s.toConfig();
 
       expect(config.cols, 7);
-      expect(config.rows, 9);
+      expect(config.rows, 12);
       expect(config.difficulty, Difficulty.hard);
       expect(config.timed, isTrue);
       expect(config.seed, 42);

@@ -1,5 +1,26 @@
 # AI History — MazePruebaFront
 
+## Entrada 118 — feat(front/generators): dense themed fill — interior-first, bend bias, gap-fill passes (#118)
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** Task 5 del plan #118: `GraphBoardGenerator.generateThemedDense`, el modo de relleno denso del generador temático. Los niveles temáticos serán tableros con la forma de la figura (silueta `MaskedSpace`), así que el relleno debe verse SÓLIDO y artesanal (benchmark: el conejo congelado). El intento anterior degeneró en pilas de flechas rectas cortas paralelas; esta vez el contrato son 6 tests guardianes sobre las máscaras REALES (`heart` 36×24, 608 celdas; `happy_face` 24×22, 392 celdas con región de detalle `features` de 64).
+**Herramienta de IA utilizada:** Claude Code (Fable 5, rol frontend-architect, ejecución vía subagente SDD)
+**Prompt o instrucción proporcionada:** > "Task 5: modo denso del generador temático — mismo invariante DAG, interior-first + sesgo a codos + pasadas de relleno; guardianes primero (densidad ≥0.90 y detalle 100%, ≥40% codos, anti-columnas, huecos al borde ≤1.5, solvencia, determinismo); no debilitar umbrales; renderizar y MIRAR previews ASCII."
+**Resultado obtenido:**
+- **Tests primero (RED):** `test/infrastructure/generators/graph_board_themed_dense_test.dart` — 8 tests AAA en español sobre las máscaras reales leídas de disco (parser `mask_spec.dart` + `validation.dart` de tooling). Definiciones congeladas en la cabecera: codo = cambio de dirección entre celdas consecutivas del CUERPO (una flecha de 2 celdas nunca tiene codo); terna anti-columnas = 3 rectas de la misma `headDirection` en líneas paralelas contiguas con intersección común de proyecciones; huecos = distancia BFS de cada celda libre al borde de su región (borde = profundidad 0), media ≤ **1.5** (umbral del plan, verificado alcanzable — quedó en 1.33/0.125, sin necesidad de relajarlo); densidad = mejor seed determinista de 0..99 (primero detalle 100%, luego cobertura, luego seed más baja) y sobre ese tablero corren todos los guardianes de forma.
+- **Implementación (GREEN), mismo invariante DAG intocado** (carril de salida libre en el momento de colocar, `occupied` global, carriles sobre el `RectSpace` completo ⇒ carril-libre en generación ⟹ carril-libre en juego sobre `MaskedSpace`). La versión literal del plan (orden estático interior-primero por BFS) se quedó corta: dejaba bolsas interiores imposibles de rellenar (heart: 39 celdas libres a media 3.2 del borde) porque los carriles de las celdas profundas "morían" esperando su turno del barrido. Refuerzos medidos e iterados con un escáner temporal de métricas:
+  1. **Pasada principal DINÁMICA (la clave):** se mantiene por celda libre el conjunto de carriles aún libres (actualización incremental por rayos desde cada cuerpo colocado — la ocupación solo crece) y siempre se coloca primero la celda MÁS AMENAZADA (menos carriles libres; empate → mayor coste estático de carril = más interior/en sombra de una región de detalle).
+  2. **Celda-primero** (como `_bentArrowFromPool`): dirección sorteada entre las factibles, no a priori — la hipótesis de degeneración por dirección-primero se confirmó.
+  3. **Sesgo a codos** (`bendBias` 0.7) en la caminata auto-evitante (`_growBentBody`), con longitudes objetivo 3..maxPathLen (los cuerpos de 2 emergen solos de los estancamientos).
+  4. **Anti-varado:** entre direcciones factibles se prefiere el cuerpo que no aísle celdas libres (aislada = imposible de cubrir, cuerpo mínimo 2), con recorte de cola (`_trimToMinStranding`).
+  5. **Rescate (`_rescueAsBody`):** una celda amenazada que no puede ser cabeza (p. ej. su único vecino libre cae sobre su propio carril) se cubre como SEGUNDA celda del cuerpo de un vecino — su última oportunidad.
+  6. **Veto anti-columnas en generación:** un candidato recto que completaría una terna se reintenta con doblez forzado o se descarta (índice incremental de rectas colocadas).
+  7. **Pasadas de relleno** extremo-primero (menos vecinos libres primero) con `gapFillMaxLen=3`, hasta pasada sin progreso; `arrowCount` es objetivo solo de la pasada principal.
+- **Números finales (mejor seed de 0..99):** heart seed 98 → **602/608 (99.0%)**, 197 flechas, 48.2% con codo, huecos 1.33 (6 libres), sin ternas; happy_face seed 41 → **384/392 (98.0%)**, `features` **64/64**, 129 flechas, 48.1% con codo, huecos 0.125 (8 libres), sin ternas. Media sobre 100 seeds: 97.3%/96.3%; 100/100 seeds ≥90% en ambas. `validateCandidate` OK y determinismo verificados. Previews ASCII de ambos tableros inspeccionados a ojo (denso, longitudes mezcladas 2–6, codos por todas partes, sin pilas mecánicas).
+- `generateThemed` y `generate` intactos (ni una línea; ADR-0005 a salvo): suite completa `test/infrastructure/generators/` **43/43 verde**, `flutter analyze` limpio.
+- README no modificado: método de infraestructura consumido por el pipeline de producción temática (se cablea en la task siguiente); sin contrato público nuevo.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 117 — feat(front/tooling): heart mask at 36x24 (#118)
 
 **Fecha:** 2026-07-17

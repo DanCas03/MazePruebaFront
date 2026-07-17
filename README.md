@@ -123,6 +123,33 @@ Los 3 fixtures congelados viven en `tool/level_production/themed/` (comando
 reproducible: `--masks-dir tool/level_production/masks --seeds 0..150 --maxlen 8`)
 y alimentan la Sección temática del back (reemplazan el smoke `t-smoke`).
 
+### Niveles temáticos — la silueta ES el tablero (front#118)
+
+Un nivel temático se juega sobre la **figura**, no sobre su caja: fuera de la
+silueta **no hay tablero** — no se pinta nada y no se aceptan toques. El wire
+del nivel trae, junto al board rectangular, una **Silueta**
+([`Level.silhouette`](lib/domain/board/entities/level.dart)): un mapa rol→celdas
+del fill de la figura (nulo en campaña; `silhouetteUnion` da su unión).
+
+El montaje ocurre en un único **seam** de la capa de aplicación,
+`GameController._mountedBoard`, invocado en cada arranque, reinicio, undo y demo
+de pista: si el nivel declara silueta, su board se **re-monta** (`ArrowBoard.remountedOn`)
+sobre un [`MaskedSpace`](lib/domain/game_core/space/masked_space.dart) con la
+unión de la silueta como celdas activas; si no la declara —campaña—, conserva
+intacto el `RectSpace` del wire. Como una celda enmascarada es **frontera**
+(`step` → `null`), la mecánica de salida (`exitLane`/`canExit`) opera sobre
+cualquier figura sin tocar una línea de sus consumidores (OCP), y presentación
+se adapta sola: `BoardSurfacePainter` toma su camino celda a celda y
+`BoardWidget` veta el toque con `space.contains` antes de resolver flecha alguna.
+El invariante *flechas ⊆ silueta* lo garantiza el constructor de `Level`, así que
+la figura nunca deja una flecha fuera del tablero.
+
+Esto **revierte la decisión "caja completa"** de front#99/#107 **solo** para los
+temáticos con silueta: aquella evitaba los agujeros a mitad de tablero que dejaba
+recortar por las celdas de las flechas (front#88), pero la silueta explícita ya
+incluye las celdas interiores de la figura, así que la forma se dibuja entera y
+sin huecos. La campaña no cambia: mismo `RectSpace`, mismo render.
+
 ### Campaña remota (front#8)
 
 Los niveles de la campaña ya no se generan localmente: los sirve el back oficial. `GET /levels` devuelve el Catálogo en orden de juego —una lista de `CatalogEntry { LevelId id; LevelSection section }`, con `section` aditivo (ausente ⇒ `campaign`; ver *Themed section* abajo)— y `GET /levels/:id` el nivel completo (`ArrowBoard` + arrows). La app depende del puerto [`ILevelRepository`](lib/domain/board/repositories/i_level_repository.dart) (`listCatalog()` + `getLevel()`); la implementación [`RemoteLevelRepository`](lib/infrastructure/repositories/remote_level_repository.dart) es network-first con fallback a caché: con red, refetchea y hace write-through a una box Hive `levels_cache`; sin red (o ante un error de servidor no-404), sirve la copia cacheada. Un 404 del back para un nivel concreto es autoritativo (`LevelNotFound`) y no consulta la caché.

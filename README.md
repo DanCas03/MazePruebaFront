@@ -5,6 +5,7 @@
 ![Dart](https://img.shields.io/badge/Dart-%3E%3D3.3-0175C2?logo=dart&logoColor=white)
 ![Riverpod](https://img.shields.io/badge/State-Riverpod-3F51B5)
 ![Hive CE](https://img.shields.io/badge/Storage-Hive%20CE-FFCA28)
+![Tests](https://img.shields.io/badge/tests-unit%20%2B%20widget-brightgreen)
 ![License](https://img.shields.io/badge/license-private-lightgrey)
 
 > CI runs `flutter analyze` + `flutter test` on every PR and on `main` (see [.github/workflows/ci.yml](.github/workflows/ci.yml)); `main` requires a green build plus one review to merge.
@@ -19,7 +20,13 @@ Arrow Maze is the client half of a two-repository project (the [backend API](htt
 
 ## Screenshots
 
-Screenshots and a gameplay GIF are pending. To see the UI (dark-neon palette, glassmorphism panels, 3-D arrows, light/dark following the system theme), run the app with `flutter run`.
+Captured from the web build (`docker compose up`) against a freshly seeded backend. The dark-neon palette and glowing 3-D arrows are procedural — `ArrowPainter`/`ArrowWidget`, no image assets.
+
+| | | |
+|---|---|---|
+| ![Home](docs/screenshots/home.jpg) Home | ![Level selection](docs/screenshots/level-selection.jpg) Level selection (earned stars) | ![Gameplay](docs/screenshots/gameplay.jpg) Gameplay |
+| ![Victory](docs/screenshots/victory.jpg) Victory | ![Defeat](docs/screenshots/defeat.jpg) Defeat (time expired) | ![Themed level](docs/screenshots/themed-level.jpg) Themed level (figure board) |
+| ![Settings](docs/screenshots/settings.jpg) Settings (audio + language) | ![Per-level leaderboard](docs/screenshots/leaderboard.jpg) Per-level leaderboard | ![Global leaderboard](docs/screenshots/global-leaderboard.jpg) Global ranking |
 
 ## Architecture
 
@@ -43,11 +50,17 @@ lib/
 ├── presentation/    Screens, Widgets, Painters + providers/ (the only place infra is built)
 │   ├── auth/        Login/register screens (LoginScreen, RegisterScreen) and shared auth widgets
 │   └── leaderboard/ LeaderboardScreen (per-level ranking view), GlobalLeaderboardScreen (global player ranking)
-├── core/            Cross-cutting: aspects/ (logger), auth/ (AuthGate route guard), config/ (AppConfig), network/ (DioClient, AuthTokenInterceptor), theme/, router/
+├── core/            Cross-cutting: aspects/ (logger), auth/ (AuthGate route guard), config/ (AppConfig), di/ (composition root), network/ (DioClient, AuthTokenInterceptor), theme/, router/
 └── l10n/            i18n (front#4): app_en.arb / app_es.arb + generated AppLocalizations delegate (see Tooling → Localization)
 ```
 
 The rule that keeps the boundary honest: `domain/` imports nothing from Flutter, Hive, or Riverpod, and every Riverpod provider that constructs a concrete `infrastructure/` class lives in `presentation/providers/`.
+
+### Diagrams
+
+[`docs/diagrams/class-diagram.png`](docs/diagrams/class-diagram.png) — class diagram of the main entities, use cases, ports, and adapters, color-coded by Clean Architecture layer (Presentation / Application / core-aspects / Infrastructure / Domain), with the GoF patterns from the table below called out inline:
+
+![Class diagram](docs/diagrams/class-diagram.png)
 
 `BoardSpace` (`domain/game_core/space/`) concentrates the board's geometry — adjacency, exit lanes, the frontier a snake-arrow exits through — behind `step`/`contains` primitives; `RectSpace` is the only production implementation, and `ArrowBoard` holds a `space: BoardSpace` instead of raw `cols`/`rows` (ADR-0005). A second, test-only implementation (`HoledRectSpace`, holed board) certifies the seam is real: `ArrowBoard.canExit` runs over it with zero consumer changes. Every space also exposes a `BoundingBox get bounds` (default derived from `allCells`, `RectSpace` in O(1)); `ArrowBoard.cols/rows` delegate to it instead of downcasting to `RectSpace`, so a non-rectangular geometry no longer breaks the aggregate (#85, Fase 1 toward arbitrary board shapes and themed silhouettes). A second production implementation, `MaskedSpace`, extends `RectSpace` with a `Set<Position> activeCells` (an arbitrary subset of the cols×rows box): `contains` is in-box AND in-set, `allCells`/`cellCount` reflect the mask, and a masked-out cell is a frontier (a `step` landing on it returns null) — the production sibling of `HoledRectSpace` that renders silhouettes, certified over `ArrowBoard.canExit` with zero consumer changes (#86, Fase 1).
 
@@ -258,7 +271,7 @@ Gating lives in the pure domain service `TierGating`: the first Tier is always o
 
 > **Distribución homogénea.** `GraphBoardGenerator` coloca las flechas **interior-primero por bandas concéntricas** (spec [`2026-07-15-generator-band-density-design.md`](docs/superpowers/specs/2026-07-15-generator-band-density-design.md)): las centrales se colocan con el tablero vacío y el perímetro al final, de modo que la densidad del interior es comparable a la del borde (se elimina el anillo perimetral de los tableros grandes). El determinismo se conserva: mismo seed + misma config ⇒ mismo tablero.
 
-Presentation reaches the use case through `generateBoardUseCaseProvider` in the composition root ([`dependency_providers.dart`](lib/presentation/providers/dependency_providers.dart)), which composes the `ILevelGenerator` port with the AOP logger (the seed is logged for reproducibility).
+Presentation reaches the use case through `generateBoardUseCaseProvider` in the composition root ([`dependency_providers.dart`](lib/core/di/dependency_providers.dart)), which composes the `ILevelGenerator` port with the AOP logger (the seed is logged for reproducibility).
 
 Per **ADR 0002**, the canonical auto-solve *Solution* is produced by the backend for curated levels only; generated boards never reach the backend, carry no Solution, and the hint/auto-solve feature is explicitly out of scope for this flow — solvability is guaranteed by construction instead.
 
@@ -279,19 +292,40 @@ Routes `/generate`, `/generate/play` and `/generate/result` live in `AppRouter`;
 
 ## Design Patterns
 
+Gang of Four patterns, distributed across the three classic categories. Each carries an inline comment at its source stating the problem it solves, per the project's pattern-usage convention.
+
+### Creational
+
+| Pattern | Where | Problem it solves |
+|---|---|---|
+| **Singleton** | [`audio_service.dart`](lib/infrastructure/audio/audio_service.dart) | `AudioService` keeps exactly one instance for the app's lifetime (a lazy `factory` constructor backed by a static field, plus a single Riverpod provider), so mute state and playback never fork across callers. |
+
+### Structural
+
+| Pattern | Where | Problem it solves |
+|---|---|---|
+| **Adapter** | [`logger_service_adapter.dart`](lib/core/aspects/logger_service_adapter.dart), [`secure_auth_token_repository.dart`](lib/infrastructure/repositories/secure_auth_token_repository.dart), [`remote_auth_repository.dart`](lib/infrastructure/repositories/remote_auth_repository.dart), [`remote_progress_repository.dart`](lib/infrastructure/repositories/remote_progress_repository.dart), [`remote_leaderboard_repository.dart`](lib/infrastructure/repositories/remote_leaderboard_repository.dart), [`remote_level_repository.dart`](lib/infrastructure/repositories/remote_level_repository.dart) | Wraps an external package/API behind a domain port, isolating the rest of the app from its concrete shape: `logger` behind `ILoggerService`, `flutter_secure_storage` behind `IAuthTokenStorage`, Dio behind `IAuthRepository` (`RemoteAuthRepository` translates HTTP/`DioException` into `AuthToken`/`AuthFailure`), behind `IRemoteProgressRepository` (`RemoteProgressRepository` maps `LevelProgress` to/from the `/progress` JSON shape), behind `ILeaderboardRepository` (`RemoteLeaderboardRepository` maps `ScoreEntry` to the `/scores` JSON shape) and behind `ILevelRepository` (`RemoteLevelRepository` maps the back's `/levels` JSON to `Level`, network-first with a `levels_cache` fallback). |
+| **Facade** | [`audio_service.dart`](lib/infrastructure/audio/audio_service.dart) | `AudioService` hides players, asset-path lookup, and the **independent** mute rules (master / music / SFX) behind the single [`IAudioService`](lib/application/audio/i_audio_service.dart) entry point. The concrete `audioplayers` package sits behind the [`IAudioBackend`](lib/infrastructure/audio/i_audio_backend.dart) adapter, and mute state persists via [`IAudioSettingsStore`](lib/infrastructure/audio/i_audio_settings_store.dart) (Hive). |
+| **Decorator** | [`logging_audio_decorator.dart`](lib/infrastructure/audio/logging_audio_decorator.dart) | Wraps `IAudioService` to log every audio operation through `ILoggerService` without touching the facade — the second cross-cutting aspect, applied by composition at the composition root. |
+
+### Behavioral
+
 | Pattern | Where | Problem it solves |
 |---|---|---|
 | **Command** | [`command.dart`](lib/application/commands/command.dart), [`command_invoker.dart`](lib/application/commands/command_invoker.dart), [`remove_arrow_command.dart`](lib/application/commands/remove_arrow_command.dart) | Models a move as a reversible operation. The invoker keeps history and delegates `undo` back to each command, so reversal logic lives with the operation. |
-| **Aggregate Root** | [`arrow_board.dart`](lib/domain/arrows/entities/arrow_board.dart) | `ArrowBoard` is the single entry point to the arrows; lookups are private, so no consumer iterates the arrow list outside the root. |
-| **Adapter** | [`logger_service_adapter.dart`](lib/core/aspects/logger_service_adapter.dart), [`secure_auth_token_repository.dart`](lib/infrastructure/repositories/secure_auth_token_repository.dart), [`remote_auth_repository.dart`](lib/infrastructure/repositories/remote_auth_repository.dart), [`remote_progress_repository.dart`](lib/infrastructure/repositories/remote_progress_repository.dart), [`remote_leaderboard_repository.dart`](lib/infrastructure/repositories/remote_leaderboard_repository.dart), [`remote_level_repository.dart`](lib/infrastructure/repositories/remote_level_repository.dart), [`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart) | Wraps an external package/API behind a domain port, isolating the rest of the app from its concrete shape: `logger` behind `ILoggerService`, `flutter_secure_storage` behind `IAuthTokenStorage`, Dio behind `IAuthRepository` (`RemoteAuthRepository` translates HTTP/`DioException` into `AuthToken`/`AuthFailure`), behind `IRemoteProgressRepository` (`RemoteProgressRepository` maps `LevelProgress` to/from the `/progress` JSON shape), behind `ILeaderboardRepository` (`RemoteLeaderboardRepository` maps `ScoreEntry` to the `/scores` JSON shape) and behind `ILevelRepository` (`RemoteLevelRepository` maps the back's `/levels` JSON to `Level`, network-first with a `levels_cache` fallback), and the token header injection behind a Dio `Interceptor`. |
-| **AOP + Adapter** | [`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart) | `AuthTokenInterceptor` (a Dio `Interceptor`) injects `Authorization: Bearer <token>` on every outgoing request by reading `IAuthTokenStorage`, so authenticated calls never repeat that boilerplate in application code. |
 | **Observer** | [`leaderboard_providers.dart`](lib/application/providers/leaderboard_providers.dart) | `scoreSubmissionObserverProvider` listens to `gameControllerProvider` and reacts to `GameWon` by submitting the score, decoupling `GameController` from the leaderboard concern entirely. |
 | **Strategy** | [`graph_board_generator.dart`](lib/infrastructure/generators/graph_board_generator.dart) | `GraphBoardGenerator` implements `ILevelGenerator` as a swappable generation algorithm (a DAG that guarantees solvability). No longer feeds the campaign (front#8 moved that to the back's official levels); it now powers the ephemeral player-generated boards consumed by `GenerateBoardUseCase` (front#36). |
-| **Composition Root (DI)** | [`dependency_providers.dart`](lib/presentation/providers/dependency_providers.dart) | The one place concrete infrastructure is instantiated and injected as abstractions. |
-| **Custom Painter** | [`arrow_painter.dart`](lib/presentation/game/painters/arrow_painter.dart) | Procedural rendering of arrows with a 3-D glow, avoiding image assets. |
-| **Facade + Singleton** | [`audio_service.dart`](lib/infrastructure/audio/audio_service.dart) | `AudioService` is the single entry point to the audio subsystem behind the [`IAudioService`](lib/application/audio/i_audio_service.dart) port: it maps game events (`GameSound`) to asset paths and applies the **independent** mute rules (master / music / SFX), hiding players and formats. One instance for the app's lifetime (lazy Singleton + a single Riverpod provider). The concrete `audioplayers` package sits behind the [`IAudioBackend`](lib/infrastructure/audio/i_audio_backend.dart) adapter, and mute state persists via [`IAudioSettingsStore`](lib/infrastructure/audio/i_audio_settings_store.dart) (Hive). |
-| **Decorator (AOP)** | [`logging_audio_decorator.dart`](lib/infrastructure/audio/logging_audio_decorator.dart) | Wraps `IAudioService` to log every audio operation through `ILoggerService` without touching the facade — the second cross-cutting aspect, applied by composition. |
-| **Null Object** | [`silent_audio_service.dart`](lib/application/audio/silent_audio_service.dart) | `SilentAudioService` is the default `audioServiceProvider` value: a no-op `IAudioService` so widget tests and un-composed layers run without the real (Hive- and player-backed) audio. |
+
+### Other patterns & idioms (not GoF)
+
+Real and worth documenting, but not counted toward the GoF total above — conflating them with it would overstate GoF coverage:
+
+- **Aggregate Root** (DDD tactical pattern) — [`arrow_board.dart`](lib/domain/arrows/entities/arrow_board.dart) — `ArrowBoard` is the single entry point to the arrows; lookups are private, so no consumer iterates the arrow list outside the root.
+- **Composition Root / DI** — [`dependency_providers.dart`](lib/core/di/dependency_providers.dart) — the one place concrete infrastructure is instantiated and injected as abstractions.
+- **Custom Painter** (Flutter framework extension point) — [`arrow_painter.dart`](lib/presentation/game/painters/arrow_painter.dart) — procedural rendering of arrows with a 3-D glow, avoiding image assets.
+- **Null Object** — [`silent_audio_service.dart`](lib/application/audio/silent_audio_service.dart) — `SilentAudioService` is the default `audioServiceProvider` value: a no-op `IAudioService` so widget tests and un-composed layers run without the real (Hive- and player-backed) audio.
+
+`AuthTokenInterceptor` ([`auth_token_interceptor.dart`](lib/core/network/auth_token_interceptor.dart)) is documented under [AOP — Cross-Cutting Concerns](#aop--cross-cutting-concerns) rather than here: it plugs into Dio's own `Interceptor` extension point to inject a header, an AOP mechanism rather than a GoF Adapter bridging two incompatible interfaces.
 
 ## SOLID Principles
 
@@ -314,7 +348,7 @@ ArrowBoard executeCommand(ICommand command, ArrowBoard board) {
 **Dependency Inversion.** `application/` and `presentation/` depend on abstractions; concretes are injected at the composition root:
 
 ```dart
-// presentation/providers/dependency_providers.dart
+// core/di/dependency_providers.dart
 final loggerServiceProvider = Provider<ILoggerService>((_) => LoggerServiceAdapter());
 final levelGeneratorProvider = Provider<ILevelGenerator>((_) => GraphBoardGenerator());
 ```
@@ -333,6 +367,8 @@ abstract interface class ILoggerService {
 ```
 
 A **second aspect** follows the same discipline for audio: [`LoggingAudioDecorator`](lib/infrastructure/audio/logging_audio_decorator.dart) wraps the `IAudioService` facade and routes every play / mute / lifecycle call through the same `ILoggerService`. Audio telemetry is added by composition at the composition root, so the facade and the presentation observer that fires sounds stay free of logging code. The observer itself keeps the dependency rule intact: the game screen reacts to existing `GameState` signals (`exitNonce`, `blockedNonce`, `GameWon`, `GameLost`) via `ref.listen` and translates them to `GameSound` events — the domain and application layers never import the concept of "sound".
+
+A **third aspect** covers request authentication: [`AuthTokenInterceptor`](lib/core/network/auth_token_interceptor.dart), a Dio `Interceptor` registered once in [`dio_client.dart`](lib/core/network/dio_client.dart), reads the current session's token and injects the `Authorization: Bearer <token>` header on every outgoing request. No repository or use case builds that header itself — signing is cross-cutting, applied uniformly by hooking into Dio's own interceptor chain rather than by threading a token parameter through every authenticated call.
 
 ## Game Mechanic
 
@@ -376,20 +412,22 @@ Opens the game at `http://localhost:8080` in the browser. Hot reload isn't autom
 ## Running Tests
 
 ```bash
-flutter test       # unit & widget tests (AAA, mockito mocks) — 255 tests
+flutter test       # unit & widget tests (AAA, mockito mocks) — 146 test files, 720+ test()/testWidgets() cases
 flutter analyze    # static analysis — expected: 0 issues
 ```
 
+Two tiers: **unit** tests (116 files under `domain/`, `application/`, `infrastructure/`, `core/`) mock every external dependency per AAA; **widget** tests (30 files under `test/presentation/`) drive Flutter's own widget-test harness for screens, widgets, and painters. There is no separate integration-test tier (no `integration_test/`) and no consumer-driven contract testing (Pact) against the backend — the per-level and global leaderboard, level catalog, and solution endpoints are exercised only through the backend's own e2e suite and manual verification, not a shared contract test. Both are candidates for a later milestone rather than something silently skipped.
+
 ## AI Usage Documentation
 
-This client was built with AI assistance (Claude Code), and every significant fragment is recorded in [`AI_HISTORY.MD`](AI_HISTORY.MD) at the repository root. Each entry captures the task, the tool, the prompt, the resulting design decisions, and a field for manual edits by the team. It traces the build sublote by sublote, from the domain model through state management, persistence, the level generator, and the UI.
+This client was built with AI assistance (Claude Code). [`AI_USAGE.md`](AI_USAGE.md) is the course-required summary: tools and roles used, a curated log of the most significant tasks (prompt, result, team modifications, lessons learned), and a critical evaluation (approximate share of AI-assisted code, concrete cases where the AI was wrong and how that was caught, and a team reflection). The complete fragment-by-fragment ledger — every significant change, in commit order — lives in [`AI_HISTORY.MD`](AI_HISTORY.MD).
 
 ## Contributing
 
 - **Commits** follow [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>` in the imperative present, one significant fragment per commit (for example, `feat(front/application): add CommandInvoker`).
 - **Branching**: feature work happens on a `feat/<name>` branch cut from `main`; this milestone lives on `feat/main-sprint`.
 - **Pull requests**: open a PR against `main`, ensure `flutter test` and `flutter analyze` are green, and update `AI_HISTORY.MD` (and this README when public behavior changes) as part of the change.
-- **CI/CD** is not configured yet; running the test suite and analyzer locally is the current gate.
+- **CI**: every pull request and every push to `main` runs the [`CI` workflow](.github/workflows/ci.yml) (`flutter pub get` → `flutter analyze` → `flutter test` on Ubuntu); the badge at the top of this README reflects its current status on `main`. Run the same two commands locally to reproduce the gate.
 
 ## License
 

@@ -1,5 +1,14 @@
 # AI History — MazePruebaFront
 
+## Entrada 124 — docs: actualizar README con las specs del enunciado, capturas reales y AI_USAGE.md
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** Actualizar `README.md` para cubrir la estructura mínima exigida por el enunciado del proyecto semestral (badges, Screenshots, diagrama embebido, patrones GoF por categoría, AOP, AI Usage Documentation) y crear el `AI_USAGE.md` exigido por la Sección 7. El enunciado pide además las capturas de pantalla que faltaban.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5); orquestación multi-agente (`ultracode`/Workflow) para el research paralelo — dos agentes minaron `AI_HISTORY.MD` hacia `AI_USAGE.md` y dos auditaron la clasificación GoF de los patrones, el conteo de tests y la consistencia del badge de CI contra el código real.
+**Prompt o instrucción proporcionada:** > "Necesito que actualices el README de ambos repos con todas las especificaciones que existen en el enunciado del proyecto semestral incluyendo las capturas que hacen falta" (+ "ultracode" para la fase de research del README).
+**Resultado obtenido:** Los patrones de diseño se reorganizan en tres categorías GoF (Creacional/Estructural/Comportamiento) verificadas contra el código real por la auditoría — se descarta la reclamación de "State" sobre `GameState` (es un ADT sellado, no State polimórfico) que aparecía en el diagrama del usuario. Se embebe `docs/diagrams/class-diagram.png` (diagrama provisto por el usuario, no generado en esta sesión) en el README. Se agrega una sección Screenshots con 9 capturas reales (home, selección de nivel, juego, victoria, derrota, nivel temático, ajustes, ranking por nivel, ranking global), obtenidas corriendo el stack con `docker compose` y jugando la app vía Chrome. Se corrigen dos referencias a rutas obsoletas (`dependency_providers.dart` se movió a `core/di/`), la inconsistencia entre el badge de CI y la sección Contributing (que afirmaba "CI/CD no configurado"), y el conteo de tests desactualizado (255 → 146 archivos / 720+ casos). Se crea `AI_USAGE.md`: herramientas y roles usados, log curado de 15 tareas significativas (prompt/resultado/lecciones) y evaluación crítica honesta con casos concretos donde la IA se equivocó.
+**Modificaciones realizadas por el equipo:** Un subagente auxiliar de esta misma tarea modificó accidentalmente este archivo (rellenó el campo "Modificaciones realizadas por el equipo" de ~80 entradas anteriores con texto fabricado); detectado vía `git diff` contra HEAD y revertido íntegramente antes de commitear. Ningún otro contenido de este archivo fue alterado por esta tarea salvo la presente entrada.
+
 ## Entrada 123 — Feature #102: auto-solver explícito en toda la campaña, con advertencia de confirmación y ritmo escalado por tamaño
 
 **Fecha:** 2026-07-17

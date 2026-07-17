@@ -1,5 +1,20 @@
 # AI History — MazePruebaFront
 
+## Entrada 117 — feat(front/tooling): heart mask at 36x24 (#118)
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** Task 6 del plan #118 (reordenada ANTES de la Task 5, porque los tests guardianes del generador denso deben calibrarse contra la máscara final): redibujar `tool/level_production/masks/heart.mask` de 24×16 a **36×24** (×1.5 en ambos ejes) para que el corazón tenga resolución suficiente cuando la silueta SEA el tablero. Solo cambia el bloque `grid:`; cabecera y leyenda (`H = heart : #FF4D6D`) intactas. El relleno con flechas y la regeneración del fixture quedan para las Tasks 5/7.
+**Herramienta de IA utilizada:** Claude Code (Fable 5, rol frontend-architect, ejecución vía subagente SDD)
+**Prompt o instrucción proporcionada:** > "Task 6 del plan #118: máscara del corazón a 36×24 — upscale + suavizado manual de escalones; juzgar la forma leyendo el grid ASCII (el preview con flechas llega en la Task 7)."
+**Resultado obtenido:**
+- En vez de parchear un upscale nearest-neighbour ×1.5 (que duplica una fila/columna de cada dos y produce escalones visibles), se **redibujó** la silueta muestreando la curva implícita del corazón `(x²+y²−1)³ − x²y³ ≤ 0` sobre los centros de celda del grid 36×24 (misma técnica que la Entrada 112 usó a 24×16), con ventana vertical afinada a ojo (`y ∈ [1.17, −0.99]`) para que la punta caiga exactamente en la fila 23 y los lóbulos llenen la fila 0.
+- **Retoque manual (el paso de artesanía):** la curva cruda dejaba la muesca superior de solo 1 fila de profundidad (la fila 1 salía maciza), lo que se lee como una mella y no como el cusp de un corazón; se vaciaron las 2 columnas centrales de la fila 1 para un cusp de 2 filas que se estrecha 4→2 celdas. El resto salió limpio de fábrica: hombros circulares (pasos de borde 2,1,0 hacia el ancho máximo), taper inferior monótono (pasos de 1 columna que aceleran a 2 cerca de la punta, sin jitter de escalera) y punta de 2 celdas (filas 22–23: 4→2).
+- Silueta verificada por script: **simétrica** espejo (todas las filas palíndromas), **una sola región conexa** de **608 celdas** (área ×2.34 sobre las 260 originales, coherente con ×2.25 de escala), **cero agujeros interiores**, margen de 1 celda preservado (ancho máximo 34/36), sin espacios finales en ninguna fila (el parser toma las filas verbatim).
+- **Test de caracterización (AAA, en español como los vecinos de `themed_producer_test.dart`):** nuevo grupo en `test/tool/level_production/mask_spec_test.dart` que lee la máscara REAL de disco y congela `name`, `cols=36`, `rows=24`, 1 región, rol/hex y `cellCount=608` — cualquier retoque futuro del dibujo debe actualizarlo a consciencia.
+- **Verificación:** `flutter test test/tool/level_production/` → **40/40 verde** (incluye el golden del productor temático, que usa una máscara mini propia y no se ve afectado). `flutter analyze` → `No issues found!`.
+- README no modificado: la máscara es tooling interno sin contrato público nuevo; el comportamiento visible (nivel temático regenerado) llega con las Tasks 5/7.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 116 — feat(front/state): mount themed levels on their silhouette MaskedSpace (#118)
 
 **Fecha:** 2026-07-17

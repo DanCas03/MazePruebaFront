@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -271,6 +273,29 @@ HH
           contains('no cells'),
         )),
       );
+    });
+  });
+
+  group('heart.mask — caracterización de la silueta (front#118)', () {
+    test('congela dimensiones 36x24 y cellCount de la máscara del corazón',
+        () {
+      // Arrange: la máscara real de producción, leída del disco.
+      final text = File('tool/level_production/masks/heart.mask')
+          .readAsStringSync();
+
+      // Act
+      final spec = parseMaskSpec(text);
+
+      // Assert: cualquier retoque del dibujo debe actualizar estos valores
+      // a consciencia (test de caracterización de la figura).
+      expect(spec.name, 'heart');
+      expect(spec.cols, 36);
+      expect(spec.rows, 24);
+      expect(spec.regions, hasLength(1));
+      final heart = spec.regions.single;
+      expect(heart.role, 'heart');
+      expect(heart.hex, '#FF4D6D');
+      expect(heart.cells, hasLength(608));
     });
   });
 }

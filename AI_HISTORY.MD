@@ -1,5 +1,14 @@
 # AI History — MazePruebaFront
 
+## Entrada 125 — docs: refrescar el diagrama de clases y traducir el README completo a inglés
+
+**Fecha:** 2026-07-17
+**Tarea o problema abordado:** El diagrama de clases embebido en el README (Entrada 124) quedó desactualizado tras cambios recientes de diseño; el usuario generó una versión nueva en Lucid y la dejó en la raíz del workspace junto a la del back. Además, una auditoría del README detectó que la sección Tooling (~150 líneas: producción de niveles, máscaras temáticas, silueta, campaña remota, auto-solver) seguía en español pese a que el resto del documento ya está en inglés — inconsistencia de idioma nunca antes señalada.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5)
+**Prompt o instrucción proporcionada:** > "Cambia la imagenes de los diagramas en el readme por los nuevos que estan en la raiz (tienen el mismo nombre)" + "Y verifica que todo el readme esta en ingles. Ambos" + "Do the translation"
+**Resultado obtenido:** `docs/diagrams/class-diagram.png` se reemplaza por la nueva captura de Lucid provista por el usuario (mismo path referenciado por el README, sin cambios de markdown). Se tradujeron íntegramente al inglés las seis secciones que quedaban en español bajo `## Tooling` — *Level candidate production* (front#65), *Themed level production* (front#68), *Themed levels — the silhouette IS the board* (front#118), *Remote campaign* (front#8), *Auto-solver* (#102) y el callout de *Homogeneous distribution* — preservando literalmente todo identificador de código, ruta de archivo, comando CLI y enlace markdown. Se corrigieron además tres frases sueltas en español fuera de esas secciones (bullets de la sección Diagrams sobre #87/#99/#103) y dos menciones al nombre de feature "Generar nivel" / los cuatro labels de botones de `GeneratedResultScreen`, sustituidos por sus equivalentes reales de `app_en.arb` (`generateBoard`/`generatedAnotherBoard`/etc.) en vez de una traducción libre. Verificación: barrido de caracteres acentuados (`ó í á é ñ ¿ ¡`) y de stopwords españolas comunes sobre el archivo completo — cero coincidencias tras el cambio. El README del back (`MazePruebaBack`) se auditó también y ya estaba 100% en inglés; sin cambios ahí.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 124 — docs: actualizar README con las specs del enunciado, capturas reales y AI_USAGE.md
 
 **Fecha:** 2026-07-17

@@ -12,6 +12,7 @@ import '../../domain/board/services/auto_solve_pacing.dart';
 import '../../domain/board/services/hint_policy.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/services/i_ticker.dart';
+import '../../domain/game_core/space/masked_space.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
 import '../../domain/game_core/value_objects/score.dart';
 import '../../domain/game_core/value_objects/stars.dart';
@@ -131,18 +132,18 @@ class GameController extends AsyncNotifier<GameState> {
     );
   }
 
-  // Realiza el tablero del nivel para montarlo (front#99): TODO nivel —temático
-  // o campaña— se juega sobre su caja rectangular completa (`level.board`, cuyo
-  // espacio es un RectSpace). Antes (front#88) los temáticos se recortaban a la
-  // SILUETA = unión de las celdas de las flechas iniciales; pero esa unión deja
-  // sin pintar cualquier celda interior de la figura que ninguna flecha ocupe,
-  // apareciendo como AGUJERO en medio del tablero. El mantenedor aceptó mostrar
-  // el rectángulo completo: la identidad temática la aportan los colores de las
-  // flechas (`palette`), no el contorno del tablero. Así no hay agujeros y los
-  // taps solo caen sobre celdas pintadas (toda la caja lo está).
-  // Identidad (no altera el espacio ya rectangular); se conserva como seam donde
-  // vive la POLÍTICA de montaje, invocada en cada arranque/restart/undo.
-  ArrowBoard _mountedBoard(Level level) => level.board;
+  // Montaje (front#118): un nivel con silueta se juega sobre el MaskedSpace de
+  // su figura — fuera de la silueta no hay tablero (spec 2026-07-16). Campaña y
+  // niveles sin silueta conservan su RectSpace del wire. Revierte la decisión
+  // "caja completa" de front#99/#107 SOLO para temáticos con silueta.
+  ArrowBoard _mountedBoard(Level level) {
+    final active = level.silhouetteUnion;
+    if (active == null) return level.board;
+    final box = level.board.space.bounds;
+    return level.board.remountedOn(
+      MaskedSpace(box.cols, box.rows, activeCells: active),
+    );
+  }
 
   // Monta el nivel [level] en el estado de partida. Reutilizado por loadLevel
   // (tras el fetch) y por restartLevel (sin refetch). Arranca el cronómetro y,
@@ -274,7 +275,8 @@ class GameController extends AsyncNotifier<GameState> {
       final data = _currentLevelData;
       if (data == null) return;
       // Reconstruimos vacío con el MISMO espacio con que se montó el nivel
-      // (la caja rectangular completa, front#99), no el crudo del wire.
+      // (front#118: la silueta en los temáticos, la caja en campaña), no el
+      // crudo del wire: solo interesa su `space`.
       currentBoard =
           ArrowBoard(arrows: const [], space: _mountedBoard(data).space);
       currentMoves = current.moves.value;

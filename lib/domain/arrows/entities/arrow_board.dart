@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'arrow.dart';
 import '../value_objects/arrow_id.dart';
+import '../../core/exceptions/invalid_arrow_exception.dart';
 import '../../game_core/space/board_space.dart';
 import '../../game_core/value_objects/position.dart';
 
@@ -78,6 +79,34 @@ class ArrowBoard extends Equatable {
       arrows: arrows.where((a) => a.id != id).toList(),
       space: space,
     );
+  }
+
+  // Seam de montaje (#118, Task 3): re-monta el MISMO contenido de flechas
+  // sobre un BoardSpace DISTINTO (p. ej. campaña rectangular → MaskedSpace de
+  // silueta temática). El constructor de ArrowBoard es `const` con cuerpo
+  // vacío a propósito — mantenerlo así es interfaz pública documentada (la
+  // caché de ocupación por Expando de arriba existe para preservar el
+  // constructor const, y hay consumidores como
+  // test/tool/level_production/candidate_producer_test.dart:98 que construyen
+  // en contexto const) y un pase O(celdas) en CADA construcción penalizaría
+  // también a `removeArrow`, que corre en cada movimiento de la partida. Por
+  // eso la validación vive aquí, no en el constructor: si el nuevo espacio no
+  // contiene alguna celda de alguna flecha, es un montaje inválido. En
+  // producción esta guarda nunca debería dispararse (`Level` ya exige que las
+  // flechas ⊆ silhouetteUnion, y la máscara se construye desde esa misma
+  // unión) — es defensa en profundidad del seam, no código muerto.
+  ArrowBoard remountedOn(BoardSpace newSpace) {
+    for (final arrow in arrows) {
+      for (final cell in arrow.cells) {
+        if (!newSpace.contains(cell)) {
+          throw InvalidArrowException(
+            'remountedOn: la flecha ${arrow.id} tiene una celda $cell fuera '
+            'del nuevo espacio',
+          );
+        }
+      }
+    }
+    return ArrowBoard(arrows: arrows, space: newSpace);
   }
 
   @override

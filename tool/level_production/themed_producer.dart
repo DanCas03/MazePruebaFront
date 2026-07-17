@@ -117,9 +117,9 @@ ThemedResult produceThemed(
       board: board,
       palette: mask.palette,
       // Silueta de figura (front#114): rol→TODAS las celdas de su región,
-      // ordenadas por (fila, columna) para salida determinista. La consume el
-      // render para rellenar la figura sin huecos; dato opaco (no afecta
-      // solubilidad ni mecánica).
+      // ordenadas por (fila, columna) para salida determinista. Define la
+      // MÁSCARA del tablero temático: el cliente monta un MaskedSpace con la
+      // unión de estas celdas, así solo la figura existe (sin fondo).
       silhouette: {
         for (final region in mask.regions)
           region.role: (region.cells.toList()

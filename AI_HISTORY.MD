@@ -2095,3 +2095,17 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - `CONTEXT.md` revisado: la silueta viaja en el wire como consecuencia de pintado (antes "la máscara no viaja").
 - Diseño y plan en `docs/superpowers/{specs,plans}/2026-07-16-themed-silhouette-fill*.md`. Suite 810 verde. Revisión final de rama: READY TO MERGE (0 Critical/Important). Cross-repo con back#50.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 115 — #114 (pivote): figuras temáticas SOLO flechas (tablero enmascarado, sin fondo)
+
+**Fecha:** 2026-07-16
+**Tarea o problema abordado:** El mantenedor rechazó el relleno de silueta pintada (Entrada 114) y pidió: figuras hechas por completo de FLECHAS jugables (≥2 celdas), sin fondo ni panel, con el tablero ajustado a la figura (cuadros vacíos no se ven). Reemplaza el enfoque de pintado por generación de cobertura total + tablero enmascarado.
+**Herramienta de IA utilizada:** Claude Code — ejecución subagent-driven con **Fable 5** (implementadores) + revisores Sonnet/Opus (por tarea y revisión final de rama).
+**Prompt o instrucción proporcionada:** > "no quiero que se pinte el fondo… solo deben ser flechas… rellenar por completo con flechas las figuras… que el tablero se ajuste a cada figura… mantén flechas >= 2".
+**Resultado obtenido:**
+- `GraphBoardGenerator.generateThemedFull`: algoritmo "peeling" determinista que rellena cada región con flechas rectas ≥2 y salida DAG sobre la máscara (`MaskedSpace`). Cobertura real: heart 100% (48 flechas), happy_face 100% (80), bunny 97.7% (40; 4 celdas de detalle irreducibles con ≥2). Soluble por construcción.
+- `themed_producer.dart`: usa `generateThemedFull` (determinista, sin semillas; `maxPathLen` honrado). 3 fixtures regenerados; golden actualizado.
+- `_mountedBoard`: niveles temáticos montan `MaskedSpace(activeCells = unión de silhouette)` — MISMA máscara que la generación, así la solubilidad se preserva. Campaña intacta (RectSpace).
+- Render: `SilhouettePainter` **eliminado**; `BoardSurfacePainter` (panel + rejilla) solo para campaña — los temáticos no pintan fondo. El campo `silhouette` del wire se REUTILIZA como la máscara del tablero (no como pintura).
+- Suite 814 verde; `dart analyze` limpio. Revisión final de rama: READY TO MERGE (0 Critical/Important). Cross-repo con back#50.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

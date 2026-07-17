@@ -49,6 +49,7 @@ dev_dependencies:
   hive_ce_generator: ^1.8.0
   json_serializable: ^6.8.0
   mockito: ^5.4.4
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -57,3 +58,9 @@ flutter:
   assets:
     - assets/levels/
     - assets/audio/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/app_icon.png"
+

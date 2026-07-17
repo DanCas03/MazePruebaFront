@@ -61,13 +61,29 @@
   "@levelLoadError": {
     "description": "Game screen: terminal error for a missing or corrupted level."
   },
-  "hintTooltip": "Show solution",
-  "@hintTooltip": {
-    "description": "Tooltip of the lightbulb hint button that replays the server solution on eligible hard levels."
+  "autoSolveTooltip": "Auto-solve this level",
+  "@autoSolveTooltip": {
+    "description": "Tooltip of the AppBar control that replays the server solution, explicitly framed as an auto-solver (#102). Available on every campaign level."
   },
-  "hintError": "Couldn't load the hint. Try again.",
-  "@hintError": {
+  "autoSolveError": "Couldn't auto-solve this level. Try again.",
+  "@autoSolveError": {
     "description": "Snackbar shown when fetching the auto-solve solution fails or times out; the game stays intact."
+  },
+  "autoSolveConfirmTitle": "Auto-solve this level?",
+  "@autoSolveConfirmTitle": {
+    "description": "Title of the confirmation dialog shown before running the auto-solver."
+  },
+  "autoSolveConfirmBody": "This will replay the full solution and restart the level. Progress on this attempt will be lost, and it won't count toward your score or completion.",
+  "@autoSolveConfirmBody": {
+    "description": "Body of the auto-solve confirmation dialog, warning that the current attempt's progress is lost and the demo is non-scoring."
+  },
+  "autoSolveConfirmCancel": "Cancel",
+  "@autoSolveConfirmCancel": {
+    "description": "Cancel action of the auto-solve confirmation dialog; leaves the game untouched."
+  },
+  "autoSolveConfirmAction": "Auto-solve",
+  "@autoSolveConfirmAction": {
+    "description": "Confirm action of the auto-solve confirmation dialog; triggers the playback."
   },
   "victoryTitle": "Board Cleared!",
   "victoryMoves": "{moves} moves",

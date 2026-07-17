@@ -30,7 +30,8 @@ Widget _host(Widget child) => MaterialApp(
     );
 
 /// Crea un [ExitingArrowWidget] con la flecha doblada de prueba.
-ExitingArrowWidget _widget({int nonce = 1}) => ExitingArrowWidget(
+ExitingArrowWidget _widget({int nonce = 1, Duration? duration}) =>
+    ExitingArrowWidget(
       key: ValueKey('exiting-$nonce'),
       arrow: _bentArrow(),
       minCol: 0,
@@ -40,6 +41,7 @@ ExitingArrowWidget _widget({int nonce = 1}) => ExitingArrowWidget(
       cell: 72,
       color: const Color(0xFF46B98C),
       nonce: nonce,
+      duration: duration ?? const Duration(milliseconds: 360),
     );
 
 // ── Helper: busca el CustomPaint cuyo painter es SnakeExitPainter ─────────────
@@ -130,6 +132,28 @@ void main() {
                 'tras completarse la animación no debe haber SnakeExitPainter');
 
         // Assert — no hay error
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    // ── (d) #102: una duración custom (auto-solver comprimido) se respeta ──────
+    testWidgets(
+      '(d) una duración custom más corta completa la animación antes de 360 ms (#102)',
+      (tester) async {
+        // Arrange — el auto-solver comprime la animación a 120 ms en tableros
+        // grandes (AutoSolvePacing.exitDurationFor); simulado aquí a mano.
+        await tester.pumpWidget(
+          _host(_widget(nonce: 20, duration: const Duration(milliseconds: 120))),
+        );
+        expect(_findSnakePainter(tester), isNotNull);
+
+        // Act — avanzar más allá de los 120 ms custom, pero MUY por debajo del
+        // default de 360 ms.
+        await tester.pump(const Duration(milliseconds: 150));
+
+        // Assert — ya completó (colapsó), a diferencia del default de 360 ms.
+        expect(_findSnakePainter(tester), isNull,
+            reason: 'con duration:120ms debe completar bien antes de 360ms');
         expect(tester.takeException(), isNull);
       },
     );

@@ -8,6 +8,7 @@ import '../../domain/board/entities/level.dart';
 import '../../domain/board/failures/solution_failure.dart';
 import '../../domain/board/repositories/i_level_repository.dart';
 import '../../domain/board/repositories/i_solution_repository.dart';
+import '../../domain/board/services/auto_solve_pacing.dart';
 import '../../domain/board/services/hint_policy.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/services/i_ticker.dart';
@@ -39,10 +40,12 @@ class GameController extends AsyncNotifier<GameState> {
   final ISolutionRepository _solutionRepository;
   final HintPolicy _hintPolicy;
 
-  // Pausa entre pasos de la demo de la pista (#32): debe cubrir la animación de
-  // salida (~360 ms) para que cada flecha se vea deslizarse. Inyectable a
-  // Duration.zero en tests para reproducir la solución sin esperar tiempo real.
-  final Duration hintStepDelay;
+  // Pausa entre pasos de la demo del auto-solver (#102, evolución de la
+  // Duration constante de #32): función del largo de la Solución — decrece
+  // con más flechas, floored por la animación de salida vigente para ese
+  // tamaño (ver AutoSolvePacing). Inyectable a `(_) => Duration.zero` en tests
+  // para reproducir la solución sin esperar tiempo real.
+  final Duration Function(int arrowCount) stepDelayFor;
 
   // El reloj es opcional: por defecto un Null Object inerte (tests que no
   // ejercen el tiempo, niveles sin límite). El composition root inyecta el
@@ -57,7 +60,7 @@ class GameController extends AsyncNotifier<GameState> {
     this._invoker, [
     this._ticker = const NullTicker(),
     this._solutionRepository = const _UnavailableSolutionRepository(),
-    this.hintStepDelay = const Duration(milliseconds: 420),
+    this.stepDelayFor = AutoSolvePacing.stepDelayFor,
     this._hintPolicy = const HintPolicy(),
   ]);
 
@@ -300,14 +303,16 @@ class GameController extends AsyncNotifier<GameState> {
     _startLevel(level); // sin refetch: mismo Level cacheado
   }
 
-  // ── Pista auto-resolutora (#32) ─────────────────────────────────────────────
+  // ── Auto-solver (#102, evolución de la "pista" #32) ─────────────────────────
 
   /// Pide la Solución del nivel al back y reproduce la demo no puntuable. Flujo:
   /// 1) sub-estado de carga (bombilla transformada, anti doble-clic) mientras la
   ///    petición HTTP viaja; 2) si falla/expira, rompe limpio conservando la
   ///    partida y dispara el snackbar; 3) si llega, remonta el tablero y anima
   ///    la salida de cada flecha en el orden del servidor —verbatim, sin derivar
-  ///    nada—; 4) al terminar, reinicia el nivel para que quede jugable.
+  ///    nada—, a un ritmo que acelera con el largo de la Solución (#102); 4) al
+  ///    terminar, reinicia el nivel para que quede jugable. La UI dispara esto
+  ///    solo tras una confirmación explícita del jugador (progreso en riesgo).
   Future<void> playHint() async {
     final level = _currentLevelData;
     final levelId = _currentLevel;
@@ -348,6 +353,11 @@ class GameController extends AsyncNotifier<GameState> {
     _cancelElapsed();
     var board = _mountedBoard(level);
     _exitNonce = 0;
+    // Ritmo derivado del largo TOTAL de la Solución (#102): un tablero grande
+    // reproduce más rápido que uno chico, con la animación de salida
+    // comprimida en la misma proporción (ver AutoSolvePacing).
+    final delay = stepDelayFor(order.length);
+    final exitDuration = AutoSolvePacing.exitDurationFor(order.length);
     // Remonta el tablero completo antes de empezar a vaciarlo.
     state = AsyncValue.data(GamePlaying(
       board: board,
@@ -355,8 +365,9 @@ class GameController extends AsyncNotifier<GameState> {
       strikes: StrikeCount(0, max: level.maxErrors), // HUD coherente con el nivel
       palette: level.palette,
       hintPlaying: true,
+      autoSolveExitDuration: exitDuration,
     ));
-    await Future<void>.delayed(hintStepDelay);
+    await Future<void>.delayed(delay);
     if (run != _hintRun) return;
 
     for (final id in order) {
@@ -375,8 +386,9 @@ class GameController extends AsyncNotifier<GameState> {
         hintPlaying: true,
         exitingArrow: removed,
         exitNonce: _exitNonce,
+        autoSolveExitDuration: exitDuration,
       ));
-      await Future<void>.delayed(hintStepDelay);
+      await Future<void>.delayed(delay);
       if (run != _hintRun) return;
     }
 
@@ -406,6 +418,7 @@ class GameController extends AsyncNotifier<GameState> {
         hintLoading: loading,
         hintPlaying: s.hintPlaying,
         hintErrorNonce: bumpError ? s.hintErrorNonce + 1 : s.hintErrorNonce,
+        autoSolveExitDuration: s.autoSolveExitDuration,
       );
 
   // ── Cuenta atrás inyectable (front#11) ──────────────────────────────────────

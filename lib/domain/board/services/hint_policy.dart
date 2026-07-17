@@ -1,23 +1,19 @@
 import '../value_objects/level_id.dart';
 
-/// Política de elegibilidad de la pista auto-resolutora (#32): en CAMPAÑA solo
-/// los niveles difíciles (número ≥ [minEligibleLevel]) ofrecen la demo de la
-/// solución del servidor. Fuente única del umbral, compartida por la UI
-/// (renderizado del botón de la bombilla) y el controlador (guarda defensiva
-/// antes del fetch).
+/// Política de elegibilidad del auto-solver (#102, evolución de #32): TODO
+/// nivel de campaña lo ofrece — el umbral por dificultad (antes número ≥ 7)
+/// se retira porque la mecánica se aprende igual de bien con la opción
+/// explícita de "resolver por mí" disponible desde el nivel 1, siempre detrás
+/// de la advertencia de confirmación (la UI la exige antes de reproducir).
+/// Fuente única compartida por la UI (qué control se pinta) y el controlador
+/// (guarda defensiva antes del fetch).
 class HintPolicy {
   const HintPolicy();
 
-  /// Primer nivel de campaña con pista disponible. Por debajo, la mecánica se
-  /// aprende sin ayuda; a partir de aquí la demo del servidor es un salvavidas
-  /// opcional.
-  static const int minEligibleLevel = 7;
-
-  /// Elegibilidad consciente de sección (front#67). Los niveles TEMÁTICOS son
-  /// SIEMPRE elegibles: tienen Solución servible y no forman parte de la curva
-  /// de aprendizaje por Tier. Además su id (`t-…`) no es numérico, así que
-  /// `LevelId.number` cae a 1 (wart conocido) y el umbral de campaña los
-  /// excluiría por accidente; el flag [themed] evita depender de ese parseo.
-  bool isEligible(LevelId id, {bool themed = false}) =>
-      themed || id.number >= minEligibleLevel;
+  /// Siempre elegible: campaña completa y temáticos (#102). El parámetro
+  /// [themed] se conserva en la firma —documenta en el call site que los
+  /// niveles temáticos pasan por aquí sin depender del parseo numérico del id
+  /// (`t-…` cae a 1, wart conocido de [LevelId.number])— aunque ya no cambie
+  /// el resultado.
+  bool isEligible(LevelId id, {bool themed = false}) => true;
 }

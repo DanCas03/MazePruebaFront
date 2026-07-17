@@ -234,6 +234,7 @@ class BoardView extends StatelessWidget {
         cell: cell,
         color: colorResolver.colorFor(arrow, state.palette),
         nonce: nonce,
+        duration: state.autoSolveExitDuration ?? const Duration(milliseconds: 360),
       ),
     );
   }

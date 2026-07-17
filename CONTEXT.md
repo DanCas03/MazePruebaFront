@@ -132,10 +132,14 @@ El orden de `ArrowId`, producido y servido por el **backend**, cuya remoción en
 vacía el tablero. El cliente la **anima**; nunca deriva el orden (ADR 0002).
 _Avoid_: respuesta, walkthrough, camino ganador.
 
-**Hint** (Pista):
-Demo **no puntuada** en niveles elegibles (política del cliente): reinicia el nivel y
-reproduce la Solución animada. No toca movimientos, strikes, undo ni progreso.
-_Avoid_: ayuda, auto-play, truco.
+**Auto-solver** (antes "Hint"/Pista, #102):
+Demo **no puntuada** disponible en **todo** nivel de campaña y en los temáticos:
+reinicia el nivel y reproduce la Solución animada. Explícitamente presentada como
+auto-solver (no una ayuda vaga) y exige **confirmación** del jugador antes de correr
+—el progreso del intento en curso se pierde—. El ritmo entre pasos **escala con el
+número de flechas** (más flechas ⇒ pasos más cortos), floored por la animación de
+salida vigente. No toca movimientos, strikes, undo ni progreso.
+_Avoid_: pista, ayuda, auto-play, truco.
 
 ### Cuenta y ranking
 

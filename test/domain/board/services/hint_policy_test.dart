@@ -2,37 +2,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/domain/board/services/hint_policy.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 
-// front#67 — la elegibilidad de la pista es consciente de sección: la campaña
-// mantiene el umbral por número (>= 7); los temáticos son siempre elegibles vía
-// el flag `themed`, sin depender del parseo numérico del id (`t-…` → 1).
+// #102 — el auto-solver se abre a TODA la campaña (antes #32 lo restringía a
+// número ≥ 7); los temáticos siguen elegibles vía el flag `themed`.
 void main() {
   group('HintPolicy', () {
     const sut = HintPolicy();
 
-    test('campaign level below the threshold is not eligible', () {
-      // Arrange / Act / Assert
-      expect(sut.isEligible(LevelId('6')), isFalse);
+    test('a campaign level that was previously below the #32 threshold is now eligible', () {
+      // Arrange / Act / Assert — nivel 6 era inelegible bajo el umbral viejo.
+      expect(sut.isEligible(LevelId('6')), isTrue);
     });
 
-    test('campaign level at or above the threshold is eligible', () {
+    test('a campaign level at or above the old threshold stays eligible', () {
       // Arrange / Act / Assert
       expect(sut.isEligible(LevelId('7')), isTrue);
       expect(sut.isEligible(LevelId('15')), isTrue);
     });
 
-    test('themed level is always eligible regardless of its number', () {
-      // Arrange — a themed id parses its number to the fallback 1 (< threshold).
-      final themedId = LevelId('t-smiley');
-      // Act / Assert — the themed flag makes it eligible despite number == 1.
-      expect(sut.isEligible(themedId, themed: true), isTrue);
+    test('the very first campaign level is eligible', () {
+      // Arrange / Act / Assert — el piso de la campaña, antes siempre vetado.
+      expect(sut.isEligible(LevelId('1')), isTrue);
     });
 
-    test('same themed id is NOT eligible when treated as campaign', () {
-      // Arrange — proves the flag, not the id, drives themed eligibility: the
-      // `t-…` number-fallback wart would otherwise silently exclude it.
+    test('a themed level is eligible regardless of its number', () {
+      // Arrange — a themed id parses its number to the fallback 1.
       final themedId = LevelId('t-smiley');
       // Act / Assert
-      expect(sut.isEligible(themedId, themed: false), isFalse);
+      expect(sut.isEligible(themedId, themed: true), isTrue);
+      expect(sut.isEligible(themedId, themed: false), isTrue);
     });
   });
 }

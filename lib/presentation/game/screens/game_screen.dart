@@ -35,8 +35,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   // ya no es accesible. El provider no es autoDispose, asi que es estable.
   late final IAudioService _audio;
 
-  // #32: umbral de elegibilidad de la pista, fuente única compartida con el
-  // controlador. Decide si se pinta el botón de la bombilla en este nivel.
+  // #102: elegibilidad del auto-solver (toda la campaña + temáticos), fuente
+  // única compartida con el controlador. Decide si se pinta el botón en este
+  // nivel.
   static const _hintPolicy = HintPolicy();
 
   @override
@@ -57,6 +58,36 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // front#5: detiene la musica de fondo al salir de la partida.
     _audio.stopMusic();
     super.dispose();
+  }
+
+  // #102: el auto-solver es explícito y destructivo para el intento en curso,
+  // así que exige confirmación antes de arrancar. Cancelar no toca el juego;
+  // confirmar dispara playHint() (reproduce la Solución y reinicia el nivel,
+  // sin puntuar). Async separado del onPressed del botón para que la UI no
+  // bloquee mientras el diálogo está abierto.
+  Future<void> _confirmAndAutoSolve(AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.autoSolveConfirmTitle),
+        content: Text(l10n.autoSolveConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.autoSolveConfirmCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.autoSolveConfirmAction),
+          ),
+        ],
+      ),
+    );
+    // `mounted`: el diálogo pudo cerrarse por una navegación que ya desmontó
+    // esta pantalla (p. ej. system-back) mientras estaba abierto.
+    if (confirmed == true && mounted) {
+      ref.read(gameControllerProvider.notifier).playHint();
+    }
   }
 
   @override
@@ -96,12 +127,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         if (state.blockedNonce > prevState.blockedNonce) {
           audio.play(GameSound.collision);
         }
-        // #32: la pista falló o expiró (el back no respondió a tiempo). La
-        // partida queda intacta; solo avisamos con un snackbar no intrusivo.
+        // #102 (evolución de #32): el auto-solver falló o expiró (el back no
+        // respondió a tiempo). La partida queda intacta; solo avisamos con un
+        // snackbar no intrusivo.
         if (state.hintErrorNonce > prevState.hintErrorNonce) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(l10n.hintError)));
+            ..showSnackBar(SnackBar(content: Text(l10n.autoSolveError)));
         }
       }
 
@@ -189,21 +221,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 : const <Widget>[],
             orElse: () => const <Widget>[],
           ),
-          // #32: botón de pista, solo en niveles elegibles y durante el juego.
-          // La bombilla se transforma en un spinner mientras la solución viaja
-          // (mitiga dobles clics) y queda inerte durante la reproducción.
+          // #102 (evolución de #32): botón de auto-solver, en TODO nivel de
+          // campaña (elegibilidad abierta) durante el juego. El icono se
+          // transforma en un spinner mientras la solución viaja (mitiga dobles
+          // clics) y queda inerte durante la reproducción.
           ...asyncState.maybeWhen(
             data: (s) => s is GamePlaying &&
                     _hintPolicy.isEligible(widget.levelId,
                         themed: s.palette != null)
                 ? [
-                    _HintButton(
+                    _AutoSolveButton(
                       loading: s.hintLoading,
                       playing: s.hintPlaying,
                       color: accent,
-                      tooltip: l10n.hintTooltip,
-                      onPressed: () =>
-                          ref.read(gameControllerProvider.notifier).playHint(),
+                      tooltip: l10n.autoSolveTooltip,
+                      onPressed: () => _confirmAndAutoSolve(l10n),
                     )
                   ]
                 : const <Widget>[],
@@ -211,7 +243,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           ),
           IconButton(
             icon: Icon(Icons.undo, color: accent),
-            // Undo deshabilitado mientras la pista está activa (#32).
+            // Undo deshabilitado mientras el auto-solver está activo (#102).
             onPressed: asyncState.maybeWhen(
               data: (s) =>
                   s is GamePlaying && (s.hintLoading || s.hintPlaying)
@@ -300,19 +332,22 @@ class _ErrorsChip extends StatelessWidget {
   }
 }
 
-/// Botón de la pista auto-resolutora (#32). Tres aspectos según el sub-estado:
-/// - inactivo: bombilla de contorno, pulsable (dispara [onPressed]).
-/// - cargando: un spinner sustituye a la bombilla y el botón queda inerte, para
+/// Botón del auto-solver (#102, evolución de la "pista" #32) — icono de vara
+/// mágica en vez de la bombilla vieja para que se lea como "resuélvelo por
+/// mí", no como una ayuda vaga. Tres aspectos según el sub-estado:
+/// - inactivo: pulsable, dispara [onPressed] (que en `GameScreen` abre la
+///   confirmación antes de reproducir — el progreso del intento se pierde).
+/// - cargando: un spinner sustituye al icono y el botón queda inerte, para
 ///   mitigar dobles clics mientras la solución viaja por HTTP.
-/// - reproduciendo: bombilla rellena y atenuada, inerte (la demo está en curso).
-class _HintButton extends StatelessWidget {
+/// - reproduciendo: icono relleno y atenuado, inerte (la demo está en curso).
+class _AutoSolveButton extends StatelessWidget {
   final bool loading;
   final bool playing;
   final Color color;
   final String tooltip;
   final VoidCallback onPressed;
 
-  const _HintButton({
+  const _AutoSolveButton({
     required this.loading,
     required this.playing,
     required this.color,
@@ -341,13 +376,13 @@ class _HintButton extends StatelessWidget {
     }
     if (playing) {
       return IconButton(
-        icon: Icon(Icons.lightbulb, color: color.withValues(alpha: 0.38)),
+        icon: Icon(Icons.auto_fix_high, color: color.withValues(alpha: 0.38)),
         tooltip: tooltip,
         onPressed: null, // inerte durante la reproducción de la solución
       );
     }
     return IconButton(
-      icon: Icon(Icons.lightbulb_outline, color: color),
+      icon: Icon(Icons.auto_fix_high, color: color),
       tooltip: tooltip,
       onPressed: onPressed,
     );

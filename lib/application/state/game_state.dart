@@ -30,10 +30,18 @@ class GamePlaying extends GameState {
   final bool canUndo; // habilita el botón undo del top bar
   final int? remainingSeconds; // cuenta atrás del nivel; null si no tiene límite
 
-  // Pista auto-resolutora (#32), señales de presentación no-dominio:
+  // Auto-solver (#102, evolución de la "pista" #32), señales de presentación
+  // no-dominio:
   final bool hintLoading; // petición HTTP de la solución en tránsito (bombilla en carga)
   final bool hintPlaying; // reproducción de la solución en curso: input/undo bloqueados
   final int hintErrorNonce; // ++ por fallo de pista → dispara el snackbar de error
+
+  // Duración de la animación de salida a usar MIENTRAS `hintPlaying` es true
+  // (#102): en tableros grandes el auto-solver la comprime para poder acelerar
+  // el ritmo sin que un paso arranque a mitad del slide anterior (ver
+  // AutoSolvePacing). `null` fuera de la demo — el gameplay normal siempre usa
+  // el valor por defecto de ExitingArrowWidget (360 ms), sin importar esto.
+  final Duration? autoSolveExitDuration;
 
   GamePlaying({
     required this.board,
@@ -49,6 +57,7 @@ class GamePlaying extends GameState {
     this.hintLoading = false,
     this.hintPlaying = false,
     this.hintErrorNonce = 0,
+    this.autoSolveExitDuration,
   });
 }
 

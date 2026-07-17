@@ -42,6 +42,18 @@ void main() {
       final s = const ConfiguratorState().copyWith(cols: 6, rows: 8); // 0.75
       expect(s.isValid, isFalse);
     });
+
+    test('isAspectValid discrimina el fuera-de-banda del resto de causas', () {
+      // 6x8 = 0.75 está fuera de [0.53, 0.68] aunque semilla y rango sean OK:
+      // la UI necesita esta señal separada para explicar el bloqueo (no solo
+      // "isValid == false").
+      final outOfBand = const ConfiguratorState().copyWith(cols: 6, rows: 8);
+      expect(outOfBand.isAspectValid, isFalse);
+      expect(outOfBand.isSeedValid, isTrue);
+
+      final inBand = const ConfiguratorState().copyWith(cols: 9, rows: 16);
+      expect(inBand.isAspectValid, isTrue);
+    });
   });
 
   group('ConfiguratorState · toConfig', () {

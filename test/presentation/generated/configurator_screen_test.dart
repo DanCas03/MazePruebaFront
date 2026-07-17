@@ -87,5 +87,57 @@ void main() {
       expect(find.text('19'), findsOneWidget);
       expect(find.text('34'), findsOneWidget);
     });
+
+    testWidgets(
+        'una combinación de columnas/filas fuera de banda deshabilita '
+        '"Jugar" Y explica por qué (regresión: antes se bloqueaba en '
+        'silencio)', (tester) async {
+      // El aviso nuevo empuja el resto del formulario hacia abajo; se agranda
+      // el viewport para que "Jugar" siga construido por el ListView lazy
+      // (SliverList) sin depender de un scroll manual en el test.
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(_appUnderTest());
+
+      // Parte de S (6×10, dentro de banda) y sube SOLO columnas: 10×10 = 1.0,
+      // muy fuera de [0.53, 0.68]. Reproduce el bug reportado: el jugador
+      // mueve un stepper independiente y el botón se apaga sin explicación.
+      for (var i = 0; i < 4; i++) {
+        await tester.tap(find.byType(IconButton).at(1)); // "+" de columnas
+        await tester.pump();
+      }
+
+      expect(find.text('10'), findsNWidgets(2)); // columnas y filas en 10
+      expect(_playButton(tester).onPressed, isNull);
+      expect(
+        find.text('Ajusta columnas/filas: este tamaño queda demasiado ancho '
+            'o alto para la pantalla'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+        'volver a una proporción válida hace desaparecer el aviso y '
+        'rehabilita "Jugar"', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(_appUnderTest());
+
+      await tester.tap(find.byType(IconButton).at(1)); // "+" de columnas
+      await tester.pump(); // 7×10 = 0.70, fuera de banda por poco
+      expect(_playButton(tester).onPressed, isNull);
+      expect(find.textContaining('Ajusta columnas/filas'), findsOneWidget);
+
+      // Un preset conocido dentro de banda repara ambas dimensiones a la vez.
+      await tester.tap(find.text('S · 6×10'));
+      await tester.pump();
+
+      expect(_playButton(tester).onPressed, isNotNull);
+      expect(find.textContaining('Ajusta columnas/filas'), findsNothing);
+    });
   });
 }

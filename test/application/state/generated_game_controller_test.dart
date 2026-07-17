@@ -175,6 +175,22 @@ void main() {
       expect((state as GamePlaying).remainingSeconds, config.timeLimitSec);
       expect(ticker.requestedSeconds, config.timeLimitSec);
     });
+
+    test(
+        'un fallo inesperado del generador queda en AsyncValue.error, nunca '
+        'una excepción sin capturar (regresión: la pantalla se quedaba con '
+        'el spinner de carga congelado para siempre)', () async {
+      final gen = _FakeGenerator()
+        ..boardFor = () => throw StateError('boom');
+      final c = _container(gen);
+      final notifier = c.read(generatedGameControllerProvider.notifier);
+
+      await notifier.startNew(_config());
+
+      final async = c.read(generatedGameControllerProvider);
+      expect(async.hasError, isTrue);
+      expect(async.error, isA<StateError>());
+    });
   });
 
   group('GeneratedGameController · fin de partida', () {

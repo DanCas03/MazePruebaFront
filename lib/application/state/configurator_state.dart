@@ -32,18 +32,21 @@ class ConfiguratorState extends Equatable {
   /// La semilla es válida si está vacía (aleatoria) o parsea a entero.
   bool get isSeedValid => seedText.isEmpty || int.tryParse(seedText) != null;
 
+  /// Los selectores de columnas/filas acotan cada dimensión por separado al
+  /// rango jugable, pero pueden combinarse en una proporción fuera de la banda
+  /// portrait (front#101, [AspectBand]) — p. ej. subir columnas sin subir filas
+  /// a la par. Se expone por separado de [isValid] para que la UI explique
+  /// POR QUÉ "Jugar" está deshabilitado en vez de bloquearlo en silencio.
+  bool get isAspectValid => AspectBand.contains(cols, rows);
+
   /// El formulario es jugable si dimensiones, aspecto y semilla son válidos.
-  /// Los selectores acotan cols/rows al rango jugable Y a la banda portrait
-  /// (front#101, [AspectBand]), así que en la práctica la única fuente de
-  /// invalidez es una semilla no numérica; se comprueban todas por robustez
-  /// (fuente única de la regla de habilitación del CTA "Jugar").
   bool get isValid =>
       isSeedValid &&
       cols >= GeneratorConfig.minDimension &&
       cols <= GeneratorConfig.maxDimension &&
       rows >= GeneratorConfig.minDimension &&
       rows <= GeneratorConfig.maxDimension &&
-      AspectBand.contains(cols, rows);
+      isAspectValid;
 
   /// Semilla efectiva a pasar al caso de uso: null (aleatoria) si el texto está
   /// vacío. Solo debe leerse cuando [isValid] es true.

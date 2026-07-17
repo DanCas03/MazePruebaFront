@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:flutter_arrow_maze/core/di/dependency_providers.dart';
 import 'package:flutter_arrow_maze/core/router/app_router.dart';
 import 'package:flutter_arrow_maze/core/theme/app_colors.dart';
 import 'package:flutter_arrow_maze/core/theme/app_theme.dart';
+import 'package:flutter_arrow_maze/domain/board/failures/level_failure.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/catalog_entry.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_progress.dart';
@@ -47,13 +50,18 @@ Widget _appUnderTest({
   required VictoryArgs? args,
   List<LevelId> catalogIds = const [],
   List<CatalogEntry>? catalogEntries,
+  // Fuerza el fallo del Catálogo remoto (del que se deriva nextLevelOutcomeProvider)
+  // para probar la rama de error de "qué sigue" en vez de ids/entries fijos.
+  FutureOr<List<CatalogEntry>> Function()? catalogBuilder,
   List<LevelProgress> progress = const [],
   List<RouteSettings>? pushed,
   CanonicalResult? canonicalResult,
 }) {
   return ProviderScope(
     overrides: [
-      stubCatalogOverride(ids: catalogIds, entries: catalogEntries),
+      catalogBuilder != null
+          ? stubCatalogOverride(builder: catalogBuilder)
+          : stubCatalogOverride(ids: catalogIds, entries: catalogEntries),
       // El CTA "Next Level" ahora respeta el gating (front#81): la pantalla lee
       // el progreso local para decidir si el siguiente Tier está abierto.
       levelProgressRepositoryProvider
@@ -334,6 +342,31 @@ void main() {
       // de retorno sigue visible (regresión de la flecha que desaparecía).
       expect(navKey.currentState!.canPop(), isTrue);
       expect(find.byType(BackButton), findsOneWidget);
+    });
+
+    testWidgets(
+        'should_show_a_retry_message_instead_of_a_blank_cta_when_the_next_'
+        'level_lookup_fails', (tester) async {
+      // Arrange: el Catálogo (del que se deriva "qué sigue") falla al cargar
+      // — antes esto colapsaba en el mismo `null` que "cargando" o "nivel
+      // temático, sin siguiente" y el hueco del CTA quedaba en blanco sin
+      // explicación (regresión #122, misma clase que el bug del configurador).
+      await tester.pumpWidget(
+        _appUnderTest(
+          args: _args(level: 'level-01'),
+          catalogBuilder: () => throw const LevelUnavailable(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Assert: mensaje de error + reintento, NUNCA un hueco vacío.
+      expect(find.widgetWithText(TextButton, 'Retry'), findsOneWidget);
+      expect(find.text('Next Level'), findsNothing);
+      expect(find.text("You've completed all levels!"), findsNothing);
+      expect(
+        find.text('Complete the earlier levels to unlock the next one.'),
+        findsNothing,
+      );
     });
 
     testWidgets('should_render_score_moves_and_matching_filled_stars_when_won',

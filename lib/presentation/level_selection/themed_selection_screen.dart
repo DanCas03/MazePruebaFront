@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/providers/level_catalog_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
 import '../providers/level_selection_provider.dart';
@@ -32,10 +33,25 @@ class ThemedSelectionScreen extends ConsumerWidget {
       ),
       body: sections.when(
         loading: () => const Center(child: CircularProgressIndicator()),
+        // Mismo retry de dos pasos que LevelSelectionScreen: refresca el
+        // Catálogo remoto (si fue él quien falló) y recompone el selector.
         error: (_, __) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text(l10n.levelsLoadError, textAlign: TextAlign.center),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.levelsLoadError, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () {
+                    ref.read(levelCatalogProvider.notifier).refresh();
+                    ref.invalidate(levelSelectionControllerProvider);
+                  },
+                  child: Text(l10n.retry),
+                ),
+              ],
+            ),
           ),
         ),
         data: (view) => view.themedTiles.isEmpty

@@ -14,8 +14,10 @@ import 'size_presets.dart';
 /// Configurador del flujo de tableros generados (front#37). El jugador elige su
 /// INTENCIÓN — tamaño (4–10), dificultad, contrarreloj y semilla opcional — y
 /// [GeneratorConfig] deriva los parámetros internos del generador. "Jugar" se
-/// deshabilita reactivamente (Riverpod) mientras el formulario sea inválido
-/// (única fuente de invalidez práctica: una semilla no numérica).
+/// deshabilita reactivamente (Riverpod) mientras el formulario sea inválido: por
+/// una semilla no numérica (mensaje bajo el campo) o por una combinación de
+/// columnas/filas fuera de la banda portrait (mensaje bajo los selectores de
+/// tamaño) — ambas causas se explican en pantalla, nunca en silencio.
 class ConfiguratorScreen extends ConsumerWidget {
   const ConfiguratorScreen({super.key});
 
@@ -66,6 +68,13 @@ class ConfiguratorScreen extends ConsumerWidget {
               value: form.rows,
               onChanged: controller.setRows,
             ),
+            if (!form.isAspectValid) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.configAspectInvalid,
+                style: const TextStyle(color: AppColors.error),
+              ),
+            ],
             const SizedBox(height: 24),
             Text(l10n.configDifficulty,
                 style: Theme.of(context).textTheme.titleMedium),

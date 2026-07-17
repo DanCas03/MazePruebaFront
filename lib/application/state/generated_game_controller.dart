@@ -86,12 +86,23 @@ class GeneratedGameController extends AsyncNotifier<GameState> {
   /// front#66: usa la variante no bloqueante del caso de uso — los presets L/XL
   /// generan en un isolate — y emite [AsyncValue.loading] mientras tanto para
   /// que la pantalla muestre el indicador de progreso en vez de congelarse.
+  ///
+  /// La generación en sí NO debería fallar (la config ya llega validada por
+  /// [GeneratorConfig.create]), pero corre en un isolate (`compute`, front#66):
+  /// un fallo ahí (o cualquier otro error inesperado) se captura en
+  /// [AsyncValue.error] en vez de escapar como una excepción no manejada fuera
+  /// de `build()` — la pantalla lo distingue y ofrece salir en vez de quedar
+  /// con el spinner de carga congelado para siempre.
   Future<void> startNew(GeneratorConfig config) async {
     try {
       await future;
     } catch (_) {}
     state = const AsyncValue<GameState>.loading();
-    _mount(await _generate.executeAsync(config));
+    try {
+      _mount(await _generate.executeAsync(config));
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 
   /// "Otro tablero" (spec): misma intención del jugador (tamaño/dificultad/

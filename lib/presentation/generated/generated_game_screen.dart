@@ -128,7 +128,7 @@ class _GeneratedGameScreenState extends ConsumerState<GeneratedGameScreen> {
               child: asyncState.when(
                 data: (_) => const GeneratedBoardWidget(),
                 loading: () => CircularProgressIndicator(color: primary),
-                error: (e, _) => Text(l10n.error),
+                error: (e, _) => const _GeneratedGameError(),
               ),
             ),
           ),
@@ -170,6 +170,36 @@ class _CountdownChip extends StatelessWidget {
           Icon(Icons.timer_outlined, color: color, size: 18),
           const SizedBox(width: 4),
           Text(_label, style: TextStyle(color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Rama de error de la generación (front#37/#66): la generación no debería
+/// fallar con una config ya validada, pero corre en un isolate y cualquier
+/// fallo inesperado ahí se captura como [AsyncValue.error] (ver
+/// `GeneratedGameController.startNew`) en vez de dejar el spinner de carga
+/// congelado. Sin estado que retomar aquí (el tablero nunca se persiste), así
+/// que la única salida sensata es volver al configurador a reintentar.
+class _GeneratedGameError extends StatelessWidget {
+  const _GeneratedGameError();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.generatedBoardError, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pushReplacementNamed(context, AppRouter.generate),
+            child: Text(l10n.generatedChangeParams),
+          ),
         ],
       ),
     );

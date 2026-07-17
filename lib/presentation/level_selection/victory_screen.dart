@@ -33,7 +33,6 @@ class VictoryScreen extends ConsumerWidget {
     final args = ModalRoute.of(context)?.settings.arguments as VictoryArgs?;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primary : AppColors.lightPrimary;
     final muted =
         isDark ? AppColors.onSurfaceMuted : AppColors.lightOnSurfaceMuted;
 
@@ -45,12 +44,6 @@ class VictoryScreen extends ConsumerWidget {
     final starCount = canonical?.stars.value ?? args?.stars ?? 0;
     final score = canonical?.score.value ?? args?.score ?? 0;
     final moves = args?.moves ?? 0;
-
-    // "Qué sigue" lo decide el dominio (gating incluido): la pantalla solo pinta
-    // el outcome. Mientras el future resuelve —o sin args— no hay CTA (null).
-    final outcome = args == null
-        ? null
-        : ref.watch(nextLevelOutcomeProvider(args.levelId)).valueOrNull;
 
     return Scaffold(
       body: SafeArea(
@@ -93,37 +86,12 @@ class VictoryScreen extends ConsumerWidget {
                 style: theme.textTheme.bodyLarge?.copyWith(color: muted),
               ),
               const SizedBox(height: 48),
-              // El outcome de dominio decide el paso: botón SOLO si el siguiente
-              // Tier está abierto; si está bloqueado, el requisito; en el último,
-              // la felicitación; para temáticos o mientras carga, nada.
-              switch (outcome) {
-                NextLevelUnlocked(:final levelId) => FilledButton(
-                    onPressed: () => Navigator.pushReplacementNamed(
-                      context,
-                      AppRouter.game,
-                      arguments: levelId,
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: isDark
-                          ? AppColors.background
-                          : AppColors.lightSurface,
-                    ),
-                    child: Text(l10n.nextLevel),
-                  ),
-                CampaignComplete() => Text(
-                    l10n.campaignComplete,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(color: AppColors.success),
-                  ),
-                NextLevelLocked() => Text(
-                    l10n.nextLevelLocked,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium?.copyWith(color: muted),
-                  ),
-                NotInCampaign() || null => const SizedBox.shrink(),
-              },
+              // "Qué sigue" lo decide el dominio (gating incluido): esta sección
+              // solo pinta el outcome. Distingue loading/error/data explícitamente
+              // (front#122) para que un fallo de red al resolverlo no deje el CTA
+              // en blanco sin explicación — antes indistinguible de "cargando" o
+              // "nivel temático, sin siguiente".
+              _NextLevelSection(levelId: args?.levelId),
               const SizedBox(height: 8),
               TextButton(
                 // Conserva Home bajo la selección de niveles para que la flecha
@@ -136,6 +104,91 @@ class VictoryScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Resuelve y pinta el "qué sigue" (front#81) sin colapsar loading/error en el
+/// mismo `null` que "sin siguiente" (temático o sin [levelId]): un fallo de red
+/// al calcularlo muestra un mensaje con reintento en vez de dejar el hueco del
+/// CTA en blanco, indistinguible de "está cargando" (regresión de #122).
+class _NextLevelSection extends ConsumerWidget {
+  final LevelId? levelId;
+  const _NextLevelSection({required this.levelId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id = levelId;
+    if (id == null) return const SizedBox.shrink();
+
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primary : AppColors.lightPrimary;
+    final muted =
+        isDark ? AppColors.onSurfaceMuted : AppColors.lightOnSurfaceMuted;
+
+    return ref.watch(nextLevelOutcomeProvider(id)).when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => _NextLevelError(
+            onRetry: () => ref.invalidate(nextLevelOutcomeProvider(id)),
+          ),
+          data: (outcome) => switch (outcome) {
+            NextLevelUnlocked(:final levelId) => FilledButton(
+                onPressed: () => Navigator.pushReplacementNamed(
+                  context,
+                  AppRouter.game,
+                  arguments: levelId,
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: primary,
+                  foregroundColor:
+                      isDark ? AppColors.background : AppColors.lightSurface,
+                ),
+                child: Text(l10n.nextLevel),
+              ),
+            CampaignComplete() => Text(
+                l10n.campaignComplete,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: AppColors.success),
+              ),
+            NextLevelLocked() => Text(
+                l10n.nextLevelLocked,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium?.copyWith(color: muted),
+              ),
+            NotInCampaign() => const SizedBox.shrink(),
+          },
+        );
+  }
+}
+
+/// Mensaje de "no se pudo calcular el siguiente nivel" con reintento — mismo
+/// patrón que `_ProfileError` (account_panel.dart) y `_ErrorState`
+/// (leaderboard_screen.dart): nunca un hueco vacío sin explicación.
+class _NextLevelError extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _NextLevelError({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final muted =
+        isDark ? AppColors.onSurfaceMuted : AppColors.lightOnSurfaceMuted;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          l10n.nextLevelError,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+        ),
+        const SizedBox(height: 8),
+        TextButton(onPressed: onRetry, child: Text(l10n.retry)),
+      ],
     );
   }
 }

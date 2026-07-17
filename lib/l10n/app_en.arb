@@ -110,6 +110,10 @@
   "@nextLevelLocked": {
     "description": "Shown on the victory screen when the next level's tier is still locked (earlier levels not completed)."
   },
+  "nextLevelError": "Couldn't check your next level. Check your connection and try again.",
+  "@nextLevelError": {
+    "description": "Shown on the victory screen when resolving the next-level outcome (catalog/progress fetch) fails, with a retry button."
+  },
   "levelsLoadError": "Couldn't load levels",
   "@levelsLoadError": {
     "description": "Shown on the level selection screen when the catalog or progress fails to load."
@@ -230,9 +234,13 @@
   "@configSeedInvalid": {
     "description": "Validation message shown when the optional seed is not a valid integer."
   },
+  "configAspectInvalid": "Adjust columns/rows: this size is too wide or too tall to fit the screen",
+  "@configAspectInvalid": {
+    "description": "Validation message shown under the size selectors when cols/rows fall outside the app-wide portrait aspect band (front#101), explaining why \"Play\" is disabled."
+  },
   "configPlay": "Play",
   "@configPlay": {
-    "description": "CTA that generates the board and starts the generated session; disabled while the seed input is invalid."
+    "description": "CTA that generates the board and starts the generated session; disabled while the seed is invalid or the size is outside the portrait aspect band."
   },
   "seedLabel": "Seed {seed}",
   "@seedLabel": {
@@ -248,6 +256,10 @@
   "seedCopied": "Seed copied to clipboard",
   "@seedCopied": {
     "description": "Snackbar confirmation shown after copying the seed."
+  },
+  "generatedBoardError": "We couldn't generate this board. Try adjusting the parameters.",
+  "@generatedBoardError": {
+    "description": "Shown during a generated session if board generation fails unexpectedly; pairs with a button back to the configurator (front#37/#66)."
   },
   "generatedClearedTitle": "Board cleared!",
   "@generatedClearedTitle": {

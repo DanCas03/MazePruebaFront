@@ -31,8 +31,8 @@ void main() {
       expect(map['levelId'], 'cand-t1-s101');
       expect(map['order'], 1); // placeholder de curación = tier
       expect(map['cols'], 6);
-      expect(map['rows'], 8);
-      expect(map.containsKey('timeLimitSec'), isFalse); // T1 sin límite
+      expect(map['rows'], 10);
+      expect(map['timeLimitSec'], rampStepFor(1).timeLimitSec); // 30 (back#46: T1 ahora cronometrado)
       expect(map['arrows'], isA<List<dynamic>>());
       expect((map['arrows'] as List).isNotEmpty, isTrue);
 
@@ -44,7 +44,7 @@ void main() {
     test('un tier con límite emite timeLimitSec derivado de la Rampa', () {
       final result = produceCandidate(CandidateSpec(step: rampStepFor(3), seed: 300));
       final map = jsonDecode(result.json) as Map<String, dynamic>;
-      expect(map['timeLimitSec'], rampStepFor(3).timeLimitSec); // 150
+      expect(map['timeLimitSec'], rampStepFor(3).timeLimitSec); // 120
       expect(map['order'], 3);
     });
 

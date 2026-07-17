@@ -5,6 +5,7 @@ import '../../domain/arrows/entities/arrow_board.dart';
 import '../../domain/arrows/services/i_level_generator.dart';
 import '../../domain/arrows/value_objects/arrow_id.dart';
 import '../../domain/game_core/space/board_space.dart';
+import '../../domain/game_core/space/masked_space.dart';
 import '../../domain/game_core/space/rect_space.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
@@ -165,6 +166,158 @@ class GraphBoardGenerator implements ILevelGenerator {
 
     return ArrowBoard(arrows: placed, space: space);
   }
+
+  /// Genera un tablero temático de COBERTURA TOTAL (#114): rellena la figura
+  /// (unión de `region.cells`) con flechas RECTAS de largo >= 2, cubriendo
+  /// ~100% de sus celdas. Usa solo `role` y `cells` de cada
+  /// [ThemedRegionSpec] (ignora `arrowCount`/`maxPathLen` del spec).
+  ///
+  /// Algoritmo de "pelado" (peeling) que garantiza solubilidad DAG por
+  /// construcción: se eligen flechas en orden de VACIADO — cada flecha pelada
+  /// tiene su carril de salida libre de las celdas aún no peladas (las que
+  /// pertenecerán a flechas que salen DESPUÉS). El orden de colocación es el
+  /// inverso del pelado, así el tablero se vacía en orden inverso de
+  /// colocación (mismo invariante que [generate]/[generateThemed]).
+  ///
+  /// El espacio es un [MaskedSpace]: las celdas fuera de la figura son
+  /// frontera, así que una flecha "sale" en el borde de la silueta, no en el
+  /// del rectángulo. Determinista (sin rng): candidatos ordenados por grado
+  /// ascendente con desempate estable fila→columna.
+  ArrowBoard generateThemedFull({
+    required int cols,
+    required int rows,
+    required List<ThemedRegionSpec> regions,
+    int maxPathLen = 6,
+  }) {
+    assert(maxPathLen >= 2, 'maxPathLen must be >= 2; got $maxPathLen');
+    final activeCells = <Position>{for (final r in regions) ...r.cells};
+    final space = MaskedSpace(cols, rows, activeCells: activeCells);
+    // Cada celda pertenece a exactamente una región -> su rol de pintado.
+    final cellRole = <Position, String>{
+      for (final region in regions)
+        for (final cell in region.cells) cell: region.role,
+    };
+    final remaining = Set<Position>.of(activeCells);
+    final peelOrder = <Arrow>[]; // flechas en orden de VACIADO
+
+    while (remaining.isNotEmpty) {
+      // Grado = vecinos ortogonales en `remaining` con el MISMO rol. Pelar
+      // primero las celdas de menor grado (puntas/esquinas) evita dejar
+      // celdas huérfanas irreducibles en el interior de la figura.
+      final degree = <Position, int>{
+        for (final cell in remaining)
+          cell: _sameRoleDegree(cell, space, remaining, cellRole),
+      };
+      final candidates = remaining.toList()
+        ..sort((a, b) {
+          final byDegree = degree[a]!.compareTo(degree[b]!);
+          if (byDegree != 0) return byDegree;
+          // Desempate estable (determinismo): fila, luego columna.
+          final byRow = a.row.compareTo(b.row);
+          return byRow != 0 ? byRow : a.col.compareTo(b.col);
+        });
+
+      var placedThisRound = false;
+      for (final head in candidates) {
+        final role = cellRole[head]!;
+        List<Position>? bestBody; // [head, back1, back2, ...]
+        Direction? bestDir;
+        for (final dir in space.directions) {
+          // Carril de salida en el ESPACIO ENMASCARADO: vacío significa que
+          // la cabeza está en el borde de la figura y sale de inmediato.
+          // Bloqueado si contiene celdas aún no peladas (esas pertenecen a
+          // flechas que saldrán después de esta).
+          final lane = space.exitLane(head, dir);
+          if (lane.any(remaining.contains)) continue;
+
+          // Cuerpo RECTO hacia atrás (opuesto a dir) por celdas del mismo
+          // rol aún en `remaining`.
+          final back = _oppositeOf(dir);
+          final body = <Position>[head];
+          var cursor = head;
+          while (body.length < maxPathLen) {
+            final prev = space.step(cursor, back);
+            if (prev == null ||
+                !remaining.contains(prev) ||
+                body.contains(prev) ||
+                cellRole[prev] != role) {
+              break;
+            }
+            body.add(prev);
+            cursor = prev;
+          }
+          if (body.length >= 2 &&
+              (bestBody == null || body.length > bestBody.length)) {
+            bestBody = body;
+            bestDir = dir;
+          }
+        }
+        if (bestBody != null) {
+          remaining.removeAll(bestBody);
+          peelOrder.add(Arrow(
+            // Id provisional en orden de pelado; se re-indexa al invertir.
+            id: ArrowId('arrow-${peelOrder.length}'),
+            // cells va cola..cabeza (head LAST), como en generateThemed:
+            // bestBody es [head, back1, ...] -> se invierte.
+            cells: bestBody.reversed.toList(),
+            headDirection: bestDir!,
+            paintRole: role,
+          ));
+          placedThisRound = true;
+          break;
+        }
+      }
+      if (!placedThisRound) {
+        // Resto irreducible con largo >= 2: esas celdas quedan sin cubrir
+        // (degradación con gracia, misma filosofía que [generate]).
+        _logger?.warn(
+          'generateThemedFull: ${remaining.length} irreducible cells left '
+          'uncovered in ${cols}x$rows mask',
+          'GraphBoardGenerator',
+        );
+        break;
+      }
+    }
+
+    // Orden de colocación = inverso del pelado (la última colocada sale
+    // primero -> DAG). Re-indexa ids para que lean arrow-0..arrow-N en el
+    // orden final de la lista, igual que generateThemed.
+    final reversed = peelOrder.reversed.toList();
+    final arrows = <Arrow>[
+      for (var i = 0; i < reversed.length; i++)
+        Arrow(
+          id: ArrowId('arrow-$i'),
+          cells: reversed[i].cells,
+          headDirection: reversed[i].headDirection,
+          paintRole: reversed[i].paintRole,
+        ),
+    ];
+    return ArrowBoard(arrows: arrows, space: space);
+  }
+
+  /// Grado de [cell]: vecinos ortogonales en [remaining] con su mismo rol.
+  int _sameRoleDegree(Position cell, BoardSpace space, Set<Position> remaining,
+      Map<Position, String> cellRole) {
+    final role = cellRole[cell];
+    var degree = 0;
+    for (final dir in space.directions) {
+      final next = space.step(cell, dir);
+      if (next != null && remaining.contains(next) && cellRole[next] == role) {
+        degree++;
+      }
+    }
+    return degree;
+  }
+
+  /// Inversión de dirección (no es aritmética dr/dc — el paso geométrico
+  /// sigue delegado a [BoardSpace.step], ADR-0005 D2): el cuerpo recto crece
+  /// hacia atrás, en sentido opuesto a la dirección de salida.
+  Direction _oppositeOf(Direction dir) => switch (dir) {
+        Direction.up => Direction.down,
+        Direction.down => Direction.up,
+        Direction.left => Direction.right,
+        Direction.right => Direction.left,
+      };
 
   /// Variante de campaña por bandas: muestrea la cabeza de [pool] y elige la
   /// dirección AL AZAR ENTRE LAS FACTIBLES (carril libre), en vez de imponerla

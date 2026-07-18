@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../domain/arrows/entities/arrow.dart';
+import '../geometry/board_geometry.dart';
 import '../painters/arrow_painter.dart';
 import '../direction_projection.dart';
 
@@ -15,6 +16,8 @@ class ArrowWidget extends StatefulWidget {
   final Color color;
   final bool isBlocked;
   final int blockedNonce;
+  final BoardGeometry? geometry;
+  final Offset origin;
 
   const ArrowWidget({
     super.key,
@@ -25,6 +28,8 @@ class ArrowWidget extends StatefulWidget {
     required this.color,
     required this.isBlocked,
     required this.blockedNonce,
+    this.geometry,
+    this.origin = Offset.zero,
   });
 
   @override
@@ -75,6 +80,8 @@ class _ArrowWidgetState extends State<ArrowWidget>
             cell: widget.cell,
             color: widget.color,
             headDirection: widget.arrow.headDirection,
+            geometry: widget.geometry,
+            origin: widget.origin,
           ),
         ),
       ),

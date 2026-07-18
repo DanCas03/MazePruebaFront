@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../domain/arrows/entities/arrow.dart';
 import '../../../domain/board/services/auto_solve_pacing.dart';
+import '../geometry/board_geometry.dart';
 import '../painters/snake_exit_painter.dart';
 
 /// Overlay cosmético de la flecha removida: retracción "serpiente" cabeza
@@ -23,6 +24,12 @@ class ExitingArrowWidget extends StatefulWidget {
   // camino (ver AutoSolvePacing.exitDurationFor).
   final Duration duration;
 
+  // front#126: passthrough puro hacia SnakeExitPainter — permite que la
+  // retracción "serpiente" recorra centros hex en vez de la fórmula lineal
+  // rect. Ausente => camino lineal rect intacto.
+  final BoardGeometry? geometry;
+  final Offset origin;
+
   const ExitingArrowWidget({
     super.key,
     required this.arrow,
@@ -34,6 +41,8 @@ class ExitingArrowWidget extends StatefulWidget {
     required this.color,
     required this.nonce,
     this.duration = AutoSolvePacing.standardExitDuration,
+    this.geometry,
+    this.origin = Offset.zero,
   });
 
   @override
@@ -73,6 +82,8 @@ class _ExitingArrowWidgetState extends State<ExitingArrowWidget>
               cell: widget.cell,
               color: widget.color,
               progress: t,
+              geometry: widget.geometry,
+              origin: widget.origin,
             ),
           );
         },

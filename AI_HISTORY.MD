@@ -2314,3 +2314,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - **TDD:** `test/domain/game_core/space/hex_space_test.dart` (10 tests) escrito primero — rojo por error de compilación ("Method not found: 'HexSpace'") antes de crear la clase; verde tras la implementación (10/10), sin ajustar ningún valor esperado del brief.
 - Suite completa del front: **896 verde**.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 115 — Seam polimórfico BoardSpace.masked (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** El montaje en tiempo de partida debe elegir MaskedSpace (rect) o HexMaskedSpace (hex) sin condicionar por tipo en la aplicación.
+**Herramienta de IA utilizada:** Claude Code (Haiku 4.5)
+**Prompt o instrucción proporcionada:** > "front#125: seam polimórfico para el espacio enmascarado (opción A del grilling)."
+**Resultado obtenido:** Método abstracto `BoardSpace.masked(activeCells)`; `RectSpace`→`MaskedSpace`, `HexSpace`→`HexMaskedSpace`. `_mountedBoard` (front#125 Task 5) queda sin type-switch. Doble de test `_SparseSpace` lanza `UnimplementedError` (no participa en montaje). Tests AAA por geometría.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

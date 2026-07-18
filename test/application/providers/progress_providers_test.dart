@@ -123,6 +123,33 @@ void main() {
     expect(p.bestScore, Score.base);
   });
 
+  test(
+      'persiste el progreso de un nivel hex por el mismo pipeline que campaña',
+      () async {
+    // Arrange — mismo montaje que el caso campaña, pero con LevelId hex.
+    final repo = MockILevelRepository();
+    final uc = MockRemoveArrowUseCase();
+    _stubLevel(repo, _oneArrowBoard());
+    when(uc.execute(any, any)).thenReturn(Right(_oneArrowBoard()));
+    final spy = _SpyProgressRepository();
+    final c = _container(repo, uc, spy);
+    c.read(levelCompletionObserverProvider);
+    final notifier = c.read(gameControllerProvider.notifier);
+    await notifier.loadLevel(LevelId('hex-01'));
+
+    // Act
+    await notifier.tapArrow(const ArrowId('arrow-0'));
+    await Future<void>.delayed(Duration.zero);
+
+    // Assert — el observer persiste igual que para un nivel de campaña.
+    expect(spy.upserts.length, 1);
+    final p = spy.upserts.single;
+    expect(p.levelId, LevelId('hex-01'));
+    expect(p.completed, isTrue);
+    expect(p.bestStars, 3);
+    expect(p.bestScore, Score.base);
+  });
+
   test('no persiste nada mientras la partida sigue en curso (no GameWon)',
       () async {
     // Arrange — tablero de DOS flechas: quitar una NO limpia el tablero.

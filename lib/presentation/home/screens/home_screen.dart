@@ -51,136 +51,173 @@ class HomeScreen extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRouter.settings),
                 ),
               ),
+              // front#127: con 4 CTAs apilados la columna puede exceder alturas
+              // reducidas (p. ej. 800x600 en tests o landscape); el scroll evita
+              // el overflow sin alterar el centrado cuando sí cabe.
               Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const _LogoArrows(),
-                const SizedBox(height: 28),
-                Text(
-                  l10n.appTitle.toUpperCase(),
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: AppColors.onBackground,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _LogoArrows(),
+                      const SizedBox(height: 28),
+                      Text(
+                        l10n.appTitle.toUpperCase(),
+                        style:
+                            Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  color: AppColors.onBackground,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2,
+                                ),
                       ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.homeTagline,
-                  style: const TextStyle(
-                      color: AppColors.onSurfaceMuted, fontSize: 15),
-                ),
-                const SizedBox(height: 48),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 48,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.homeTagline,
+                        style: const TextStyle(
+                            color: AppColors.onSurfaceMuted, fontSize: 15),
+                      ),
+                      const SizedBox(height: 48),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 48,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pushNamed(
+                            context, AppRouter.levelSelection),
+                        child: Text(
+                          l10n.homePlay,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // front#100: acceso a la sección temática (niveles con silueta).
+                      // Secundario (contorneado) como el generador; comparte el patrón.
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.secondary,
+                          side: BorderSide(
+                              color:
+                                  AppColors.secondary.withValues(alpha: 0.6)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, AppRouter.themed),
+                        icon: const Icon(Icons.palette_outlined),
+                        label: Text(
+                          l10n.homeThemed,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // front#127: acceso al modo hexagonal (fichas libres, ADR-0007
+                      // D6). Secundario contorneado, mismo molde que el temático.
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.secondary,
+                          side: BorderSide(
+                              color:
+                                  AppColors.secondary.withValues(alpha: 0.6)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, AppRouter.hex),
+                        icon: const Icon(Icons.hexagon_outlined),
+                        label: Text(
+                          l10n.homeHex,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // front#37: acceso al generador de tableros efímeros. Secundario
+                      // (contorneado) frente al CTA primario de la campaña.
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.secondary,
+                          side: BorderSide(
+                              color:
+                                  AppColors.secondary.withValues(alpha: 0.6)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, AppRouter.generate),
+                        icon: const Icon(Icons.auto_awesome),
+                        label: Text(
+                          l10n.generateBoard,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // ADR 0006: acceso al ranking general de jugadores. Mismo peso
+                      // visual que el generador (secundario), con el dorado de
+                      // "logro" como acento.
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.victory,
+                          side: BorderSide(
+                              color: AppColors.victory.withValues(alpha: 0.6)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pushNamed(
+                            context, AppRouter.globalLeaderboard),
+                        icon: const Icon(Icons.emoji_events),
+                        label: Text(
+                          l10n.homeLeaderboard,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRouter.levelSelection),
-                  child: Text(
-                    l10n.homePlay,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // front#100: acceso a la sección temática (niveles con silueta).
-                // Secundario (contorneado) como el generador; comparte el patrón.
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.secondary,
-                    side: BorderSide(
-                        color: AppColors.secondary.withValues(alpha: 0.6)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRouter.themed),
-                  icon: const Icon(Icons.palette_outlined),
-                  label: Text(
-                    l10n.homeThemed,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // front#37: acceso al generador de tableros efímeros. Secundario
-                // (contorneado) frente al CTA primario de la campaña.
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.secondary,
-                    side: BorderSide(
-                        color: AppColors.secondary.withValues(alpha: 0.6)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRouter.generate),
-                  icon: const Icon(Icons.auto_awesome),
-                  label: Text(
-                    l10n.generateBoard,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // ADR 0006: acceso al ranking general de jugadores. Mismo peso
-                // visual que el generador (secundario), con el dorado de
-                // "logro" como acento.
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.victory,
-                    side: BorderSide(
-                        color: AppColors.victory.withValues(alpha: 0.6)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pushNamed(
-                      context, AppRouter.globalLeaderboard),
-                  icon: const Icon(Icons.emoji_events),
-                  label: Text(
-                    l10n.homeLeaderboard,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                  ],
                 ),
               ),
             ],

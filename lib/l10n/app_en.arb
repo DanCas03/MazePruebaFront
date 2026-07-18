@@ -136,6 +136,18 @@
   "@themedEmpty": {
     "description": "Empty state of the themed section when the catalog has no themed levels."
   },
+  "hexSection": "Hex mode",
+  "@hexSection": {
+    "description": "AppBar title of the hexagonal mode selection screen (front#127, ADR-0007 D6)."
+  },
+  "homeHex": "Hex mode",
+  "@homeHex": {
+    "description": "Home screen CTA that opens the hexagonal mode section (front#127)."
+  },
+  "hexEmpty": "No hex levels available yet.",
+  "@hexEmpty": {
+    "description": "Empty state of the hex section when the catalog has no hex levels."
+  },
   "leaderboardTitle": "Ranking · Level {level}",
   "@leaderboardTitle": {
     "description": "Leaderboard screen AppBar title for a given level.",

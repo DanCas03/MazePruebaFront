@@ -2272,3 +2272,20 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - **Golden (Tarea 1):** `graph_board_generator_golden_test.dart` sigue verde (3/3) SIN regenerar fixtures — confirma que la secuencia RNG del generador es byte-idéntica tras migrar a `space.directions`.
 - Suite completa del front: **886 verde**, `flutter analyze lib` limpio.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 114 — #124 (Fragmento B): HexSpace, geometría hexagonal flat-top axial
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Añadir `HexSpace` como segunda geometría de tablero (ADR-0007 D1), subclase de `BoardSpace` en Dart puro, gemela del back en nombres y convención axial. Depende del átomo A1 (Direction a 8 valores + `InvalidDirectionException`, Entrada 113) ya mergeado en esta rama.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5) — rol `frontend-architect` (skill arrowmaze-frontend), ejecutando el brief `.superpowers/sdd/task-3-brief.md` (Task 3 de un plan SDD).
+**Prompt o instrucción proporcionada:** > "Implementing Task 3 (Fragment B) of a plan for the ArrowMaze Flutter frontend: add HexSpace, a flat-top hexagonal board geometry, as a new subclass of BoardSpace alongside RectSpace."
+**Resultado obtenido:**
+- `HexSpace(radius)` (`lib/domain/game_core/space/hex_space.dart`): mapea coordenadas axiales `(q, r)` a `Position(row, col)` sin tocar el VO (`col = q + R`, `row = r + R`), manteniendo ambas coordenadas `>= 0` dentro del hex.
+- `directions`: exactamente 6 (`up`, `down`, `upRight`, `downRight`, `upLeft`, `downLeft`) — nunca `left`/`right`.
+- `step`: mismo patrón fail-fast que `RectSpace` (ADR-0007 D3) — guard `if (!_hexDirections.contains(dir))` primero (cubre left/right), switch exhaustivo sobre los 8 valores con las ramas `left || right` lanzando `'unreachable: guarded above'` (redundancia deliberada por exhaustividad de Dart), guard de negativo antes de construir `Position`, y `contains` final.
+- `contains`: `q=col-R, r=row-R`; dentro si `|q|<=R && |r|<=R && |q+r|<=R`.
+- `cellCount = 3R²+3R+1`; `bounds` override O(1) = caja `(2R+1)²` desde el origen; `allCells` barre esa caja row-major filtrando por `contains` (orden canónico).
+- `CONTEXT.md`: nueva sección `## Glosario` (no existía) con la entrada de HexSpace, incluyendo la mención de su gemelo futuro `HexMaskedSpace`.
+- **TDD:** `test/domain/game_core/space/hex_space_test.dart` (10 tests) escrito primero — rojo por error de compilación ("Method not found: 'HexSpace'") antes de crear la clase; verde tras la implementación (10/10), sin ajustar ningún valor esperado del brief.
+- Suite completa del front: **896 verde**.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

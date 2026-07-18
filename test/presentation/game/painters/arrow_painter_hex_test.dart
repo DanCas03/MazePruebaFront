@@ -31,15 +31,59 @@ void main() {
     expect(ro, paintsExactlyCountTimes(#drawPath, 4));
   });
 
-  test('_center con geometry devuelve centerOf − origin', () {
+  test('con geometry, la polilínea del cuerpo pasa por centerOf(cell) − origin', () {
+    // Arrange.
     final g = HexGeometry(const HexSpace(2), c);
-    final p0 = Position(row: 2, col: 2);
-    final p1 = Position(row: 2, col: 3);
-    final origin = g.centerOf(p0);
-    // El delta entre centros locales debe igualar el delta de centerOf.
-    final expectedDelta = g.centerOf(p1) - g.centerOf(p0);
-    // (verificado indirectamente: el segundo centro local = expectedDelta)
-    expect(expectedDelta.dx, isNot(closeTo(g.cellSize, 1e-9)),
+    final cells = [Position(row: 2, col: 2), Position(row: 2, col: 3)]; // downRight
+    final origin = g.centerOf(cells.first);
+    final painter = ArrowPainter(
+      cells: cells,
+      minCol: 2,
+      minRow: 2,
+      cell: g.cellSize,
+      color: const Color(0xFFFFFFFF),
+      headDirection: Direction.downRight,
+      geometry: g,
+      origin: origin,
+    );
+
+    // Act.
+    final rec = _RecordingCanvas();
+    painter.paint(rec, const Size(400, 400));
+
+    // Assert: el primer path grabado (glow) es la polilínea del cuerpo.
+    final body = rec.paths.first;
+    final start = _start(body);
+    final end = _end(body);
+
+    final expectedStart = g.centerOf(cells[0]) - origin; // == Offset.zero
+    final expectedEnd = g.centerOf(cells[1]) - origin;
+
+    // Path (Skia) almacena las coordenadas en precisión simple (float32);
+    // tolerancia laxa para absorber ese redondeo, sigue siendo << 1 celda.
+    const tol = 1e-3;
+    expect(start.dx, closeTo(expectedStart.dx, tol));
+    expect(start.dy, closeTo(expectedStart.dy, tol));
+    expect(end.dx, closeTo(expectedEnd.dx, tol));
+    expect(end.dy, closeTo(expectedEnd.dy, tol));
+
+    // El delta no debe coincidir con el paso lineal rect (dx == cellSize, dy == 0):
+    // así se prueba que la polilínea siguió la geometría hex, no la fórmula lineal.
+    expect(end.dx, isNot(closeTo(g.cellSize, tol)),
         reason: 'diagonal hex: dx != cellSize entero, prueba no-lineal');
   });
+}
+
+class _RecordingCanvas implements Canvas {
+  final List<Path> paths = [];
+  @override
+  void drawPath(Path path, Paint paint) => paths.add(path);
+  @override
+  void noSuchMethod(Invocation invocation) {}
+}
+
+Offset _start(Path p) => p.computeMetrics().first.getTangentForOffset(0)!.position;
+Offset _end(Path p) {
+  final m = p.computeMetrics().first;
+  return m.getTangentForOffset(m.length)!.position;
 }

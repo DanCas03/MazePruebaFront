@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/hex_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
+import 'package:flutter_arrow_maze/presentation/game/direction_projection.dart';
 import 'package:flutter_arrow_maze/presentation/game/geometry/hex_geometry.dart';
 import 'package:flutter_arrow_maze/presentation/game/painters/snake_exit_painter.dart';
 
@@ -81,6 +82,48 @@ void main() {
     // de _laneCells/_center que usaría cellsToEdge.
     expect(end.dx, isNot(closeTo(g.cellSize, tol)),
         reason: 'diagonal hex: dx != cellSize entero, prueba no-lineal');
+  });
+
+  test('con geometry, a progress=1 la cola cruza exactamente laneCells·cellSize '
+      'del carril real de exitLane (no un valor hardcodeado)', () {
+    // Arrange — misma flecha de 2 celdas downRight; a progress=1 el desplazamiento
+    // de arco (shift = bodyArc + laneArc) coloca el punto de cola (pts[0]) justo
+    // sobre el vértice de trayectoria `laneCells` pasos más allá de la cabeza,
+    // donde laneCells = geometry.exitLane(head, dir).length (el carril hex real,
+    // no la fórmula lineal). Esto es lo que Task 7 ("carril hex real") debe fijar.
+    final g = HexGeometry(const HexSpace(2), c);
+    final cells = [Position(row: 2, col: 2), Position(row: 2, col: 3)]; // downRight
+    final origin = g.centerOf(cells.first);
+
+    final laneCells = g.exitLane(Position(row: 2, col: 3), Direction.downRight).length;
+    final expectedTail = (g.centerOf(Position(row: 2, col: 3)) - origin) +
+        directionUnit(Direction.downRight) * (laneCells * g.cellSize);
+
+    final painter = SnakeExitPainter(
+      cells: cells,
+      headDirection: Direction.downRight,
+      minCol: 2,
+      minRow: 2,
+      cols: 5,
+      rows: 5,
+      cell: g.cellSize,
+      color: const Color(0xFFFFFFFF),
+      progress: 1.0,
+      geometry: g,
+      origin: origin,
+    );
+
+    // Act.
+    final rec = _RecordingCanvas();
+    painter.paint(rec, const Size(400, 400));
+    final body = rec.paths.first;
+    final tail = _start(body);
+
+    // Assert.
+    expect(laneCells, greaterThan(0)); // sanity: el carril no debe ser degenerado
+    const tol = 1e-3;
+    expect(tail.dx, closeTo(expectedTail.dx, tol));
+    expect(tail.dy, closeTo(expectedTail.dy, tol));
   });
 }
 

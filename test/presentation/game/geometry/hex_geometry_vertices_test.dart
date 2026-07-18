@@ -23,6 +23,12 @@ void main() {
     expect(v[1].dx, closeTo(center.dx + s / 2, 1e-6)); // abajo-derecha
     expect(v[1].dy, closeTo(center.dy + h, 1e-6));
     expect(v[3].dx, closeTo(center.dx - s, 1e-6)); // izquierda
+    expect(v[2].dx, closeTo(center.dx - s / 2, 1e-6)); // abajo-izquierda
+    expect(v[2].dy, closeTo(center.dy + h, 1e-6));
+    expect(v[4].dx, closeTo(center.dx - s / 2, 1e-6)); // arriba-izquierda
+    expect(v[4].dy, closeTo(center.dy - h, 1e-6));
+    expect(v[5].dx, closeTo(center.dx + s / 2, 1e-6)); // arriba-derecha
+    expect(v[5].dy, closeTo(center.dy - h, 1e-6));
   });
 
   test('exitLane delega en space.exitLane (downRight, R=2)', () {

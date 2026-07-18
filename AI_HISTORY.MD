@@ -2323,3 +2323,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "front#125: seam polimórfico para el espacio enmascarado (opción A del grilling)."
 **Resultado obtenido:** Método abstracto `BoardSpace.masked(activeCells)`; `RectSpace`→`MaskedSpace`, `HexSpace`→`HexMaskedSpace`. `_mountedBoard` (front#125 Task 5) queda sin type-switch. Doble de test `_SparseSpace` lanza `UnimplementedError` (no participa en montaje). Tests AAA por geometría.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 116 — Invariante de silueta contra space.contains (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Una silueta temático-hex podía declarar celdas en las esquinas del marco (2R+1)² que no existen en el hexágono; se detectaban tarde (al remontar), no en la decodificación.
+**Herramienta de IA utilizada:** Claude Code (Haiku 4.5)
+**Prompt o instrucción proporcionada:** > "front#125: endurecer la contención de la silueta a board.space.contains (decisión de /domain-modeling)."
+**Resultado obtenido:** `Level` valida cada celda de silueta con `board.space.contains` en vez de `bounds.contains`. No-op para rect (contains ≡ bounds); para hex rechaza en decode (FormatException → LevelCorrupted) una silueta fuera de la figura. Tests AAA hex (acepta figura válida / rechaza esquina fuera del hex).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

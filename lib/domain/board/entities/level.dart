@@ -32,12 +32,11 @@ class Level extends Equatable {
 
   /// Silueta temática (#118): mapa rol→celdas del fill que define la forma
   /// jugable de niveles temáticos (corazón, carita feliz...). Nula en
-  /// campaña. Invariantes si está presente: no vacía, toda celda dentro de la
-  /// caja `cols×rows` del board (frame, no existencia en el espacio — ver
-  /// `BoundingBox.contains`), y toda celda de toda flecha del board pertenece
-  /// a la unión de sus regiones — el tablero jugable nunca desborda la
-  /// silueta. Sienta la base del decoder y del seam de montaje que la
-  /// consumirán (front#119+).
+  /// campaña. Invariantes si está presente: no vacía, toda celda debe existir
+  /// en el espacio del tablero (ver `board.space.contains`), y toda celda de
+  /// toda flecha del board pertenece a la unión de sus regiones — el tablero
+  /// jugable nunca desborda la silueta. Sienta la base del decoder y del seam
+  /// de montaje que la consumirán (front#119+).
   final Map<String, Set<Position>>? silhouette;
 
   Level({
@@ -75,11 +74,16 @@ class Level extends Equatable {
         throw const InvalidLevelException(
             'silhouette must have at least one region with at least one cell');
       }
-      final bounds = board.space.bounds;
+      // Contención de la silueta: cada celda debe EXISTIR en el espacio, no
+      // sólo caer en su marco (front#125). En rect es idéntico
+      // (RectSpace.contains ≡ bounds), pero un hex vive en un marco (2R+1)²
+      // cuyas esquinas quedan fuera del hexágono: validar contra `contains`
+      // rechaza en la decodificación una silueta hex fuera de la figura, en
+      // vez de reventar al remontar sobre HexMaskedSpace.
       for (final cell in union) {
-        if (!bounds.contains(cell)) {
+        if (!board.space.contains(cell)) {
           throw InvalidLevelException(
-              'silhouette cell $cell falls outside the board bounds');
+              'silhouette cell $cell falls outside the board space');
         }
       }
       for (final arrow in board.arrows) {

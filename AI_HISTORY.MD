@@ -1,5 +1,14 @@
 # AI History — MazePruebaFront
 
+## Entrada 118 — LevelSection.hex + fromWire (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** El catálogo necesita distinguir las fichas del modo hex (ADR-0007 D6), ortogonales al espacio del nivel.
+**Herramienta de IA utilizada:** Claude Code (Haiku 4.5)
+**Prompt o instrucción proporcionada:** > "front#125: LevelSection gana hex; fromWire mapea el literal exacto 'hex', tolerante para el resto."
+**Resultado obtenido:** `LevelSection.hex`; `fromWire` con `switch` mapea `themed`/`hex` exactos y degrada todo lo demás a `campaign`. Tests AAA (literal exacto / degradación).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 125 — Invariante headDir ∈ space.directions + ratificación ADR-0007
 
 **Fecha:** 2026-07-18

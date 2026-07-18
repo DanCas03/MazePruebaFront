@@ -22,7 +22,14 @@ void main() {
 
     test('directions expone las 4 direcciones cerradas', () {
       final space = RectSpace(4, 4);
-      expect(space.directions, containsAll(Direction.values));
+      // Direction ahora tiene 8 valores (front#124); RectSpace solo expone
+      // el subconjunto rectangular, no `Direction.values` completo.
+      expect(space.directions, containsAll([
+        Direction.up,
+        Direction.down,
+        Direction.left,
+        Direction.right,
+      ]));
       expect(space.directions.length, 4);
     });
 

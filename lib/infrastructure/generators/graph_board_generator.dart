@@ -242,7 +242,7 @@ class GraphBoardGenerator implements ILevelGenerator {
         for (final c in ordered)
           if (!occupied.contains(c))
             c: {
-              for (final d in Direction.values)
+              for (final d in space.directions)
                 if (space.exitLane(c, d).every((p) => !occupied.contains(p))) d
             },
       };
@@ -355,7 +355,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       Direction.right: Direction.left,
     };
     for (final b in body) {
-      for (final d in Direction.values) {
+      for (final d in space.directions) {
         var p = space.step(b, d);
         while (p != null) {
           clearLanes[p]?.remove(opposite[d]);
@@ -447,7 +447,7 @@ class GraphBoardGenerator implements ILevelGenerator {
     final cost = <Position, int>{};
     for (final c in cells) {
       var best = dead;
-      for (final d in Direction.values) {
+      for (final d in space.directions) {
         var laneCost = 0;
         for (final p in space.exitLane(c, d)) {
           if (occupied.contains(p)) {
@@ -523,7 +523,7 @@ class GraphBoardGenerator implements ILevelGenerator {
     ]..shuffle(rng);
     for (final head in heads) {
       final feasible = <Direction>[
-        for (final d in Direction.values)
+        for (final d in space.directions)
           if (space
               .exitLane(head, d)
               .every((p) => p != target && !occupied.contains(p)))
@@ -629,7 +629,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       Map<Direction, Map<int, List<List<int>>>> straightCols) {
     if (occupied.contains(head)) return null;
     final feasible = <Direction>[
-      for (final d in Direction.values)
+      for (final d in space.directions)
         if (space.exitLane(head, d).every((p) => !occupied.contains(p))) d
     ]..shuffle(rng);
     if (feasible.isEmpty) return null;
@@ -768,7 +768,7 @@ class GraphBoardGenerator implements ILevelGenerator {
       final cell = pool[rng.nextInt(pool.length)];
       if (occupied.contains(cell)) continue;
       final feasible = <Direction>[
-        for (final d in Direction.values)
+        for (final d in space.directions)
           if (space.exitLane(cell, d).every((p) => !occupied.contains(p))) d
       ];
       if (feasible.isEmpty) continue;
@@ -809,7 +809,8 @@ class GraphBoardGenerator implements ILevelGenerator {
   Arrow? _randomBentArrow(Random rng, BoardSpace space, int cols, int rows,
       int index, int maxPathLen, Set<Position> occupied,
       {Set<Position>? allowedBody, String? paintRole}) {
-    final dir = Direction.values[rng.nextInt(Direction.values.length)];
+    final dirs = space.directions.toList();
+    final dir = dirs[rng.nextInt(dirs.length)];
     final head = _randomHeadWithClearLane(rng, space, cols, rows, dir, occupied,
         allowedBody: allowedBody);
     if (head == null) return null;

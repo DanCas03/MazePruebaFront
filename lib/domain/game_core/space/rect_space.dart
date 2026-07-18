@@ -1,3 +1,4 @@
+import '../../core/exceptions/invalid_direction_exception.dart';
 import '../value_objects/direction.dart';
 import '../value_objects/position.dart';
 import 'board_space.dart';
@@ -13,8 +14,18 @@ class RectSpace extends BoardSpace {
 
   const RectSpace(this.cols, this.rows);
 
+  // Orden idéntico a `Direction.values` pre-#124 (up, down, left, right): el
+  // generador consume `space.directions` en este orden y su secuencia RNG debe
+  // quedar byte-idéntica (front#124). NO usar `Direction.values` (ahora son 8).
+  static const List<Direction> _rectDirections = [
+    Direction.up,
+    Direction.down,
+    Direction.left,
+    Direction.right,
+  ];
+
   @override
-  Iterable<Direction> get directions => Direction.values;
+  Iterable<Direction> get directions => _rectDirections;
 
   @override
   bool contains(Position pos) =>
@@ -22,11 +33,22 @@ class RectSpace extends BoardSpace {
 
   @override
   Position? step(Position pos, Direction dir) {
+    // Fail-fast (ADR-0007 D3): una dirección ajena al espacio nunca devuelve
+    // celda ni null silencioso.
+    if (!_rectDirections.contains(dir)) {
+      throw InvalidDirectionException(
+          'Direction $dir no es válida en RectSpace (up, down, left, right)');
+    }
     final (dr, dc) = switch (dir) {
       Direction.up => (-1, 0),
       Direction.down => (1, 0),
       Direction.left => (0, -1),
       Direction.right => (0, 1),
+      Direction.upLeft ||
+      Direction.upRight ||
+      Direction.downLeft ||
+      Direction.downRight =>
+        throw InvalidDirectionException('unreachable: guarded above'),
     };
     final nextRow = pos.row + dr;
     final nextCol = pos.col + dc;

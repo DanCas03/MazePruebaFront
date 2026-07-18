@@ -59,7 +59,16 @@ ArrowBoard _randomBoard(Random rng, {required int cols, required int rows}) {
     }
     if (body.length < 2) continue;
 
-    final dir = Direction.values[rng.nextInt(Direction.values.length)];
+    // RectSpace solo acepta las 4 direcciones rectangulares (front#124):
+    // Direction ahora tiene 8 valores, así que no se puede muestrear de
+    // `Direction.values` completo aquí.
+    const rectDirections = [
+      Direction.up,
+      Direction.down,
+      Direction.left,
+      Direction.right,
+    ];
+    final dir = rectDirections[rng.nextInt(rectDirections.length)];
     arrows.add(Arrow(
       id: ArrowId('arrow-${arrows.length}'),
       cells: body,

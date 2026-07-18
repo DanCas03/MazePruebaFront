@@ -2368,3 +2368,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "front#125: CatalogView gana hexTiles; helper común _freeTilesFrom para temáticos y hex; filtrado por section."
 **Resultado obtenido:** `CatalogView.hexTiles` (aditivo). `LevelSelectionController.build` filtra `section == hex` a un `_freeTilesFrom` compartido con `themedTiles` (DRY). El temático-hex (section:themed) queda en themedTiles. La pantalla no se toca (render = front#127). Tests AAA: hex solo en hexTiles, temático-hex en themedTiles, hexTiles vacío sin sección hex.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 121 — Integración: partida completa sobre nivel hex (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Verificar el AC de que tap → canExit → remove → win corre sobre HexSpace sin cambios en el motor.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: test de integración de partida sobre un nivel hex con el RemoveArrow real."
+**Resultado obtenido:** Test AAA que carga un nivel hex R=2 sin silueta y, con el use case real, toca la única flecha y llega a GameWon — el motor opera polimórficamente sobre HexSpace.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

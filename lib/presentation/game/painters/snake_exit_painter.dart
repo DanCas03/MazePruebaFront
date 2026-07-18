@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../domain/game_core/value_objects/direction.dart';
 import '../../../domain/game_core/value_objects/position.dart';
 import '../direction_projection.dart';
+import '../geometry/board_geometry.dart';
 
 /// Retracción "serpiente": construye la trayectoria (centros del cuerpo
 /// cola→cabeza ++ carril recto más allá del borde) y, a progreso [progress],
@@ -18,6 +19,14 @@ class SnakeExitPainter extends CustomPainter {
   final double cell;
   final Color color;
   final double progress; // 0..1
+  // front#126: cuando no es null, los centros vienen de la geometría (hex) y
+  // el carril de salida se mide en el espacio real (`exitLane`), no con la
+  // fórmula lineal `cellsToEdge` (que lanza en diagonales). `cell` pasa a
+  // interpretarse como `cellSize` para los grosores de trazo. Ausente =>
+  // camino lineal rect intacto (lo cubren los tests rect existentes, incluido
+  // el bug masked-rect conocido).
+  final BoardGeometry? geometry;
+  final Offset origin;
 
   const SnakeExitPainter({
     required this.cells,
@@ -29,15 +38,17 @@ class SnakeExitPainter extends CustomPainter {
     required this.cell,
     required this.color,
     required this.progress,
+    this.geometry,
+    this.origin = Offset.zero,
   });
 
-  Offset _center(Position p) => Offset(
-        (p.col - minCol + 0.5) * cell,
-        (p.row - minRow + 0.5) * cell,
-      );
+  Offset _center(Position p) => geometry != null
+      ? geometry!.centerOf(p) - origin
+      : Offset((p.col - minCol + 0.5) * cell, (p.row - minRow + 0.5) * cell);
 
-  int _laneCells() =>
-      cellsToEdge(cells.last, headDirection, cols: cols, rows: rows);
+  int _laneCells() => geometry != null
+      ? geometry!.exitLane(cells.last, headDirection).length
+      : cellsToEdge(cells.last, headDirection, cols: cols, rows: rows);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -134,5 +145,7 @@ class SnakeExitPainter extends CustomPainter {
       old.progress != progress ||
       old.cells != cells ||
       old.color != color ||
-      old.cell != cell;
+      old.cell != cell ||
+      old.geometry != geometry ||
+      old.origin != origin;
 }

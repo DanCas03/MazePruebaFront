@@ -2377,3 +2377,18 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "front#125: test de integración de partida sobre un nivel hex con el RemoveArrow real."
 **Resultado obtenido:** Test AAA que carga un nivel hex R=2 sin silueta y, con el use case real, toca la única flecha y llega a GameWon — el motor opera polimórficamente sobre HexSpace.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 133 — BoardGeometry seam + RectGeometry (front#126)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Primer fragmento de front#126 (render hexagonal): centralizar la aritmética celda↔píxel que hoy vive inline y duplicada en el painter de superficie, el hit-test y la animación de salida, todos asumiendo celdas cuadradas. Se introduce el seam `BoardGeometry` en la capa de presentación con `RectGeometry` como primera implementación, byte-idéntica a las fórmulas rect actuales — la implementación hex es una tarea posterior.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5), subagente `general-purpose` sobre `task-1-brief.md`.
+**Prompt o instrucción proporcionada:** > "Implementing Task 1: BoardGeometry seam + RectGeometry — construir el seam abstracto y su implementación rectangular, reproduciendo verbatim las fórmulas inline existentes."
+**Resultado obtenido:**
+- `lib/presentation/game/geometry/board_geometry.dart`: `abstract class BoardGeometry` con `factory BoardGeometry.forSpace(BoardSpace space, BoxConstraints c)` que despacha por `space is HexSpace` — único punto de selección por tipo de la capa de presentación; getters `size`/`cellSize`, métodos `centerOf`/`cellAt`/`exitLane`.
+- `lib/presentation/game/geometry/rect_geometry.dart`: `class RectGeometry implements BoardGeometry`, extrae verbatim `cell = min(maxWidth/cols, maxHeight/rows)`, `centerOf = (col-minCol+0.5, row-minRow+0.5)*cell`, `cellAt` con `floor` + `clamp` a la caja envolvente, `exitLane` delegando en `space.exitLane`.
+- `lib/presentation/game/geometry/hex_geometry.dart`: stub de andamiaje requerido por el factory (`class HexGeometry implements BoardGeometry` con todos los miembros lanzando `UnimplementedError('front#126 Task 2+')`) — la implementación real es la Task 2.
+- Corrección sobre el snippet del brief: `board_geometry.dart`/`rect_geometry.dart`/`hex_geometry.dart` importan `package:flutter/widgets.dart` (no solo `dart:ui`), porque `BoxConstraints` no está en `dart:ui`.
+- **TDD:** `test/presentation/game/geometry/rect_geometry_test.dart` (4 tests) escrito primero — rojo confirmado por error de compilación (`board_geometry.dart`/`rect_geometry.dart` no existían) antes de implementar; verde tras la implementación.
+- **Verificación:** foco 4/4 verde; suite completa **928/928 verde**; `flutter analyze` limpio en los 4 archivos (tras retirar un import no usado de `direction.dart` en el test, verbatim del brief pero no requerido por las aserciones).
+**Modificaciones realizadas por el equipo:** (completar manualmente)

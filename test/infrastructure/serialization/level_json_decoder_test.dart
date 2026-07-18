@@ -1,4 +1,6 @@
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/hex_space.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/strike_count.dart';
@@ -32,6 +34,26 @@ Map<String, Object?> canonicalWireMap() => <String, Object?>{
           ],
         },
       ],
+    };
+
+/// Wire de un nivel HEXAGONAL R=2: una flecha de 2 celdas en el centro del
+/// hexágono, con dirección diagonal válida en hex (downRight). `cols`/`rows`
+/// presentes pero IGNORADOS cuando hay `space` hex (bounds derivados del radio).
+Map<String, Object?> hexWireMap({Object? radius = 2}) => <String, Object?>{
+      'levelId': 'hex-1',
+      'cols': 3,
+      'rows': 3,
+      'arrows': [
+        {
+          'id': 'h1',
+          'headDir': 'downRight',
+          'cells': [
+            [2, 2],
+            [2, 3],
+          ],
+        },
+      ],
+      'space': {'type': 'hex', 'radius': radius},
     };
 
 void main() {
@@ -479,6 +501,59 @@ void main() {
       );
       // Assert — the silhouette survives the round-trip byte-for-byte.
       expect(reEncoded, equals(themed));
+    });
+
+    group('descriptor de geometría `space` (front#125)', () {
+      test('should_build_RectSpace_when_space_is_absent', () {
+        // Arrange — el mapa canónico no trae `space`.
+        final level = sut.decode(canonicalWireMap());
+        // Act & Assert — comportamiento actual intacto.
+        expect(level.board.space, RectSpace(8, 11));
+      });
+
+      test('should_build_RectSpace_when_space_type_is_rect', () {
+        // Arrange — `type:"rect"` explícito lee cols/rows como siempre.
+        final map = canonicalWireMap()..['space'] = {'type': 'rect'};
+        // Act
+        final level = sut.decode(map);
+        // Assert
+        expect(level.board.space, RectSpace(8, 11));
+      });
+
+      test('should_build_HexSpace_with_radius_when_space_type_is_hex', () {
+        // Act
+        final level = sut.decode(hexWireMap(radius: 2));
+        // Assert — HexSpace(2); cols/rows del wire (3,3) ignorados.
+        expect(level.board.space, HexSpace(2));
+      });
+
+      test('should_throw_when_space_type_is_unknown', () {
+        // Arrange
+        final map = canonicalWireMap()..['space'] = {'type': 'triangle'};
+        // Act & Assert
+        expect(() => sut.decode(map), throwsA(isA<FormatException>()));
+      });
+
+      test('should_throw_when_hex_radius_is_below_one', () {
+        // Act & Assert — radius 0 no puede delegar en el assert de HexSpace
+        // (se elimina en release): el decoder lo valida explícitamente.
+        expect(() => sut.decode(hexWireMap(radius: 0)),
+            throwsA(isA<FormatException>()));
+      });
+
+      test('should_throw_when_hex_radius_is_missing_or_not_int', () {
+        // Arrange — `space` hex sin `radius`.
+        final map = canonicalWireMap()..['space'] = {'type': 'hex'};
+        // Act & Assert
+        expect(() => sut.decode(map), throwsA(isA<FormatException>()));
+      });
+
+      test('should_throw_when_space_is_not_an_object', () {
+        // Arrange
+        final map = canonicalWireMap()..['space'] = 'hex';
+        // Act & Assert
+        expect(() => sut.decode(map), throwsA(isA<FormatException>()));
+      });
     });
   });
 }

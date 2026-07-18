@@ -2332,3 +2332,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "front#125: endurecer la contención de la silueta a board.space.contains (decisión de /domain-modeling)."
 **Resultado obtenido:** `Level` valida cada celda de silueta con `board.space.contains` en vez de `bounds.contains`. No-op para rect (contains ≡ bounds); para hex rechaza en decode (FormatException → LevelCorrupted) una silueta fuera de la figura. Tests AAA hex (acepta figura válida / rechaza esquina fuera del hex).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 117 — Decoder del descriptor `space` (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Decodificar la geometría declarada en el wire (ADR-0007 D4): `space:{type:hex,radius:N}` ⇒ HexSpace; retrocompatible con niveles sin `space`.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: helper _space(json) con la tabla ausente/rect/hex/unknown y validación FormatException + radius>=1."
+**Resultado obtenido:** `LevelJsonDecoder._space` ramifica por descriptor. Sin `space` o `type:rect` ⇒ RectSpace(cols,rows); `type:hex` ⇒ HexSpace(radius) (cols/rows ignorados); `type` desconocido, `radius<1`, `radius` ausente/no-int o `space` no-objeto ⇒ FormatException. Tests AAA por rama.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

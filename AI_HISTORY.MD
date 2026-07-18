@@ -2392,3 +2392,16 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - **TDD:** `test/presentation/game/geometry/rect_geometry_test.dart` (4 tests) escrito primero — rojo confirmado por error de compilación (`board_geometry.dart`/`rect_geometry.dart` no existían) antes de implementar; verde tras la implementación.
 - **Verificación:** foco 4/4 verde; suite completa **928/928 verde**; `flutter analyze` limpio en los 4 archivos (tras retirar un import no usado de `direction.dart` en el test, verbatim del brief pero no requerido por las aserciones).
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 134 — HexGeometry: proyección flat-top (front#126)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Segundo fragmento de front#126: reemplazar el stub de `HexGeometry` (Entrada 133) por la proyección real de coordenadas axiales `(q,r)` de `HexSpace` a píxeles flat-top — `size`, `cellSize` y `centerOf`. `cellAt` y `exitLane` quedan lanzando `UnimplementedError` (Tasks 3–4).
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5), subagente `general-purpose` sobre `task-2-brief.md`.
+**Prompt o instrucción proporcionada:** > "Implementing Task 2: HexGeometry flat-top projection — reemplazar el stub por la proyección real de size/cellSize/centerOf, dejando cellAt/exitLane con UnimplementedError."
+**Resultado obtenido:**
+- `lib/presentation/game/geometry/hex_geometry.dart`: `_s` (circunradio de celda) se calcula en el inicializador como `min(maxWidth/(3R+2), maxHeight/(√3·(2R+1)))` (fit por el eje más restrictivo); `size = (s(3R+2), √3·s(2R+1))`; `cellSize = √3·s` (separación entre centros vecinos); `centerOf(p)` convierte `Position(row,col)` a axiales `(q,r) = (col-R, row-R)` y proyecta `x = 1.5·s·q + ox`, `y = √3·s·(r+q/2) + oy`, con origen de encuadre `ox = 1.5·s·R+s`, `oy = √3·s·R+√3·s/2` expuesto como getters (no campos) porque dependen de `_s`, fijado recién en el inicializador.
+- `cellAt`/`exitLane` siguen lanzando `UnimplementedError('Task 3'/'Task 4')` — el archivo compila y satisface `BoardGeometry`.
+- **TDD:** `test/presentation/game/geometry/hex_geometry_test.dart` (3 tests) escrito primero contra el stub — rojo confirmado en runtime (`UnimplementedError: front#126 Task 2+` en `size`/`cellSize`/`centerOf`, no en compilación, porque el stub ya existía desde la Task 1); verde tras implementar la proyección. Tercer test verifica la invariante cruzada con `directionUnit` (front#124): los 6 vectores unidad de las direcciones hex, escalados por `cellSize`, coinciden exactamente con `centerOf(vecino) - centerOf(celda)`.
+**Verificación:** foco 3/3 verde; suite completa **931/931 verde**; `flutter analyze` limpio en `hex_geometry.dart`.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

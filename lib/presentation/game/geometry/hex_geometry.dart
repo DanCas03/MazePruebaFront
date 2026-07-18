@@ -75,5 +75,19 @@ class HexGeometry implements BoardGeometry {
 
   @override
   List<Position> exitLane(Position head, Direction dir) =>
-      throw UnimplementedError('Task 4');
+      space.exitLane(head, dir);
+
+  /// 6 vértices del hexágono flat-top de [p], en orden horario desde la derecha.
+  List<Offset> cellVertices(Position p) {
+    final c = centerOf(p);
+    final h = _sqrt3 / 2 * _s;
+    return [
+      Offset(c.dx + _s, c.dy), // v0 derecha
+      Offset(c.dx + _s / 2, c.dy + h), // v1 abajo-derecha
+      Offset(c.dx - _s / 2, c.dy + h), // v2 abajo-izquierda
+      Offset(c.dx - _s, c.dy), // v3 izquierda
+      Offset(c.dx - _s / 2, c.dy - h), // v4 arriba-izquierda
+      Offset(c.dx + _s / 2, c.dy - h), // v5 arriba-derecha
+    ];
+  }
 }

@@ -21,6 +21,14 @@ Arrow straightArrow({
         Direction.left => Position(row: tail.row, col: tail.col - i),
         Direction.down => Position(row: tail.row + i, col: tail.col),
         Direction.up => Position(row: tail.row - i, col: tail.col),
+        // Fixture rect-only (front#124): las diagonales no tienen fixture de
+        // test propio todavía — ningún caso existente las ejercita.
+        Direction.upLeft ||
+        Direction.upRight ||
+        Direction.downLeft ||
+        Direction.downRight =>
+          throw UnimplementedError(
+              'straightArrow diagonal fixture not implemented (front#124)'),
       });
   return Arrow(id: id, cells: cells, headDirection: direction, paintRole: paintRole);
 }

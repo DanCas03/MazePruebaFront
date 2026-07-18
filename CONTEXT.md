@@ -197,3 +197,13 @@ _Avoid_: plantilla, stencil, sprite.
 
 `ICell`, `WallCell`, `EmptyCell`, `ExitCell`, `CellType`, `CellFactory`, grilla de celdas,
 "rotar flecha". El modelo de grilla fue retirado (ver `docs/adr/0001`).
+
+## Glosario
+
+- **Espacio hexagonal (HexSpace):** malla hexagonal flat-top de radio `R`
+  (ADR-0007 D1), subclase de `BoardSpace` en Dart puro. Coordenadas axiales
+  `(q, r)` mapeadas a `Position` con `col = q + R`, `row = r + R`. Publica 6
+  direcciones (`up`, `down` y las 4 diagonales; nunca `left`/`right`),
+  `cellCount = 3R²+3R+1` y una caja envolvente `(2R+1)²`. Su gemelo
+  `HexMaskedSpace` restringe a un subconjunto de celdas activas (silueta), donde
+  toda celda inactiva es frontera de salida.

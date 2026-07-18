@@ -2377,3 +2377,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "front#125: test de integración de partida sobre un nivel hex con el RemoveArrow real."
 **Resultado obtenido:** Test AAA que carga un nivel hex R=2 sin silueta y, con el use case real, toca la única flecha y llega a GameWon — el motor opera polimórficamente sobre HexSpace.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 133 — HexSelectionScreen + ruta `/hex` + l10n (front#127)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** El pipeline de datos del modo hexagonal ya existe (`CatalogView.hexTiles`, `LevelSection.hex`, decoder — PR #129 mergeado a main); falta la superficie de UI: pantalla propia, ruta y claves de idioma para que el jugador acceda a las fichas hex desde el menú principal.
+**Herramienta de IA utilizada:** Claude Code (Fable 5) — subagente implementador
+**Prompt o instrucción proporcionada:** > "Añadir claves l10n `hexSection`/`homeHex`/`hexEmpty` (en/es), crear `HexSelectionScreen` (espejo de `ThemedSelectionScreen`: consume `levelSelectionControllerProvider`, pinta solo `view.hexTiles` sin candados ni orden, `LevelTileGrid`), registrar la ruta `AppRouter.hex = '/hex'` en `onGenerateRoute`, y escribir el test de widget `hex_selection_screen_test.dart` espejando `themed_selection_screen_test.dart` (mismo `_NavCapture`/`_host`/`_pump` de 6 frames, helpers de `level_selection_fakes.dart`) con TDD: rojo (no compila) → verde (4/4)."
+**Resultado obtenido:** `HexSelectionScreen` (ConsumerWidget) idéntica en estructura a `ThemedSelectionScreen` pero apuntando a `hexTiles`/`hexSection`/`hexEmpty`; ruta `/hex` cableada tras `/themed` en `app_router.dart`; claves l10n regeneradas con `flutter gen-l10n`. Test de widget con 4 casos AAA: lista exacta de fichas hex sin bloqueos, navegación a `/game` con el `LevelId` real, estado vacío sin niveles hex, estado de error cuando el catálogo falla (`StubLevelCatalog.withBuilder` que lanza `LevelUnavailable`, espejando el caso de error de `level_selection_controller_test.dart` ya que el test temático no tenía uno propio). `flutter test` 4/4 verde, `flutter analyze` limpio en los archivos tocados.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

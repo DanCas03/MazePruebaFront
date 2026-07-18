@@ -2350,3 +2350,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "front#125: helper _space(json) con la tabla ausente/rect/hex/unknown y validación FormatException + radius>=1."
 **Resultado obtenido:** `LevelJsonDecoder._space` ramifica por descriptor. Sin `space` o `type:rect` ⇒ RectSpace(cols,rows); `type:hex` ⇒ HexSpace(radius) (cols/rows ignorados); `type` desconocido, `radius<1`, `radius` ausente/no-int o `space` no-objeto ⇒ FormatException. Tests AAA por rama.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 119 — Montaje hexagonal enmascarado (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Un nivel temático-hex con silueta debe jugarse sobre HexMaskedSpace, con simetría exacta al montaje enmascarado rectangular.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: _mountedBoard usa level.board.space.masked(active); hex+silueta ⇒ HexMaskedSpace."
+**Resultado obtenido:** `_mountedBoard` delega en el seam `BoardSpace.masked` (Entrada 115): sin type-switch, RectSpace→MaskedSpace (byte-idéntico), HexSpace→HexMaskedSpace. Tests AAA: montaje sobre HexMaskedSpace, veto de celdas fuera de la figura, exitLane con la máscara como frontera.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

@@ -6,6 +6,7 @@ import 'package:mockito/mockito.dart';
 import 'package:flutter_arrow_maze/application/commands/command_invoker.dart';
 import 'package:flutter_arrow_maze/application/state/game_controller.dart';
 import 'package:flutter_arrow_maze/application/state/game_state.dart';
+import 'package:flutter_arrow_maze/domain/arrows/entities/arrow.dart';
 import 'package:flutter_arrow_maze/domain/arrows/entities/arrow_board.dart';
 import 'package:flutter_arrow_maze/domain/arrows/value_objects/arrow_id.dart';
 import 'package:flutter_arrow_maze/domain/board/entities/level.dart';
@@ -14,6 +15,8 @@ import 'package:flutter_arrow_maze/domain/board/repositories/i_solution_reposito
 import 'package:flutter_arrow_maze/domain/board/value_objects/level_id.dart';
 import 'package:flutter_arrow_maze/domain/game_core/services/i_ticker.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/board_space.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/hex_masked_space.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/hex_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/masked_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
@@ -80,6 +83,29 @@ ArrowBoard _oneArrowBoard() => ArrowBoard(
         ),
       ],
       space: RectSpace(4, 4),
+    );
+
+/// Silueta HEX R=2 (caja 5×5, centro (2,2)): dos celdas contiguas dentro del
+/// hexágono. Unión = 2 de las 19 celdas ⇒ HexMaskedSpace distinguible de HexSpace(2).
+Map<String, Set<Position>> _hexSilhouette() => {
+      'fill': {Position(row: 2, col: 2), Position(row: 2, col: 3)},
+    };
+
+Set<Position> _hexUnion() =>
+    {Position(row: 2, col: 2), Position(row: 2, col: 3)};
+
+/// Tablero hex R=2 con UNA flecha diagonal (downRight, válida en hex) contenida
+/// en la silueta. Se construye con Arrow directo: `straightArrow` usa deltas
+/// rect y no aplica a la aritmética hexagonal.
+ArrowBoard _hexBoard() => ArrowBoard(
+      arrows: [
+        Arrow(
+          id: const ArrowId('h0'),
+          headDirection: Direction.downRight,
+          cells: [Position(row: 2, col: 2), Position(row: 2, col: 3)],
+        ),
+      ],
+      space: const HexSpace(2),
     );
 
 void _stubLevel(
@@ -279,5 +305,50 @@ void main() {
     // sobre la caja cruda del wire.
     expect(demoSpaces, isNotEmpty);
     expect(demoSpaces, everyElement(MaskedSpace(4, 4, activeCells: _union())));
+  });
+
+  test('un nivel temático hexagonal se monta sobre HexMaskedSpace', () async {
+    // Arrange
+    final repo = MockILevelRepository();
+    final uc = MockRemoveArrowUseCase();
+    _stubLevel(repo, _hexBoard(),
+        palette: const {'fill': '#ff0000'}, silhouette: _hexSilhouette());
+    final c = _container(repo, uc);
+
+    // Act
+    await c.read(gameControllerProvider.notifier).loadLevel(LevelId('1'));
+
+    // Assert — el hex+silueta se monta sobre su gemelo enmascarado, no sobre
+    // MaskedSpace rectangular ni sobre el HexSpace crudo.
+    final state = c.read(gameControllerProvider).valueOrNull as GamePlaying;
+    expect(state.board.space, isA<HexMaskedSpace>());
+    expect(state.board.space, HexMaskedSpace(2, activeCells: _hexUnion()));
+    expect((state.board.space as HexMaskedSpace).activeCells, _hexUnion());
+  });
+
+  test(
+      'el HexMaskedSpace montado veta las celdas hex fuera de la silueta y la máscara es la frontera del exitLane',
+      () async {
+    // Arrange
+    final repo = MockILevelRepository();
+    final uc = MockRemoveArrowUseCase();
+    _stubLevel(repo, _hexBoard(),
+        palette: const {'fill': '#ff0000'}, silhouette: _hexSilhouette());
+    final c = _container(repo, uc);
+
+    // Act
+    await c.read(gameControllerProvider.notifier).loadLevel(LevelId('1'));
+
+    // Assert — (2,2) es silueta; (2,4) está en el hexágono R=2 pero NO en la
+    // figura ⇒ frontera. El exitLane desde (2,3) hacia downRight se detiene en
+    // la máscara: la figura es el borde por el que la flecha sale.
+    final space = (c.read(gameControllerProvider).valueOrNull as GamePlaying)
+        .board
+        .space;
+    expect(space.contains(Position(row: 2, col: 2)), isTrue);
+    expect(space.contains(Position(row: 2, col: 4)), isFalse);
+    expect(space.cellCount, 2);
+    expect(space.exitLane(Position(row: 2, col: 3), Direction.downRight),
+        isEmpty);
   });
 }

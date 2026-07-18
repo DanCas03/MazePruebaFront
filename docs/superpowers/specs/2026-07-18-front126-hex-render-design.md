@@ -6,9 +6,10 @@
 **ADR:** [ADR-0007](../../../../docs/adr/0007-hexagonal-mode.md) — modo hexagonal flat-top, `Direction` a 8, descriptor de geometría en el wire.
 
 > Este documento es el **entregable del `superpowers:brainstorming`** que exige el brief del issue.
-> Es la **entrada** de la sesión obligatoria de `/grilling` + `/domain-modeling` sobre el brief, que
-> afina el detalle fino explícitamente diferido (painter nuevo vs bifurcación interna). El plan de
-> ejecución se produce después con `superpowers:writing-plans`.
+> Fue **entrada** de la sesión de `/grilling` (2026-07-18), cuyas resoluciones están plegadas abajo en
+> la sección "Resoluciones del grilling". `/domain-modeling` no aplica: front#126 no introduce concepto
+> ni regla de dominio nueva (todo — `HexSpace`, `Direction` a 8, `exitLane`, deltas axiales — pre-existe
+> de front#124/#125 y lo cubre ADR-0007). El plan de ejecución se produce con `superpowers:writing-plans`.
 
 ## Contexto
 
@@ -83,6 +84,43 @@ ausentes hasta el borde de la caja). Ese bug **no** se corrige aquí: se registr
 separado para no arriesgar la invariante byte-a-byte. `cellsToEdge` deja de invocarse en diagonales
 (el hex ya no lo usa); su `UnimplementedError` diagonal queda como guard defensivo del camino rect.
 
+## Resoluciones del grilling (2026-07-18)
+
+Invariante verificada en código antes de decidir: **los vectores unidad de `directionUnit` (fijados en
+#124) coinciden exactamente con la proyección flat-top `centerOf`.** Con los deltas axiales de
+`HexSpace.step` y `centerOf`, p.ej. `upRight` (Δq=+1, Δr=−1) → píxel `(1.5s, −0.866s)` → unidad
+`(0.866, −0.5)` = `directionUnit(upRight)`; los 6 casan. Cabeza de flecha, deslizamiento de salida y
+centros de celda quedan alineados por construcción — no es riesgo, es invariante.
+
+1. **Profundidad del seam:** se enhebra `BoardGeometry` por el modelo `Positioned`/widget existente
+   (opción A). Cada flecha calcula su caja de píxeles como AABB de `geometry.centerOf(celdas)`;
+   `ArrowWidget`/`ArrowPainter`/`ExitingArrowWidget` reciben `geometry` + `cellSize` en lugar del `cell`
+   crudo. Se conservan `AnimationController`, shake, culling y blocked-nonce. Byte-a-byte rect descansa
+   en `RectGeometry` + tests.
+2. **Painter de superficie:** `HexBoardSurfacePainter` nueva; `BoardSurfacePainter` intacto (ver arriba).
+3. **Verificación:** por tests (painter canvas-matchers, hit-test, proyección, salida) **más un widget
+   test que monta `BoardView` con un nivel hex en memoria** (`HexSpace(N)` + flechas, sin depender de
+   back#60). Los niveles hex se construyen trivialmente en memoria (patrón de
+   `hex_level_end_to_end_test`). **Sign-off visual humano diferido a front#127** (ruta `/hex`); el PR lo
+   declara sin afirmar haber visto el render en pantalla.
+4. **Viewport y culling:** el hex integra con `BoardViewport` vía `geometry.size` igual que rect (zoom
+   /pan idéntico). El painter hex **no** implementa culling por celda (tableros hex acotados a R≤5 ⇒
+   ≤91 celdas); el culling de *flechas* (`onCamera`) sí se mantiene con el AABB de `geometry.centerOf`.
+5. **`cellSize` hex:** separación entre centros vecinos = `√3·s` (los 6 vecinos equidistan a `√3·s`);
+   alimenta los grosores de trazo de forma comparable al rect.
+6. **Aristas:** `HexGeometry.cellPath` es el polígono de 6 vértices; el painter hex dibuja cada arista
+   interior una sola vez iterando 3 direcciones canónicas (`down`, `downRight`, `downLeft`) y trazándola
+   solo si `space.contains(step)`. Frontera (vecino ausente) sin trazo: el borde del relleno es la
+   silueta (igual que masked rect).
+7. **Gate de hit-test:** `final pos = geometry.cellAt(local); if (pos == null || !space.contains(pos))
+   return;`. `HexGeometry.cellAt` devuelve `null` fuera del hexágono; `space.contains` se conserva por
+   el hueco de masked-rect.
+8. **`cellsToEdge`:** sin cambios; solo se alcanza vía `RectGeometry.exitLane` (4 ortogonales); el
+   `UnimplementedError` diagonal permanece como guard defensivo.
+9. **Ubicación:** `lib/presentation/game/geometry/{board_geometry,rect_geometry,hex_geometry}.dart`,
+   capa presentación. `HexGeometry` es objeto plano `(HexSpace, BoxConstraints)`, sin `BuildContext`,
+   unit-testable en AAA con un `Size` fijo.
+
 ## Componentes y flujo
 
 ### Painter de superficie
@@ -98,8 +136,13 @@ celda ausente al otro lado es frontera visual. El color de superficie sigue sien
 `state.palette` y es agnóstico del espacio, así que el temático-hex enmascarado colorea igual que los
 temáticos rectangulares de hoy sin tocar el resolver.
 
-La decisión fina **painter nuevo (`HexBoardSurfacePainter`) vs bifurcación interna** en
-`BoardSurfacePainter` se cierra en el `/grilling`; ambas consumen el mismo `BoardGeometry`.
+**Resuelto en el `/grilling`: painter hex nuevo.** Se añade `HexBoardSurfacePainter` (consume
+`BoardGeometry`, dibuja hexágonos con `drawPath`) y `BoardSurfacePainter` queda **intacto**. Razón: el
+lock byte-a-byte del rect es a nivel de *tipo de llamada de canvas* (`board_surface_painter_test` cuenta
+`drawRect`/`drawLine`/`rrect`); un painter genérico que dibujara `geometry.cellPath` (un `Path`)
+cambiaría `drawRect`→`drawPath` y rompería el lock aunque el píxel fuese idéntico. La selección
+(`space is HexSpace ? HexBoardSurfacePainter : BoardSurfacePainter`) vive junto al factory
+`BoardGeometry.forSpace`, un único punto de type-check.
 
 ### Hit-testing
 `onTapUp` reemplaza el `floor(dx/cell)` por `geometry.cellAt(details.localPosition)`. `null` ⇒ no

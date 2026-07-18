@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../domain/game_core/value_objects/direction.dart';
 import '../../../domain/game_core/value_objects/position.dart';
 import '../direction_projection.dart';
+import '../geometry/board_geometry.dart';
 
 /// Pinta una flecha multi-celda como una POLILÍNEA gruesa (recorre los centros
 /// de `cells`) con glow, brillo interior y punta triangular orientada por
@@ -18,6 +19,11 @@ class ArrowPainter extends CustomPainter {
   final double cell;
   final Color color;
   final Direction headDirection;
+  // front#126: cuando no es null, los centros vienen de la geometría (hex);
+  // `cell` pasa a ser el cellSize (√3·s) para los grosores. Ausente => camino
+  // lineal rect intacto (lo cubren los tests rect existentes).
+  final BoardGeometry? geometry;
+  final Offset origin;
 
   const ArrowPainter({
     required this.cells,
@@ -26,12 +32,13 @@ class ArrowPainter extends CustomPainter {
     required this.cell,
     required this.color,
     required this.headDirection,
+    this.geometry,
+    this.origin = Offset.zero,
   });
 
-  Offset _center(Position p) => Offset(
-        (p.col - minCol + 0.5) * cell,
-        (p.row - minRow + 0.5) * cell,
-      );
+  Offset _center(Position p) => geometry != null
+      ? geometry!.centerOf(p) - origin
+      : Offset((p.col - minCol + 0.5) * cell, (p.row - minRow + 0.5) * cell);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -122,5 +129,7 @@ class ArrowPainter extends CustomPainter {
       old.cell != cell ||
       old.minCol != minCol ||
       old.minRow != minRow ||
-      old.headDirection != headDirection;
+      old.headDirection != headDirection ||
+      old.geometry != geometry ||
+      old.origin != origin;
 }

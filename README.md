@@ -58,9 +58,13 @@ The rule that keeps the boundary honest: `domain/` imports nothing from Flutter,
 
 ### Diagrams
 
-[`docs/diagrams/class-diagram.png`](docs/diagrams/class-diagram.png) — class diagram of the main entities, use cases, ports, and adapters, color-coded by Clean Architecture layer (Presentation / Application / core-aspects / Infrastructure / Domain), with the GoF patterns from the table below called out inline:
+[`docs/diagrams/class-diagram-front.jpeg`](docs/diagrams/class-diagram-front.jpeg) — class diagram of the main entities, use cases, ports, and adapters, color-coded by Clean Architecture layer (Presentation / Application / core-aspects / Infrastructure / Domain), with the GoF patterns from the table below called out inline:
 
-![Class diagram](docs/diagrams/class-diagram.png)
+![Class diagram](docs/diagrams/class-diagram-front.jpeg)
+
+[`docs/diagrams/flujo-ia.jpeg`](docs/diagrams/flujo-ia.jpeg) — AI-assisted development flow: how prompts, generated fragments, review, and per-fragment commits move through the team's workflow (see `AI_HISTORY.MD` and `AI_USAGE.md`):
+
+![AI flow](docs/diagrams/flujo-ia.jpeg)
 
 `BoardSpace` (`domain/game_core/space/`) concentrates the board's geometry — adjacency, exit lanes, the frontier a snake-arrow exits through — behind `step`/`contains` primitives; `RectSpace` is the only production implementation, and `ArrowBoard` holds a `space: BoardSpace` instead of raw `cols`/`rows` (ADR-0005). A second, test-only implementation (`HoledRectSpace`, holed board) certifies the seam is real: `ArrowBoard.canExit` runs over it with zero consumer changes. Every space also exposes a `BoundingBox get bounds` (default derived from `allCells`, `RectSpace` in O(1)); `ArrowBoard.cols/rows` delegate to it instead of downcasting to `RectSpace`, so a non-rectangular geometry no longer breaks the aggregate (#85, Fase 1 toward arbitrary board shapes and themed silhouettes). A second production implementation, `MaskedSpace`, extends `RectSpace` with a `Set<Position> activeCells` (an arbitrary subset of the cols×rows box): `contains` is in-box AND in-set, `allCells`/`cellCount` reflect the mask, and a masked-out cell is a frontier (a `step` landing on it returns null) — the production sibling of `HoledRectSpace` that renders silhouettes, certified over `ArrowBoard.canExit` with zero consumer changes (#86, Fase 1).
 

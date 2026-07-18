@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'arrow.dart';
 import '../value_objects/arrow_id.dart';
 import '../../core/exceptions/invalid_arrow_exception.dart';
+import '../../core/exceptions/invalid_direction_exception.dart';
 import '../../game_core/space/board_space.dart';
 import '../../game_core/value_objects/position.dart';
 
@@ -96,7 +97,14 @@ class ArrowBoard extends Equatable {
   // flechas ⊆ silhouetteUnion, y la máscara se construye desde esa misma
   // unión) — es defensa en profundidad del seam, no código muerto.
   ArrowBoard remountedOn(BoardSpace newSpace) {
+    final newDirections = newSpace.directions.toSet();
     for (final arrow in arrows) {
+      if (!newDirections.contains(arrow.headDirection)) {
+        throw InvalidDirectionException(
+          'remountedOn: la flecha ${arrow.id} tiene headDirection '
+          '${arrow.headDirection} fuera de las direcciones del nuevo espacio',
+        );
+      }
       for (final cell in arrow.cells) {
         if (!newSpace.contains(cell)) {
           throw InvalidArrowException(

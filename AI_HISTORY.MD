@@ -1,5 +1,19 @@
 # AI History — MazePruebaFront
 
+## Entrada 125 — Invariante headDir ∈ space.directions + ratificación ADR-0007
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Task 5 del plan #124 (ADR-0007 D3), Fragmento D final: cerrar el hueco entre `BoardSpace.step`/`RectSpace`/`HexSpace` (que ya fallan rápido ante una dirección ajena en `step`) y los dos puntos donde un tablero llega a producción — el constructor de `Level` (decodificación del wire) y `ArrowBoard.remountedOn` (montaje sobre un espacio distinto, p. ej. campaña rect → HexSpace temático). Sin esta invariante, una flecha con `headDirection` diagonal podía sobrevivir en un `RectSpace` hasta el primer movimiento, donde `step` recién lanzaría — demasiado tarde para un dato corrupto del wire.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5), subagente `general-purpose` sobre `task-5-brief.md`.
+**Prompt o instrucción proporcionada:** > "Implementing Task 5 (Fragment D), the final fragment: enforce the invariant that every arrow's headDirection belongs to space.directions, at the two points a board reaches production — the Level constructor (decoding) and ArrowBoard.remountedOn (mounting)."
+**Resultado obtenido:**
+- `lib/domain/board/entities/level.dart`: en el cuerpo del constructor, tras la comprobación de `board.arrows.isEmpty`, un barrido `board.arrows` que lanza `InvalidDirectionException` si algún `headDirection` no pertenece a `board.space.directions.toSet()`.
+- `lib/domain/arrows/entities/arrow_board.dart`: `remountedOn` valida la dirección en el MISMO barrido que ya validaba `newSpace.contains(cell)` por celda — un `if (!newDirections.contains(arrow.headDirection)) throw InvalidDirectionException(...)` antes del bucle de celdas de cada flecha. El constructor `const` de `ArrowBoard` (interfaz pública documentada — Expando de ocupación + consumidores en contexto const) permanece sin tocar; la invariante vive en `Level` y en el seam de montaje, no en el aggregate root.
+- **TDD:** `test/domain/board/entities/level_head_direction_invariant_test.dart` y `test/domain/entities/arrow_board_head_direction_test.dart` (2 tests cada uno) escritos primero — rojo confirmado (los dos `should_throw_*` no lanzaban; los dos casos felices ya pasaban porque no dependían de la invariante nueva) antes de añadir las guardas.
+- **Verificación:** foco 4/4 verde tras la implementación; suite completa **905/905 verde** (901 previos + 4 nuevos); `flutter analyze` limpio, sin regresiones en `level_test`, `arrow_board_remount_test` ni las certificaciones de `MaskedSpace`/`HoledRectSpace` (niveles rect existentes usan `up`/`down`/`left`/`right`, todas válidas en `RectSpace.directions`).
+- **ADR-0007:** estado actualizado de "Propuesto" a "Aceptado para el front (2026-07-18)" — D1/D2/D3/D5 ratificadas; D4/D6 (back) quedan pendientes de su propia ratificación. El archivo vive en `ArrowMaze/docs/adr/`, fuera del repo git de `MazePruebaFront` — edición aplicada como cambio de working tree sin versionar en este commit (deuda de gobernanza que el propio ADR documenta).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 124 — HexMaskedSpace: gemelo enmascarado de HexSpace (#124, Fragmento C)
 
 **Fecha:** 2026-07-18

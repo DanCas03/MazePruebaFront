@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../arrows/entities/arrow_board.dart';
+import '../../core/exceptions/invalid_direction_exception.dart';
 import '../../core/exceptions/invalid_level_exception.dart';
 import '../../game_core/value_objects/position.dart';
 import '../../game_core/value_objects/strike_count.dart';
@@ -49,6 +50,16 @@ class Level extends Equatable {
   }) {
     if (board.arrows.isEmpty) {
       throw const InvalidLevelException('a level must have at least one arrow');
+    }
+    // Invariante ADR-0007 D3: toda flecha declara una dirección válida en el
+    // espacio del tablero. Datos corruptos del wire => excepción de dominio.
+    final spaceDirections = board.space.directions.toSet();
+    for (final arrow in board.arrows) {
+      if (!spaceDirections.contains(arrow.headDirection)) {
+        throw InvalidDirectionException(
+            'arrow ${arrow.id} headDirection ${arrow.headDirection} '
+            'no es válida en el espacio del tablero');
+      }
     }
     final limit = timeLimitSec;
     if (limit != null && limit <= 0) {

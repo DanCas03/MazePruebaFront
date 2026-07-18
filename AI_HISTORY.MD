@@ -2314,3 +2314,66 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 - **TDD:** `test/domain/game_core/space/hex_space_test.dart` (10 tests) escrito primero — rojo por error de compilación ("Method not found: 'HexSpace'") antes de crear la clase; verde tras la implementación (10/10), sin ajustar ningún valor esperado del brief.
 - Suite completa del front: **896 verde**.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 126 — Seam polimórfico BoardSpace.masked (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** El montaje en tiempo de partida debe elegir MaskedSpace (rect) o HexMaskedSpace (hex) sin condicionar por tipo en la aplicación.
+**Herramienta de IA utilizada:** Claude Code (Haiku 4.5)
+**Prompt o instrucción proporcionada:** > "front#125: seam polimórfico para el espacio enmascarado (opción A del grilling)."
+**Resultado obtenido:** Método abstracto `BoardSpace.masked(activeCells)`; `RectSpace`→`MaskedSpace`, `HexSpace`→`HexMaskedSpace`. `_mountedBoard` (front#125 Task 5) queda sin type-switch. Doble de test `_SparseSpace` lanza `UnimplementedError` (no participa en montaje). Tests AAA por geometría.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 127 — Invariante de silueta contra space.contains (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Una silueta temático-hex podía declarar celdas en las esquinas del marco (2R+1)² que no existen en el hexágono; se detectaban tarde (al remontar), no en la decodificación.
+**Herramienta de IA utilizada:** Claude Code (Haiku 4.5)
+**Prompt o instrucción proporcionada:** > "front#125: endurecer la contención de la silueta a board.space.contains (decisión de /domain-modeling)."
+**Resultado obtenido:** `Level` valida cada celda de silueta con `board.space.contains` en vez de `bounds.contains`. No-op para rect (contains ≡ bounds); para hex rechaza en decode (FormatException → LevelCorrupted) una silueta fuera de la figura. Tests AAA hex (acepta figura válida / rechaza esquina fuera del hex).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 128 — Decoder del descriptor `space` (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Decodificar la geometría declarada en el wire (ADR-0007 D4): `space:{type:hex,radius:N}` ⇒ HexSpace; retrocompatible con niveles sin `space`.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: helper _space(json) con la tabla ausente/rect/hex/unknown y validación FormatException + radius>=1."
+**Resultado obtenido:** `LevelJsonDecoder._space` ramifica por descriptor. Sin `space` o `type:rect` ⇒ RectSpace(cols,rows); `type:hex` ⇒ HexSpace(radius) (cols/rows ignorados); `type` desconocido, `radius<1`, `radius` ausente/no-int o `space` no-objeto ⇒ FormatException. Tests AAA por rama.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 129 — LevelSection.hex + fromWire (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** El catálogo necesita distinguir las fichas del modo hex (ADR-0007 D6), ortogonales al espacio del nivel.
+**Herramienta de IA utilizada:** Claude Code (Haiku 4.5)
+**Prompt o instrucción proporcionada:** > "front#125: LevelSection gana hex; fromWire mapea el literal exacto 'hex', tolerante para el resto."
+**Resultado obtenido:** `LevelSection.hex`; `fromWire` con `switch` mapea `themed`/`hex` exactos y degrada todo lo demás a `campaign`. Tests AAA (literal exacto / degradación).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 130 — Montaje hexagonal enmascarado (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Un nivel temático-hex con silueta debe jugarse sobre HexMaskedSpace, con simetría exacta al montaje enmascarado rectangular.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: _mountedBoard usa level.board.space.masked(active); hex+silueta ⇒ HexMaskedSpace."
+**Resultado obtenido:** `_mountedBoard` delega en el seam `BoardSpace.masked` (Entrada 115): sin type-switch, RectSpace→MaskedSpace (byte-idéntico), HexSpace→HexMaskedSpace. Tests AAA: montaje sobre HexMaskedSpace, veto de celdas fuera de la figura, exitLane con la máscara como frontera.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 131 — CatalogView.hexTiles + helper _freeTilesFrom (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** El catálogo debe exponer las fichas del modo hex en su propia colección, sin gating, manteniendo el temático-hex entre los temáticos (ADR-0007 D6).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: CatalogView gana hexTiles; helper común _freeTilesFrom para temáticos y hex; filtrado por section."
+**Resultado obtenido:** `CatalogView.hexTiles` (aditivo). `LevelSelectionController.build` filtra `section == hex` a un `_freeTilesFrom` compartido con `themedTiles` (DRY). El temático-hex (section:themed) queda en themedTiles. La pantalla no se toca (render = front#127). Tests AAA: hex solo en hexTiles, temático-hex en themedTiles, hexTiles vacío sin sección hex.
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 132 — Integración: partida completa sobre nivel hex (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Verificar el AC de que tap → canExit → remove → win corre sobre HexSpace sin cambios en el motor.
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: test de integración de partida sobre un nivel hex con el RemoveArrow real."
+**Resultado obtenido:** Test AAA que carga un nivel hex R=2 sin silueta y, con el use case real, toca la única flecha y llega a GameWon — el motor opera polimórficamente sobre HexSpace.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

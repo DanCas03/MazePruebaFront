@@ -24,5 +24,17 @@ void main() {
       expect(LevelSection.fromWire(''), LevelSection.campaign);
       expect(LevelSection.fromWire('Themed'), LevelSection.campaign);
     });
+
+    test('fromWire maps the exact literal "hex" to LevelSection.hex', () {
+      // Arrange & Act & Assert
+      expect(LevelSection.fromWire('hex'), LevelSection.hex);
+    });
+
+    test('fromWire degrades unknown values to campaign, hex is exact-match only', () {
+      // Arrange & Act & Assert — sólo el literal exacto cuenta (tolerante).
+      expect(LevelSection.fromWire('HEX'), LevelSection.campaign);
+      expect(LevelSection.fromWire('hexagonal'), LevelSection.campaign);
+      expect(LevelSection.fromWire(null), LevelSection.campaign);
+    });
   });
 }

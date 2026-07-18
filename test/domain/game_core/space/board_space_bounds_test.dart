@@ -24,6 +24,9 @@ class _SparseSpace extends BoardSpace {
   @override
   Iterable<Position> get allCells => cells;
   @override
+  BoardSpace masked(Set<Position> activeCells) =>
+      throw UnimplementedError('_SparseSpace no participa en montaje enmascarado');
+  @override
   List<Object?> get props => [cells];
 }
 

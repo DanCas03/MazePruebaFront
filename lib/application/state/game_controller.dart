@@ -12,7 +12,6 @@ import '../../domain/board/services/auto_solve_pacing.dart';
 import '../../domain/board/services/hint_policy.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/game_core/services/i_ticker.dart';
-import '../../domain/game_core/space/masked_space.dart';
 import '../../domain/game_core/value_objects/move_count.dart';
 import '../../domain/game_core/value_objects/score.dart';
 import '../../domain/game_core/value_objects/stars.dart';
@@ -132,17 +131,15 @@ class GameController extends AsyncNotifier<GameState> {
     );
   }
 
-  // Montaje (front#118): un nivel con silueta se juega sobre el MaskedSpace de
-  // su figura — fuera de la silueta no hay tablero (spec 2026-07-16). Campaña y
-  // niveles sin silueta conservan su RectSpace del wire. Revierte la decisión
-  // "caja completa" de front#99/#107 SOLO para temáticos con silueta.
+  // Montaje (front#118, hex en front#125): un nivel con silueta se juega sobre
+  // el gemelo enmascarado de SU espacio — RectSpace da MaskedSpace, HexSpace da
+  // HexMaskedSpace, vía el seam polimórfico `BoardSpace.masked` (sin condicionar
+  // por tipo aquí, OCP). Fuera de la silueta no hay tablero (spec 2026-07-16).
+  // Campaña y niveles sin silueta conservan el espacio crudo del wire.
   ArrowBoard _mountedBoard(Level level) {
     final active = level.silhouetteUnion;
     if (active == null) return level.board;
-    final box = level.board.space.bounds;
-    return level.board.remountedOn(
-      MaskedSpace(box.cols, box.rows, activeCells: active),
-    );
+    return level.board.remountedOn(level.board.space.masked(active));
   }
 
   // Monta el nivel [level] en el estado de partida. Reutilizado por loadLevel

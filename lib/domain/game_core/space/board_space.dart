@@ -54,6 +54,14 @@ abstract class BoardSpace extends Equatable {
     );
   }
 
+  /// Produce el gemelo enmascarado de este espacio: un espacio con la misma
+  /// geometría cuyas celdas activas son [activeCells] (la silueta), y donde
+  /// toda celda fuera de esa selección pasa a ser frontera (front#125). Cada
+  /// subclase conoce su propio tipo enmascarado (RectSpace→MaskedSpace,
+  /// HexSpace→HexMaskedSpace), de modo que el montaje en tiempo de partida
+  /// elige el espacio correcto SIN condicionar por tipo en la aplicación (OCP).
+  BoardSpace masked(Set<Position> activeCells);
+
   /// True si existe una dirección que lleva de [a] a [b] en un paso.
   bool areAdjacent(Position a, Position b) {
     for (final dir in directions) {

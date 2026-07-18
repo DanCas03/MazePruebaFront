@@ -3,6 +3,7 @@ import '../value_objects/direction.dart';
 import '../value_objects/position.dart';
 import 'board_space.dart';
 import 'bounding_box.dart';
+import 'hex_masked_space.dart';
 
 /// Malla hexagonal flat-top de radio [radius] (ADR-0007 D1), gemelo del back en
 /// nombres y convención axial. Coordenadas axiales `(q, r)` mapeadas al
@@ -76,6 +77,10 @@ class HexSpace extends BoardSpace {
         rows: 2 * radius + 1,
         cols: 2 * radius + 1,
       );
+
+  @override
+  BoardSpace masked(Set<Position> activeCells) =>
+      HexMaskedSpace(radius, activeCells: activeCells);
 
   @override
   Iterable<Position> get allCells sync* {

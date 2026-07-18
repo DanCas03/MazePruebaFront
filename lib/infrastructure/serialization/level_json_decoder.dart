@@ -5,6 +5,8 @@ import '../../domain/board/entities/level.dart';
 import '../../domain/board/value_objects/level_id.dart';
 import '../../domain/core/exceptions/domain_exception.dart';
 import '../../domain/game_core/value_objects/strike_count.dart';
+import '../../domain/game_core/space/board_space.dart';
+import '../../domain/game_core/space/hex_space.dart';
 import '../../domain/game_core/space/rect_space.dart';
 import '../../domain/game_core/value_objects/direction.dart';
 import '../../domain/game_core/value_objects/position.dart';
@@ -35,7 +37,7 @@ class LevelJsonDecoder {
       id: LevelId(_string(json, 'levelId')),
       board: ArrowBoard(
         arrows: arrows,
-        space: RectSpace(_int(json, 'cols'), _int(json, 'rows')),
+        space: _space(json),
       ),
       timeLimitSec: _optionalInt(json, 'timeLimitSec'),
       // Presupuesto de errores opcional (front#83): aditivo/tolerante como
@@ -71,6 +73,37 @@ class LevelJsonDecoder {
       // Rol de pintado opcional (ADR 0004): dato opaco, ausente en campaña.
       paintRole: _optionalString(map, 'paintRole'),
     );
+  }
+
+  /// Descriptor de geometría del wire (ADR-0007 D4). Ausente ⇒ RectSpace
+  /// legacy (cols/rows) — retrocompatible. `type:"rect"` ⇒ RectSpace
+  /// (forward-compat). `type:"hex"` ⇒ HexSpace(radius), IGNORANDO cols/rows.
+  /// Cualquier otro `type`, un `radius < 1`, o un `space` malformado ⇒
+  /// FormatException (el repo la traduce a LevelCorrupted): estricto, nunca
+  /// silencioso. `radius < 1` se valida aquí porque el assert de HexSpace se
+  /// elimina en builds de release.
+  BoardSpace _space(Map<String, Object?> json) {
+    final raw = json['space'];
+    if (raw == null) {
+      return RectSpace(_int(json, 'cols'), _int(json, 'rows'));
+    }
+    if (raw is! Map) {
+      throw const FormatException('"space" must be an object when present');
+    }
+    final space = raw.cast<String, Object?>();
+    final type = _string(space, 'type');
+    switch (type) {
+      case 'rect':
+        return RectSpace(_int(json, 'cols'), _int(json, 'rows'));
+      case 'hex':
+        final radius = _int(space, 'radius');
+        if (radius < 1) {
+          throw FormatException('hex radius must be >= 1, got $radius');
+        }
+        return HexSpace(radius);
+      default:
+        throw FormatException('unknown space type "$type"');
+    }
   }
 
   Position _position(Object? cell, String arrowId) {

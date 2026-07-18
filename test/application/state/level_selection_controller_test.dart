@@ -226,4 +226,57 @@ void main() {
     expect(view.themedTiles.single.stars, 3);
     expect(view.themedTiles.single.locked, isFalse);
   });
+
+  test('should_place_hex_section_entries_in_hexTiles_only', () async {
+    // Arrange — catálogo mixto: 1 campaña, 1 temático, 1 hex.
+    final entries = [
+      CatalogEntry(id: LevelId('c1'), section: LevelSection.campaign),
+      CatalogEntry(id: LevelId('t1'), section: LevelSection.themed),
+      CatalogEntry(id: LevelId('h1'), section: LevelSection.hex),
+    ];
+    final container = _containerWithEntries(entries, const []);
+
+    // Act
+    final view =
+        await container.read(levelSelectionControllerProvider.future);
+
+    // Assert — la ficha hex vive SOLO en hexTiles: ni en campaña ni en temáticos.
+    expect(view.hexTiles.map((t) => t.levelId), [LevelId('h1')]);
+    expect(view.hexTiles.single.locked, isFalse);
+    expect(view.hexTiles.single.position, 1);
+    expect(view.themedTiles.map((t) => t.levelId), [LevelId('t1')]);
+    expect(
+      view.campaignTiers.expand((s) => s.tiles).map((t) => t.levelId),
+      [LevelId('c1')],
+    );
+  });
+
+  test('should_keep_a_themed_hex_level_in_themedTiles_not_hexTiles', () async {
+    // Arrange — el temático hexagonal es section:themed (ADR-0007 D6), aunque
+    // su ESPACIO sea hex: no aparece en el modo hex.
+    final entries = [
+      CatalogEntry(id: LevelId('t-hex'), section: LevelSection.themed),
+    ];
+    final container = _containerWithEntries(entries, const []);
+
+    // Act
+    final view =
+        await container.read(levelSelectionControllerProvider.future);
+
+    // Assert
+    expect(view.themedTiles.map((t) => t.levelId), [LevelId('t-hex')]);
+    expect(view.hexTiles, isEmpty);
+  });
+
+  test('should_leave_hexTiles_empty_when_catalog_has_no_hex_section', () async {
+    // Arrange — catálogo clásico sin hex.
+    final container = _containerWith(catalogIds, const []);
+
+    // Act
+    final view =
+        await container.read(levelSelectionControllerProvider.future);
+
+    // Assert — estado idéntico a antes: hexTiles vacío.
+    expect(view.hexTiles, isEmpty);
+  });
 }

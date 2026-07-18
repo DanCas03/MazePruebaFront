@@ -8,6 +8,7 @@ import 'package:flutter_arrow_maze/domain/game_core/value_objects/position.dart'
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/direction.dart';
 import 'package:flutter_arrow_maze/domain/core/exceptions/invalid_level_exception.dart';
 import 'package:flutter_arrow_maze/domain/game_core/space/rect_space.dart';
+import 'package:flutter_arrow_maze/domain/game_core/space/hex_space.dart';
 import 'package:flutter_arrow_maze/domain/game_core/value_objects/strike_count.dart';
 
 // Board 4x4 con una sola flecha recta (0,0)->(0,1) mirando a la derecha:
@@ -321,6 +322,54 @@ void main() {
       Level act() => Level(id: id, board: board, silhouette: const {});
       // Assert
       expect(act, throwsA(isA<InvalidLevelException>()));
+    });
+
+    group('invariante de silueta sobre HexSpace (front#125)', () {
+      // Hex R=2 (caja 5×5, centro en (2,2)). La celda (0,0) es una esquina del
+      // marco 5×5 pero cae FUERA del hexágono (|q+r| = 4 > 2).
+      ArrowBoard hexBoard() => ArrowBoard(
+            arrows: [
+              Arrow(
+                id: const ArrowId('h0'),
+                headDirection: Direction.downRight,
+                cells: [Position(row: 2, col: 2), Position(row: 2, col: 3)],
+              ),
+            ],
+            space: const HexSpace(2),
+          );
+
+      test('should_accept_hex_silhouette_when_cells_exist_in_the_hexagon', () {
+        // Arrange & Act
+        final level = Level(
+          id: LevelId('hx-ok'),
+          board: hexBoard(),
+          silhouette: {
+            'fill': {Position(row: 2, col: 2), Position(row: 2, col: 3)},
+          },
+        );
+
+        // Assert
+        expect(level.silhouetteUnion,
+            {Position(row: 2, col: 2), Position(row: 2, col: 3)});
+      });
+
+      test('should_reject_hex_silhouette_when_a_cell_falls_outside_the_hexagon', () {
+        // Arrange — (0,0) está en el marco 5×5 pero no en el hexágono R=2.
+        expect(
+          () => Level(
+            id: LevelId('hx-bad'),
+            board: hexBoard(),
+            silhouette: {
+              'fill': {
+                Position(row: 2, col: 2),
+                Position(row: 2, col: 3),
+                Position(row: 0, col: 0), // esquina fuera del hex
+              },
+            },
+          ),
+          throwsA(isA<InvalidLevelException>()),
+        );
+      });
     });
   });
 }

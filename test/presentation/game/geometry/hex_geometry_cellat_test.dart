@@ -28,6 +28,21 @@ void main() {
     expect(g.cellAt(const Offset(0, 0)), isNull);
   });
 
+  test(
+    'una celda no negativa dentro de la caja pero fuera del hexágono devuelve null',
+    () {
+      // (row=6,col=6) => q=col-R=3, r=row-R=3 => |q+r|=6>3: fuera del hex,
+      // pero row y col son no negativos y caen dentro de la caja (2R+1)=7.
+      // Este caso cubre el shape gate de HexSpace.contains, a diferencia de
+      // la esquina (0,0) que ya devuelve null por el guard de índice negativo.
+      final outOfHex = Position(row: 6, col: 6);
+      expect(const HexSpace(3).contains(outOfHex), isFalse);
+
+      final g = HexGeometry(const HexSpace(3), c);
+      expect(g.cellAt(g.centerOf(outOfHex)), isNull);
+    },
+  );
+
   test('una celda enmascarada (hueco) devuelve null', () {
     final active = const HexSpace(1).allCells.toSet()
       ..remove(Position(row: 1, col: 1));

@@ -9,8 +9,9 @@ import 'package:flutter_arrow_maze/presentation/game/geometry/hex_geometry.dart'
 const _sqrt3 = 1.7320508075688772;
 
 void main() {
-  // Constraints grandes y cuadrados: fit width-bound para R=2 (3R+2=8 vs
-  // √3·(2R+1)=8.66) => s = 800/8 = 100.
+  // Constraints grandes y cuadrados: fit height-bound para R=2 (3R+2=8 vs
+  // √3·(2R+1)≈8.66) => s = 800/(√3·5) ≈ 92.4 (width-bound daría s=100, que
+  // haría height ≈ 866 > 800, luego el mínimo lo fija la altura).
   const c = BoxConstraints(maxWidth: 800, maxHeight: 800);
 
   test('size = (s(3R+2), √3·s(2R+1)) y cellSize = √3·s', () {

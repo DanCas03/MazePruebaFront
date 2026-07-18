@@ -169,6 +169,9 @@ class BoardView extends StatelessWidget {
               painter: space is HexSpace
                   ? HexBoardSurfacePainter(
                       space: space,
+                      // Cast seguro: BoardGeometry.forSpace devuelve HexGeometry
+                      // si y solo si el espacio es HexSpace (invariante de la
+                      // factoría), así que este cast nunca puede fallar aquí.
                       geometry: geometry as HexGeometry,
                       surfaceColor: surface.withValues(alpha: 0.30),
                       gridColor: gridColor,
@@ -257,8 +260,9 @@ class BoardView extends StatelessWidget {
     );
   }
 
-  /// AABB en píxeles de los centros de una flecha, inflado medio cellSize para
-  /// que el trazo/cabeza quepan (con Clip.none el desborde es admisible).
+  /// AABB en píxeles de los centros de una flecha, inflado un `cellSize`
+  /// COMPLETO por lado para que el trazo/cabeza quepan (el margen de más es
+  /// inofensivo: el Stack padre es `Clip.none`, así que el desborde es admisible).
   Rect _pixelBox(Arrow arrow, BoardGeometry geometry) {
     var box =
         Rect.fromCircle(center: geometry.centerOf(arrow.cells.first), radius: 0);

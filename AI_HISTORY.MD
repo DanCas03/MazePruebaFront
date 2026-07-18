@@ -1,5 +1,16 @@
 # AI History — MazePruebaFront
 
+## Entrada 124 — HexMaskedSpace: gemelo enmascarado de HexSpace (#124, Fragmento C)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** Task 4 del plan #124 (ADR-0007 D5): dotar a la malla hexagonal de un gemelo enmascarado, espejo exacto del patrón `MaskedSpace`/`RectSpace` ya existente para siluetas temáticas rectangulares — necesario para que una futura silueta temática sobre hex reuse el mismo contrato (`contains`/`allCells`/`cellCount` reflejando la máscara) sin que ningún consumidor (`exitLane`, `ArrowBoard.canExit`) tenga que distinguir entre geometría rectangular y hexagonal.
+**Herramienta de IA utilizada:** Claude Code (Sonnet 5), subagente `general-purpose` sobre `task-4-brief.md`.
+**Prompt o instrucción proporcionada:** > "Implementa Task 4 (Fragmento C) del plan: HexMaskedSpace, el gemelo enmascarado de HexSpace — espejo de MaskedSpace/RectSpace, NO un decorador. TDD estricto."
+**Resultado obtenido:** `lib/domain/game_core/space/hex_masked_space.dart` — `HexMaskedSpace extends HexSpace` con `const HexMaskedSpace(super.radius, {required Set<Position> activeCells})`. `contains` intersecta `super.contains` (dentro del hexágono) con `activeCells.contains` (dentro de la silueta); `cellCount` pasa a ser `activeCells.length`; `allCells` recorre la caja `(2R+1)²` en el mismo orden row-major canónico que `HexSpace.allCells`, filtrando por `contains` (por lo que el orden y el contenido quedan sincronizados por construcción); `directions` se hereda sin cambios (las 6 direcciones hex — la máscara quita celdas, no direcciones); `props` añade `activeCells` a los de `HexSpace`. La precondición `activeCells ⊆ hex(R)` queda documentada en el docstring, NO validada en runtime — el constructor permanece `const`, igual que `MaskedSpace`. Una celda dentro del hexágono pero fuera de `activeCells` es frontera de salida: `HexSpace.step` (heredado sin override) invoca `contains` de forma polimórfica, así que aterrizar en una celda enmascarada devuelve `null` exactamente como el borde real — `exitLane` hereda ese comportamiento sin cambio de una sola línea (OCP).
+**Tests** (`test/domain/game_core/space/hex_masked_space_test.dart`, 4 casos AAA, TDD rojo→verde): `should_restrict_contains_and_cellCount_to_active_cells` (hex R=1 con 3 de sus 7 celdas activas: `cellCount == 3`, una celda dentro del hexágono pero fuera de la máscara da `contains == false`, una celda fuera del hexágono también da `false`); `should_inherit_the_six_hex_directions` (las 6 direcciones de `HexSpace` sin left/right); `should_yield_allCells_masked_in_canonical_order` (orden row-major preservado tras filtrar); `should_treat_masked_cell_as_exit_boundary_in_exitLane` (centro activo cuyo vecino `downRight` está enmascarado ⇒ `exitLane` da carril vacío, el primer paso ya cae fuera de la máscara). Confirmado rojo (`Error: Method not found: 'HexMaskedSpace'`, target de import inexistente) antes de escribir la implementación.
+**Verificación:** foco 4/4 verde; suite completa **901/901 verde** (897 previos + 4 nuevos).
+**Modificaciones realizadas por el equipo:** (completar manualmente)
+
 ## Entrada 123 — Feature #102: auto-solver explícito en toda la campaña, con advertencia de confirmación y ritmo escalado por tamaño
 
 **Fecha:** 2026-07-17

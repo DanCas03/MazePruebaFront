@@ -58,7 +58,11 @@ The rule that keeps the boundary honest: `domain/` imports nothing from Flutter,
 
 ### Diagrams
 
-[`docs/diagrams/class-diagram-front.jpeg`](docs/diagrams/class-diagram-front.jpeg) — class diagram of the main entities, use cases, ports, and adapters, color-coded by Clean Architecture layer (Presentation / Application / core-aspects / Infrastructure / Domain), with the GoF patterns from the table below called out inline:
+[`docs/diagrams/class-diagram-front.jpeg`](docs/diagrams/class-diagram-front.jpeg) 
+
+https://lucid.app/lucidchart/4a4aec65-d8ce-4beb-b412-f3d00bcbd026/edit?invitationId=inv_a2b70858-02b9-4556-9e9a-5a8131a16492&page=Vi7byoxyOrbz#
+
+— class diagram of the main entities, use cases, ports, and adapters, color-coded by Clean Architecture layer (Presentation / Application / core-aspects / Infrastructure / Domain), with the GoF patterns from the table below called out inline:
 
 ![Class diagram](docs/diagrams/class-diagram-front.jpeg)
 

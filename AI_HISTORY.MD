@@ -2359,3 +2359,12 @@ Con esto quedan los 5 fragmentos de front#67 en la rama `feat/#67-themed-section
 **Prompt o instrucción proporcionada:** > "front#125: _mountedBoard usa level.board.space.masked(active); hex+silueta ⇒ HexMaskedSpace."
 **Resultado obtenido:** `_mountedBoard` delega en el seam `BoardSpace.masked` (Entrada 115): sin type-switch, RectSpace→MaskedSpace (byte-idéntico), HexSpace→HexMaskedSpace. Tests AAA: montaje sobre HexMaskedSpace, veto de celdas fuera de la figura, exitLane con la máscara como frontera.
 **Modificaciones realizadas por el equipo:** (completar manualmente)
+
+## Entrada 120 — CatalogView.hexTiles + helper _freeTilesFrom (front#125)
+
+**Fecha:** 2026-07-18
+**Tarea o problema abordado:** El catálogo debe exponer las fichas del modo hex en su propia colección, sin gating, manteniendo el temático-hex entre los temáticos (ADR-0007 D6).
+**Herramienta de IA utilizada:** Claude Code (Opus 4.8)
+**Prompt o instrucción proporcionada:** > "front#125: CatalogView gana hexTiles; helper común _freeTilesFrom para temáticos y hex; filtrado por section."
+**Resultado obtenido:** `CatalogView.hexTiles` (aditivo). `LevelSelectionController.build` filtra `section == hex` a un `_freeTilesFrom` compartido con `themedTiles` (DRY). El temático-hex (section:themed) queda en themedTiles. La pantalla no se toca (render = front#127). Tests AAA: hex solo en hexTiles, temático-hex en themedTiles, hexTiles vacío sin sección hex.
+**Modificaciones realizadas por el equipo:** (completar manualmente)

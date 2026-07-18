@@ -45,17 +45,23 @@ class TierSection extends Equatable {
 }
 
 /// Estado ya resuelto de la pantalla de selección: la campaña, agrupada en
-/// [campaignTiers] (con Tier + gating + estrellas), y los niveles temáticos como
-/// [themedTiles] (SIN Tier, SIN gating, nunca bloqueados). Modelar el catálogo
-/// como este agregado mantiene ambos bloques independientes: intercalar niveles
-/// temáticos no desplaza los Tiers de campaña, y un catálogo sin temáticos deja
-/// [themedTiles] vacío (la pantalla se ve idéntica a antes).
+/// [campaignTiers] (con Tier + gating + estrellas), los niveles temáticos como
+/// [themedTiles] y las fichas del modo hexagonal como [hexTiles] (ambos SIN
+/// Tier, SIN gating, nunca bloqueados; ADR-0007 D6). Modelar el catálogo como
+/// este agregado mantiene los tres bloques independientes: intercalar temáticos
+/// o hex no desplaza los Tiers de campaña, y un catálogo sin ellos deja las
+/// colecciones vacías (la pantalla se ve idéntica a antes).
 class CatalogView extends Equatable {
   final List<TierSection> campaignTiers;
   final List<LevelTile> themedTiles;
+  final List<LevelTile> hexTiles;
 
-  const CatalogView({required this.campaignTiers, required this.themedTiles});
+  const CatalogView({
+    required this.campaignTiers,
+    required this.themedTiles,
+    required this.hexTiles,
+  });
 
   @override
-  List<Object?> get props => [campaignTiers, themedTiles];
+  List<Object?> get props => [campaignTiers, themedTiles, hexTiles];
 }

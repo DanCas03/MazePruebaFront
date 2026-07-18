@@ -48,6 +48,8 @@ class LevelSelectionController extends AsyncNotifier<CatalogView> {
         entries.where((e) => e.section == LevelSection.campaign).toList();
     final themedEntries =
         entries.where((e) => e.section == LevelSection.themed).toList();
+    final hexEntries =
+        entries.where((e) => e.section == LevelSection.hex).toList();
 
     final catalog = [
       for (var i = 0; i < campaignEntries.length; i++)
@@ -60,7 +62,8 @@ class LevelSelectionController extends AsyncNotifier<CatalogView> {
 
     return CatalogView(
       campaignTiers: _sectionsFrom(catalog, progress),
-      themedTiles: _themedTilesFrom(themedEntries, progress),
+      themedTiles: _freeTilesFrom(themedEntries, progress),
+      hexTiles: _freeTilesFrom(hexEntries, progress),
     );
   }
 
@@ -103,21 +106,22 @@ class LevelSelectionController extends AsyncNotifier<CatalogView> {
     return [for (final t in tiers) TierSection(tier: t, tiles: byTier[t]!)];
   }
 
-  // Los niveles temáticos no tienen Tier ni gating: se exponen como celdas
-  // NUNCA bloqueadas, con posición 1-based dentro del propio bloque y las
-  // estrellas ganadas si las hay.
-  List<LevelTile> _themedTilesFrom(
-    List<CatalogEntry> themed,
+  // Fichas "libres" de un bloque sin gating (temáticos y hex, ADR-0007 D6): sin
+  // Tier ni bloqueos, con posición 1-based DENTRO del propio bloque y las
+  // estrellas ganadas si las hay. Un único helper para ambas colecciones evita
+  // dos copias que se separen por accidente (DRY).
+  List<LevelTile> _freeTilesFrom(
+    List<CatalogEntry> entries,
     List<LevelProgress> progress,
   ) {
     final starsById = _starsById(progress);
     return [
-      for (var i = 0; i < themed.length; i++)
+      for (var i = 0; i < entries.length; i++)
         LevelTile(
-          levelId: themed[i].id,
+          levelId: entries[i].id,
           position: i + 1,
-          stars: starsById[themed[i].id.value] ?? 0,
-          locked: false, // sin gating por Tier: los temáticos siempre juegan.
+          stars: starsById[entries[i].id.value] ?? 0,
+          locked: false, // sin gating por Tier: siempre jugables.
         ),
     ];
   }

@@ -7,10 +7,13 @@ import '../../../domain/arrows/entities/arrow.dart';
 import '../../../domain/arrows/value_objects/arrow_id.dart';
 import '../../../domain/board/services/auto_solve_pacing.dart';
 import '../../../domain/game_core/space/bounding_box.dart';
-import '../../../domain/game_core/value_objects/position.dart';
+import '../../../domain/game_core/space/hex_space.dart';
 import '../../../application/state/game_controller.dart';
 import '../arrow_color_resolver.dart';
+import '../geometry/board_geometry.dart';
+import '../geometry/hex_geometry.dart';
 import '../painters/board_surface_painter.dart';
+import '../painters/hex_board_surface_painter.dart';
 import 'arrow_widget.dart';
 import 'board_viewport.dart';
 import 'exiting_arrow_widget.dart';
@@ -75,21 +78,19 @@ class BoardView extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cell = math.min(
-          constraints.maxWidth / frame.cols,
-          constraints.maxHeight / frame.rows,
-        );
-        final width = frame.cols * cell;
-        final height = frame.rows * cell;
+        // front#126: la geometría (recta o hex) es el ÚNICO punto de selección
+        // por tipo de espacio; dimensiona el tablero y traduce celda<->píxel
+        // para hit-test, painter de superficie y montaje de flechas.
+        final geometry = BoardGeometry.forSpace(state.board.space, constraints);
 
         // front#66: la cámara (zoom/pan + doble-tap) envuelve el tablero ya
         // ajustado a "fit" y alimenta el rectángulo visible para el culling.
         return BoardViewport(
           viewportSize: Size(constraints.maxWidth, constraints.maxHeight),
-          boardSize: Size(width, height),
+          boardSize: geometry.size,
           builder: (visibleRect) => _boardContent(
             context: context,
-            cell: cell,
+            geometry: geometry,
             surface: surface,
             gridColor: gridColor,
             visibleRect: visibleRect,
@@ -101,13 +102,16 @@ class BoardView extends StatelessWidget {
 
   Widget _boardContent({
     required BuildContext context,
-    required double cell,
+    required BoardGeometry geometry,
     required Color surface,
     required Color gridColor,
     required Rect? visibleRect,
   }) {
     final board = state.board;
     final space = board.space;
+    // Escalar de celda para culling y las rutas rect (idéntico al `cell` previo
+    // en un espacio rect); en hex es la separación entre centros vecinos.
+    final cell = geometry.cellSize;
     // Marco del tablero (front#87): el canvas y los Positioned trabajan con
     // origen en la esquina del bounding box (celda absoluta − frame.min…), así
     // un espacio recortado (min ≠ 0) renderiza sin reescribir las celdas de
@@ -132,16 +136,12 @@ class BoardView extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapUp: (details) {
-        // front#87: el marco solo DIMENSIONA; la existencia de cada celda la
-        // decide el espacio. Un toque sobre una celda que no existe se rechaza
-        // antes de resolver flecha alguna.
-        final pos = Position(
-          row: ((details.localPosition.dy / cell).floor() + frame.minRow)
-              .clamp(frame.minRow, frame.maxRow),
-          col: ((details.localPosition.dx / cell).floor() + frame.minCol)
-              .clamp(frame.minCol, frame.maxCol),
-        );
-        if (!space.contains(pos)) return;
+        // front#126: la geometría resuelve píxel->celda (recta clampa a la caja,
+        // hex hace redondeo cúbico). front#87: el marco solo DIMENSIONA; la
+        // existencia de cada celda la decide el espacio. Un toque sobre una
+        // celda que no existe se rechaza antes de resolver flecha alguna.
+        final pos = geometry.cellAt(details.localPosition);
+        if (pos == null || !space.contains(pos)) return;
         final arrow = board.arrowAt(pos);
         if (arrow != null) {
           onTapArrow(arrow.id);
@@ -155,24 +155,34 @@ class BoardView extends StatelessWidget {
           // redondeado previo píxel a píxel.
           Positioned.fill(
             child: CustomPaint(
-              painter: BoardSurfacePainter(
-                space: space,
-                cell: cell,
-                surfaceColor: surface.withValues(alpha: 0.30),
-                gridColor: gridColor,
-                visibleRect: visibleRect,
-              ),
+              // front#126: painter de superficie por geometría. Hex pinta
+              // hexágonos + aristas canónicas; rect conserva su lock byte a byte.
+              painter: space is HexSpace
+                  ? HexBoardSurfacePainter(
+                      space: space,
+                      geometry: geometry as HexGeometry,
+                      surfaceColor: surface.withValues(alpha: 0.30),
+                      gridColor: gridColor,
+                    )
+                  : BoardSurfacePainter(
+                      space: space,
+                      cell: cell,
+                      surfaceColor: surface.withValues(alpha: 0.30),
+                      gridColor: gridColor,
+                      visibleRect: visibleRect,
+                    ),
             ),
           ),
           // Culling de flechas: solo se construyen (con su AnimationController)
           // las que caen dentro de la cámara. Fuera de zoom, el encuadre cubre
           // todo el tablero, así que se construyen todas (comportamiento previo).
           for (final arrow in board.arrows)
-            if (onCamera(arrow)) _positionArrow(arrow, cell, state, frame),
+            if (onCamera(arrow)) _positionArrow(arrow, geometry, state, frame),
           // La flecha saliente es una animación transitoria que cruza el borde:
           // siempre se dibuja mientras dure, aunque su celda de origen ya no esté.
           if (state.exitingArrow != null)
-            _positionExiting(state.exitingArrow!, cell, state.exitNonce, frame),
+            _positionExiting(
+                state.exitingArrow!, geometry, state.exitNonce, frame),
         ],
       ),
     );
@@ -193,7 +203,32 @@ class BoardView extends StatelessWidget {
   }
 
   Widget _positionArrow(
-      Arrow arrow, double cell, GamePlaying state, BoundingBox frame) {
+      Arrow arrow, BoardGeometry geometry, GamePlaying state, BoundingBox frame) {
+    final space = state.board.space;
+    if (space is HexSpace) {
+      // front#126: en hex el `Positioned` es el AABB en píxeles de los centros
+      // de la flecha; el painter dibuja con la geometría desde `origin`.
+      final r = _pixelBox(arrow, geometry);
+      return Positioned(
+        left: r.left,
+        top: r.top,
+        width: r.width,
+        height: r.height,
+        child: ArrowWidget(
+          key: ValueKey(arrow.id.value),
+          arrow: arrow,
+          minCol: 0,
+          minRow: 0,
+          cell: geometry.cellSize,
+          color: colorResolver.colorFor(arrow, state.palette),
+          isBlocked: state.blockedArrow == arrow.id,
+          blockedNonce: state.blockedNonce,
+          geometry: geometry,
+          origin: r.topLeft,
+        ),
+      );
+    }
+    final cell = geometry.cellSize;
     final b = _bounds(arrow);
     return Positioned(
       left: (b.minCol - frame.minCol) * cell,
@@ -213,8 +248,48 @@ class BoardView extends StatelessWidget {
     );
   }
 
+  /// AABB en píxeles de los centros de una flecha, inflado medio cellSize para
+  /// que el trazo/cabeza quepan (con Clip.none el desborde es admisible).
+  Rect _pixelBox(Arrow arrow, BoardGeometry geometry) {
+    var box =
+        Rect.fromCircle(center: geometry.centerOf(arrow.cells.first), radius: 0);
+    for (final p in arrow.cells) {
+      final ctr = geometry.centerOf(p);
+      box = box.expandToInclude(Rect.fromCircle(center: ctr, radius: 0));
+    }
+    return box.inflate(geometry.cellSize);
+  }
+
   Widget _positionExiting(
-      Arrow arrow, double cell, int nonce, BoundingBox frame) {
+      Arrow arrow, BoardGeometry geometry, int nonce, BoundingBox frame) {
+    final space = state.board.space;
+    if (space is HexSpace) {
+      // front#126: misma caja AABB que la flecha estática; el painter de salida
+      // recorre los centros hex vía geometría (cols/rows ignorados con ella).
+      final r = _pixelBox(arrow, geometry);
+      return Positioned(
+        left: r.left,
+        top: r.top,
+        width: r.width,
+        height: r.height,
+        child: ExitingArrowWidget(
+          key: ValueKey('exiting-$nonce'),
+          arrow: arrow,
+          minCol: 0,
+          minRow: 0,
+          cols: frame.cols,
+          rows: frame.rows,
+          cell: geometry.cellSize,
+          color: colorResolver.colorFor(arrow, state.palette),
+          nonce: nonce,
+          duration: state.autoSolveExitDuration ??
+              AutoSolvePacing.standardExitDuration,
+          geometry: geometry,
+          origin: r.topLeft,
+        ),
+      );
+    }
+    final cell = geometry.cellSize;
     final b = _bounds(arrow);
     return Positioned(
       left: (b.minCol - frame.minCol) * cell,

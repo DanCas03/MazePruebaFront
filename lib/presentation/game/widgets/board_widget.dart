@@ -123,6 +123,15 @@ class BoardView extends StatelessWidget {
 
     bool onCamera(Arrow arrow) {
       if (camera == null) return true;
+      // front#126 (fix final-review): en hex la proyección lineal
+      // (minCol-frame.minCol)*cell NO es el espacio de píxeles real — los
+      // centros hex se ubican con centerOf (offset axial + √3), no con una
+      // rejilla cartesiana. Reutiliza _pixelBox (el mismo AABB que monta la
+      // flecha) para que el culling compare contra la caja de píxeles real
+      // en vez de colar coordenadas rect en un tablero hex.
+      if (space is HexSpace) {
+        return _pixelBox(arrow, geometry).overlaps(camera);
+      }
       final b = _bounds(arrow);
       final rect = Rect.fromLTWH(
         (b.minCol - frame.minCol) * cell,

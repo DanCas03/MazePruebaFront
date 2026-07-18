@@ -90,4 +90,88 @@ void main() {
     await t.pump();
     expect(tapped, isNull);
   });
+
+  testWidgets(
+      'bajo zoom de lectura, el culling hex usa la caja de píxeles real '
+      '(no la proyección rect, que la cullearía de más)', (t) async {
+    // front#126 (fix final-review): antes del fix, onCamera comparaba con la
+    // proyección RECTANGULAR (minCol-frame.minCol)*cell, que no es el espacio
+    // de píxeles de un hex. A "fit" la cámara cubre todo el tablero y el bug
+    // queda invisible (por eso el mount test de arriba no lo detecta); hace
+    // falta zoom real para que la cámara sea más chica que el tablero.
+    //
+    // La celda 'edge' (fila 0, columnas 16-17 con R=10) está calculada para
+    // que, tras un doble-tap centrado en el tablero (zoom de lectura 2.6x,
+    // BoardViewport#66), su AABB de píxeles REAL (_pixelBox, vía centerOf)
+    // siga solapando la cámara, pero la proyección RECT antigua
+    // ((col)*cellSize, (row)*cellSize) caiga fuera de ella — un caso real de
+    // sobre-culling que el fix corrige. Verificado numéricamente: con R=10,
+    // constraints 400x600 y tap en el centro (row:10,col:10), la cámara
+    // inflada queda en x∈[79.8,320.2] y∈[68.6,386.0]; el AABB real de la
+    // celda 'edge' (≈x∈[290.8,352.9] y∈[54.1,108.3]) solapa esa cámara,
+    // mientras que su proyección rect buggy (x∈[346.4,389.7] y∈[0,21.7]) no.
+    const r = 10;
+    final board = ArrowBoard(
+      arrows: [
+        // Bajo la cámara, tanto en la proyección rect como en píxeles reales
+        // (sanity: el culling normal sigue construyéndola).
+        Arrow(
+          id: const ArrowId('near'),
+          headDirection: Direction.downRight,
+          cells: [Position(row: r, col: r), Position(row: r, col: r + 1)],
+        ),
+        // Caso discriminante: visible con el AABB real, culleada de más con
+        // la proyección rect (ver cálculo arriba).
+        Arrow(
+          id: const ArrowId('edge'),
+          headDirection: Direction.downRight,
+          cells: [Position(row: 0, col: 2 * r - 4), Position(row: 0, col: 2 * r - 3)],
+        ),
+      ],
+      space: const HexSpace(r),
+    );
+    final state = GamePlaying(board: board, moves: const MoveCount(0));
+
+    await t.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 400,
+            height: 600,
+            child: BoardView(state: state, onTapArrow: (_) {}),
+          ),
+        ),
+      ),
+    ));
+
+    // A "fit" (zoom identidad) la cámara cubre todo el tablero: ambas están
+    // construidas.
+    expect(find.byKey(const ValueKey('near')), findsOneWidget);
+    expect(find.byKey(const ValueKey('edge')), findsOneWidget);
+
+    // Doble-tap en el centro geométrico del tablero (celda axial q=0,r=0, el
+    // punto bajo el que queda fijo el zoom de lectura, BoardViewport#66) ->
+    // acerca a escala 2.6 centrado ahí.
+    final geo = HexGeometry(
+      const HexSpace(r),
+      const BoxConstraints(maxWidth: 400, maxHeight: 600),
+    );
+    final tl = t.getTopLeft(find.byType(BoardView));
+    final letterbox = Offset(
+      (400 - geo.size.width) / 2,
+      (600 - geo.size.height) / 2,
+    );
+    final centerHex = geo.centerOf(Position(row: r, col: r));
+    final tapPoint = tl + letterbox + centerHex;
+    await t.tapAt(tapPoint);
+    await t.tapAt(tapPoint);
+    await t.pumpAndSettle();
+
+    // Tras el zoom: 'near' sigue construida (sanity), y 'edge' TAMBIÉN sigue
+    // construida porque su AABB de píxeles real solapa la cámara — con el
+    // bug de la proyección rect, 'edge' se cullearía incorrectamente
+    // (findsNothing) pese a estar dentro del encuadre visible.
+    expect(find.byKey(const ValueKey('near')), findsOneWidget);
+    expect(find.byKey(const ValueKey('edge')), findsOneWidget);
+  });
 }

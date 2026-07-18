@@ -35,22 +35,14 @@ Widget _appUnderTest() {
 
 void main() {
   group('HomeScreen', () {
-    // front#127: el nuevo CTA de modo hexagonal añade altura a la Column
-    // central y desborda el surface por defecto (800x600) del test. Se
-    // agranda el viewport, igual que resuelven otras pantallas con muchos
-    // CTAs apilados, para reflejar el layout real (scrolleable en pantallas
-    // pequeñas) sin tocar el layout de producción.
-    setUp(() async {
-      final binding = TestWidgetsFlutterBinding.ensureInitialized();
-      binding.platformDispatcher.views.first.physicalSize =
-          const Size(500, 1200);
-      binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
-      addTearDown(binding.platformDispatcher.views.first.resetPhysicalSize);
-      addTearDown(binding.platformDispatcher.views.first.resetDevicePixelRatio);
-    });
-
     testWidgets('renders title, tagline and the Play CTA', (tester) async {
       // Arrange
+      // front#127: el nuevo CTA de modo hexagonal añade altura a la Column
+      // central y desborda el surface por defecto (800x600) del test; se
+      // agranda el viewport siguiendo el mismo patrón que
+      // hex_selection_screen_test.dart (setSurfaceSize + tearDown).
+      await tester.binding.setSurfaceSize(const Size(500, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(_appUnderTest());
 
       // Act
@@ -65,6 +57,9 @@ void main() {
 
     testWidgets('Play navigates to LevelSelectionScreen', (tester) async {
       // Arrange
+      // front#127: viewport agrandado (ver comentario del primer test).
+      await tester.binding.setSurfaceSize(const Size(500, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(_appUnderTest());
 
       // Act
@@ -81,6 +76,9 @@ void main() {
 
     testWidgets('renders the "Niveles temáticos" CTA (front#100)',
         (tester) async {
+      // front#127: viewport agrandado (ver comentario del primer test).
+      await tester.binding.setSurfaceSize(const Size(500, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(_appUnderTest());
       expect(find.widgetWithText(OutlinedButton, 'Niveles temáticos'),
           findsOneWidget);
@@ -88,6 +86,9 @@ void main() {
 
     testWidgets('"Niveles temáticos" navigates to ThemedSelectionScreen (front#100)',
         (tester) async {
+      // front#127: viewport agrandado (ver comentario del primer test).
+      await tester.binding.setSurfaceSize(const Size(500, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(_appUnderTest());
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Niveles temáticos'));
@@ -99,6 +100,9 @@ void main() {
     });
 
     testWidgets('renders the "Generar nivel" CTA (front#37)', (tester) async {
+      // front#127: viewport agrandado (ver comentario del primer test).
+      await tester.binding.setSurfaceSize(const Size(500, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(_appUnderTest());
       expect(find.widgetWithText(OutlinedButton, 'Generar nivel'),
           findsOneWidget);
@@ -106,6 +110,9 @@ void main() {
 
     testWidgets('"Generar nivel" navigates to ConfiguratorScreen (front#37)',
         (tester) async {
+      // front#127: viewport agrandado (ver comentario del primer test).
+      await tester.binding.setSurfaceSize(const Size(500, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(_appUnderTest());
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Generar nivel'));
@@ -119,7 +126,14 @@ void main() {
     testWidgets(
         'should_show_hex_mode_entry_and_navigate_to_hex_screen',
         (tester) async {
-      // Arrange: mismo montaje que el caso 'Niveles temáticos' existente
+      // Arrange: mismo montaje que el caso 'Niveles temáticos' existente.
+      // front#127: el nuevo CTA de modo hexagonal añade altura a la Column
+      // central y desborda el surface por defecto (800x600) del test; se
+      // agranda el viewport siguiendo el mismo patrón que
+      // hex_selection_screen_test.dart (setSurfaceSize + tearDown), acotado
+      // solo a este caso.
+      await tester.binding.setSurfaceSize(const Size(500, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(_appUnderTest());
 
       // Act

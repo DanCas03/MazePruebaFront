@@ -46,7 +46,32 @@ class HexGeometry implements BoardGeometry {
   }
 
   @override
-  Position? cellAt(Offset px) => throw UnimplementedError('Task 3');
+  Position? cellAt(Offset px) {
+    // Píxel -> axial fraccional (inverso de centerOf).
+    final x = px.dx - _ox;
+    final y = px.dy - _oy;
+    final qf = x / (1.5 * _s);
+    final rf = y / (_sqrt3 * _s) - qf / 2;
+    // Redondeo cúbico estándar (x=q, z=r, y=-x-z).
+    var rx = qf.roundToDouble();
+    var rz = rf.roundToDouble();
+    var ry = (-qf - rf).roundToDouble();
+    final dx = (rx - qf).abs();
+    final dz = (rz - rf).abs();
+    final dy = (ry - (-qf - rf)).abs();
+    if (dx > dy && dx > dz) {
+      rx = -ry - rz;
+    } else if (dy > dz) {
+      // y tiene el mayor error: q y r se conservan
+    } else {
+      rz = -rx - ry;
+    }
+    final row = rz.toInt() + _r;
+    final col = rx.toInt() + _r;
+    if (row < 0 || col < 0) return null;
+    final pos = Position(row: row, col: col);
+    return space.contains(pos) ? pos : null;
+  }
 
   @override
   List<Position> exitLane(Position head, Direction dir) =>
